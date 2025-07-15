@@ -1,0 +1,85 @@
+{
+  "mcpServers": {
+    "presearch-mcp": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "env": {
+        "PRESEARCH_API_KEY": "your_presearch_api_key_here",
+        "PRESEARCH_BASE_URL": "https://na-us-1.presearch.com"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "presearch_search",
+      "description": "Official Presearch API integration with 7 supported parameters",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "q": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number (default: 1)",
+            "default": 1
+          },
+          "lang": {
+            "type": "string",
+            "description": "Language code (e.g., 'en', 'es')"
+          },
+          "time": {
+            "type": "string",
+            "description": "Time filter",
+            "enum": ["any", "day", "week", "month", "year"]
+          },
+          "safe": {
+            "type": "string",
+            "description": "Safe search",
+            "enum": ["0", "1"]
+          },
+          "location": {
+            "type": "string",
+            "description": "Location filter"
+          },
+          "ip": {
+            "type": "string",
+            "description": "IP address for geo-targeting"
+          }
+        },
+        "required": ["q"],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "presearch_cache_stats",
+      "description": "Get cache statistics and performance metrics",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "presearch_cache_clear",
+      "description": "Clear the search results cache to force fresh results",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "confirm": {
+            "type": "boolean",
+            "description": "Confirmation to clear cache (default: false)",
+            "default": false
+          }
+        },
+        "required": [],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    }
+  ]
+}

@@ -1,0 +1,135 @@
+# Dependencies
+/node_modules
+npm-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+*.tsbuildinfo
+dist/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and debug files
+*.log*
+logs/
+
+# Node.js specific
+node_modules/
+.npm
+
+# Test coverage
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Test directories and files
+__tests__/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+test/
+tests/
+
+# Development configuration files
+jest.config.js
+jest.*.js
+eslint.config.js
+.eslintrc*
+tsconfig.test.json
+
+# Temporary and cache files
+*.tmp
+*.temp
+tmp/
+.cache/
+
+# PowerShell scripts that might contain secrets
+start-server.ps1
+*.ps1
+
+# Additional development artifacts
+*.tsbuildinfo
+.eslintcache
+.nyc_output/
+coverage/
+.coverage/
+*.lcov
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Runtime and build artifacts
+*.pid
+*.seed
+*.pid.lock
+.grunt
+.lock-wscript
+.wafpickle-*
+.task
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Smithery platform files
+.smithery/
+smitery.config.js
+smitery.yaml
+
+# Docker files (if not using Docker)
+Dockerfile*
+.dockerignore
+
+# Documentation and examples (if not needed)
+examples/
+docs/
+CHANGELOG.md
