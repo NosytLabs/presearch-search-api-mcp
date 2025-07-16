@@ -1,8 +1,10 @@
-#!/usr/bin/env node
+#/usr/bin/env node
 
 import { PresearchHttpServer } from "./http-server.js";
 import { logger } from "./utils/logger.js";
 import { errorHandler } from "./utils/error-handler.js";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * Main entry point for the Presearch MCP Server
@@ -50,11 +52,12 @@ async function main(): Promise<void> {
 }
 
 // Start the server if this file is run directly
-if (
-  import.meta.url.startsWith("file:") &&
-  process.argv[1] &&
-  import.meta.url.includes(process.argv[1].replace(/\\/g, "/"))
-) {
+// @ts-ignore
+const isCJS = typeof require === "function" && require.main === module;
+const filename = isCJS ? __filename : fileURLToPath(import.meta.url);
+const mainFilename = process.argv[1] ? path.resolve(process.argv[1]) : undefined;
+const currentFilename = path.resolve(filename);
+if (mainFilename && mainFilename === currentFilename) {
   main().catch((error) => {
     const handledError = errorHandler.handleError(error, {
       operation: "main-catch",

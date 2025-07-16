@@ -1,0 +1,36 @@
+runtime: "typescript"
+startCommand:
+  type: "http"
+  configSchema:
+    type: "object"
+    properties:
+      apiKey:
+        type: "string"
+        description: "Presearch API Key"
+      baseUrl:
+        type: "string"
+        description: "Presearch Base URL"
+        default: "https://api.presearch.com"
+      requestTimeout:
+        type: "number"
+        description: "Request timeout in milliseconds"
+        default: 30000
+      maxRetries:
+        type: "number"
+        description: "Maximum retry attempts"
+        default: 3
+      rateLimit:
+        type: "number"
+        description: "Rate limit in requests per minute"
+        default: 60
+      cacheTtl:
+        type: "number"
+        description: "Cache TTL in seconds"
+        default: 3600
+      debug:
+        type: "boolean"
+        description: "Enable debug logging"
+        default: false
+    required: ["apiKey"]
+  exampleConfig:
+    apiKey: "your-presearch-api-key"
