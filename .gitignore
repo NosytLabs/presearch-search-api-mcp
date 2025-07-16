@@ -126,7 +126,7 @@ smitery.config.js
 smitery.yaml
 
 # Docker files (if not using Docker)
-Dockerfile*
+# Dockerfile* - commented out as we need Dockerfile for Smithery deployment
 .dockerignore
 
 # Documentation and examples (if not needed)
