@@ -45,8 +45,8 @@ COPY . .
 # Build the TypeScript project
 RUN npm run build
 
-# Remove dev dependencies after build to reduce image size
-RUN npm prune --production
+# Install only production dependencies in a clean way
+RUN rm -rf node_modules && npm ci --only=production
 
 # Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser
