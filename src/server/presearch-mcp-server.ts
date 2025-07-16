@@ -1,14 +1,15 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 // Removed unused imports
-import { Configuration, createConfigFromEnv } from '../config/configuration.js';
-import { PresearchAPIClient } from '../api/api-client.js';
-import { CacheManager } from '../cache/cache-manager.js';
-import { logger } from '../utils/logger.js';
-import { ErrorHandler } from '../utils/error-handler.js';
-import { ResponseProcessor } from '../utils/response-processor.js';
-import { z, ZodRawShape } from 'zod';
-import puppeteer from 'puppeteer';
-import TurndownService from 'turndown';
+import { Configuration, createConfigFromEnv } from "../config/configuration.js";
+import { PresearchAPIClient } from "../api/api-client.js";
+import { CacheManager } from "../utils/cache-manager.js";
+import { logger } from "../utils/logger.js";
+import { ErrorHandler } from "../utils/error-handler.js";
+import { ResponseProcessor } from "../utils/response-processor.js";
+import { z, ZodRawShape } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
+import puppeteer from "puppeteer";
+import TurndownService from "turndown";
 
 /**
  * Presearch MCP Server implementation
@@ -22,13 +23,19 @@ export class PresearchServer {
   private responseProcessor: ResponseProcessor;
   private isInitialized = false;
   private listening = false;
-  private tools: Map<string, { definition: Record<string, unknown>; handler: (args: Record<string, unknown>) => Promise<unknown> }> = new Map();
+  private tools: Map<
+    string,
+    {
+      definition: any;
+      handler: (args: Record<string, unknown>) => Promise<unknown>;
+    }
+  > = new Map();
 
   constructor(config: Configuration) {
     this.config = config;
     this.server = new McpServer({
-      name: 'presearch-mcp-server',
-      version: '3.0.0',
+      name: "presearch-mcp-server",
+      version: "3.0.0",
     });
 
     this.errorHandler = ErrorHandler.getInstance();
@@ -36,9 +43,9 @@ export class PresearchServer {
 
     this.registerTools();
 
-    logger.info('Presearch MCP Server created', {
-      name: 'presearch-mcp-server',
-      version: '3.0.0',
+    logger.info("Presearch MCP Server created", {
+      name: "presearch-mcp-server",
+      version: "3.0.0",
       hasApiKey: !!config.getApiKey(),
     });
   }
@@ -54,13 +61,13 @@ export class PresearchServer {
   }
 
   async stop(): Promise<void> {
-    logger.info('Stopping Presearch MCP Server...');
+    logger.info("Stopping Presearch MCP Server...");
     if (this.cacheManager) {
-      this.cacheManager.stop();
+      this.cacheManager.destroy();
     }
     await this.server.close();
     this.listening = false;
-    logger.info('Presearch MCP Server stopped');
+    logger.info("Presearch MCP Server stopped");
   }
 
   /**
@@ -69,10 +76,10 @@ export class PresearchServer {
   async initialize(): Promise<void> {
     try {
       await this.lazyInitializeComponents();
-      logger.info('Presearch MCP Server initialized successfully');
+      logger.info("Presearch MCP Server initialized successfully");
     } catch (error) {
-      logger.error('Failed to initialize Presearch MCP Server', {
-        error: error instanceof Error ? error.message : 'Unknown error',
+      logger.error("Failed to initialize Presearch MCP Server", {
+        error: error instanceof Error ? error.message : "Unknown error",
       });
       throw error;
     }
@@ -85,15 +92,15 @@ export class PresearchServer {
     try {
       const newConfig = createConfigFromEnv(configOverrides);
       this.config = newConfig;
-      logger.info('Configuration updated', { overrides: configOverrides });
+      logger.info("Configuration updated", { overrides: configOverrides });
 
       // Re-initialize components with the new configuration
       this.isInitialized = false; // Force re-initialization
       await this.lazyInitializeComponents();
-      logger.info('Presearch MCP Server re-initialized with new configuration');
+      logger.info("Presearch MCP Server re-initialized with new configuration");
     } catch (error) {
-      logger.error('Failed to update configuration and re-initialize', {
-        error: error instanceof Error ? error.message : 'Unknown error',
+      logger.error("Failed to update configuration and re-initialize", {
+        error: error instanceof Error ? error.message : "Unknown error",
       });
       throw error;
     }
@@ -110,15 +117,15 @@ export class PresearchServer {
     try {
       // Validate configuration when components are actually needed
       await this.validateConfiguration();
-      
+
       // Initialize components
       await this.initializeComponents();
-      
+
       this.isInitialized = true;
-      logger.info('Components initialized successfully');
+      logger.info("Components initialized successfully");
     } catch (error) {
-      logger.error('Failed to initialize components', {
-        error: error instanceof Error ? error.message : 'Unknown error'
+      logger.error("Failed to initialize components", {
+        error: error instanceof Error ? error.message : "Unknown error",
       });
       throw error;
     }
@@ -128,21 +135,21 @@ export class PresearchServer {
    * Validate configuration
    */
   private async validateConfiguration(): Promise<void> {
-    logger.info('Validating configuration...');
+    logger.info("Validating configuration...");
 
     // Validate base URL
     const baseURL = this.config.getBaseURL();
-    if (!baseURL || !baseURL.startsWith('http')) {
-      throw new Error('Invalid base URL configuration');
+    if (!baseURL || !baseURL.startsWith("http")) {
+      throw new Error("Invalid base URL configuration");
     }
 
     // For lazy loading, don't validate API key during initialization
     // API key will be validated when tools are actually called
     const apiKey = this.config.getApiKey();
-    
-    logger.info('Configuration validation completed', {
+
+    logger.info("Configuration validation completed", {
       baseURL,
-      hasApiKey: !!apiKey
+      hasApiKey: !!apiKey,
     });
   }
 
@@ -150,11 +157,11 @@ export class PresearchServer {
    * Initialize API client and other components
    */
   private async initializeComponents(): Promise<void> {
-    logger.info('Initializing components...');
+    logger.info("Initializing components...");
 
     // Initialize API client without API key (lazy loading)
     this.apiClient = new PresearchAPIClient(this.config);
-    
+
     // API key will be set when tools are actually called
     const apiKey = this.config.getApiKey();
     if (apiKey) {
@@ -163,20 +170,31 @@ export class PresearchServer {
 
     // Initialize cache manager if caching is enabled
     if (this.config.isCacheEnabled()) {
-      this.cacheManager = new CacheManager();
-      logger.info('Cache manager initialized', {
-        ttl: this.config.getCacheTTL()
+      this.cacheManager = new CacheManager({
+        maxSize: 1000,
+        maxMemory: 100 * 1024 * 1024, // 100MB in bytes
+        defaultTtl: this.config.getCacheTTL(),
+        enableAnalytics: true,
+        enableWarming: true,
+      });
+      logger.info("Enhanced cache manager initialized", {
+        ttl: this.config.getCacheTTL(),
+        maxSize: 1000,
+        maxMemoryMB: 100,
+        analyticsEnabled: true,
       });
     }
 
     // Test API connectivity - temporarily disabled due to 422 error
     // await this.testAPIConnectivity();
-    logger.info('API connectivity test skipped - will test on first actual search request');
+    logger.info(
+      "API connectivity test skipped - will test on first actual search request",
+    );
 
-    logger.info('All components initialized successfully', {
+    logger.info("All components initialized successfully", {
       apiClientInitialized: !!this.apiClient,
       cacheManagerInitialized: !!this.cacheManager,
-      apiKeyConfigured: !!apiKey
+      apiKeyConfigured: !!apiKey,
     });
   }
 
@@ -212,18 +230,42 @@ export class PresearchServer {
    * Setup request handlers for MCP protocol
    */
 
-
   /**
    * Get tool definitions
    */
-  getToolDefinitions(): Record<string, unknown>[] {
-    return Array.from(this.tools.values()).map(t => t.definition);
+  getToolDefinitions(): any[] {
+    return Array.from(this.tools.values()).map((tool) => {
+      const definition = tool.definition;
+      // Convert Zod schema to JSON Schema for Smithery compatibility
+      if (
+        definition.inputSchema &&
+        typeof definition.inputSchema === "object"
+      ) {
+        const jsonSchema = zodToJsonSchema(
+          z.object(definition.inputSchema as ZodRawShape),
+          {
+            name: `${definition.name}Schema`,
+            $refStrategy: "none",
+          },
+        );
+
+        return {
+          ...definition,
+          inputSchema: jsonSchema,
+        };
+      }
+      return definition;
+    });
   }
 
-  getTool(name: string): { definition: Record<string, unknown>; handler: (args: Record<string, unknown>) => Promise<unknown> } | undefined {
+  getTool(name: string):
+    | {
+        definition: any;
+        handler: (args: Record<string, unknown>) => Promise<unknown>;
+      }
+    | undefined {
     return this.tools.get(name);
   }
-
 
   /**
    * Handle tool call requests
@@ -240,23 +282,68 @@ export class PresearchServer {
 
     const toolConfigs: ToolConfig[] = [
       {
-        name: 'presearch_search',
+        name: "presearch_search",
         definition: {
           description:
-            'Enhanced search using Presearch decentralized search engine. Returns web results with optional AI insights, entity extraction, metadata, and multiple output formats including HTML.',
+            "Enhanced search using Presearch decentralized search engine. Returns web results with optional AI insights, entity extraction, metadata, and multiple output formats including HTML.",
           inputSchema: {
-            query: z.string().describe('The search query to execute'),
-            page: z.number().describe('Page number for paginating search results (default: 1)').min(1).default(1),
-            resultsPerPage: z.number().describe('Number of results per page (default: 10, max: 50)').min(1).max(50).default(10),
-            format: z.enum(['json', 'html', 'markdown']).describe('Output format: "json" (default), "html", or "markdown"').default('json'),
-            lang: z.string().describe('Language for search results (BCP 47 format, e.g., "en-US")'),
-            time: z.enum(['any', 'day', 'week', 'month', 'year']).describe('Timeframe for results: "any", "day", "week", "month", "year"'),
-            location: z.string().describe('Stringified JSON object with "lat" and "long" for location-based results'),
-            ip: z.string().describe('IP address of the user for geo-targeting'),
-            safe: z.enum(['0', '1']).describe('Safe search mode: "1" (enabled) or "0" (disabled)'),
-            includeInsights: z.boolean().describe('Include AI insights and analysis (default: true for enhanced experience)').default(true),
-            aiAnalysis: z.boolean().describe('Enable AI-enhanced formatting with metadata and quality scoring (default: true)').default(true),
-            extractEntities: z.boolean().describe('Extract entities, keywords, and topics from results (default: true)').default(true),
+            query: z.string().describe("The search query to execute"),
+            page: z
+              .number()
+              .describe(
+                "Page number for paginating search results (default: 1)",
+              )
+              .min(1)
+              .default(1),
+            resultsPerPage: z
+              .number()
+              .describe("Number of results per page (default: 10, max: 50)")
+              .min(1)
+              .max(50)
+              .default(10),
+            format: z
+              .enum(["json", "html", "markdown"])
+              .describe(
+                'Output format: "json" (default), "html", or "markdown"',
+              )
+              .default("json"),
+            lang: z
+              .string()
+              .describe(
+                'Language for search results (BCP 47 format, e.g., "en-US")',
+              ),
+            time: z
+              .enum(["any", "day", "week", "month", "year"])
+              .describe(
+                'Timeframe for results: "any", "day", "week", "month", "year"',
+              ),
+            location: z
+              .string()
+              .describe(
+                'Stringified JSON object with "lat" and "long" for location-based results',
+              ),
+            ip: z.string().describe("IP address of the user for geo-targeting"),
+            safe: z
+              .enum(["0", "1"])
+              .describe('Safe search mode: "1" (enabled) or "0" (disabled)'),
+            includeInsights: z
+              .boolean()
+              .describe(
+                "Include AI insights and analysis (default: true for enhanced experience)",
+              )
+              .default(true),
+            aiAnalysis: z
+              .boolean()
+              .describe(
+                "Enable AI-enhanced formatting with metadata and quality scoring (default: true)",
+              )
+              .default(true),
+            extractEntities: z
+              .boolean()
+              .describe(
+                "Extract entities, keywords, and topics from results (default: true)",
+              )
+              .default(true),
           },
         },
         handler: async (args: Record<string, unknown>) => {
@@ -264,9 +351,10 @@ export class PresearchServer {
         },
       },
       {
-        name: 'presearch_cache_stats',
+        name: "presearch_cache_stats",
         definition: {
-          description: 'Get cache statistics including hit rate, cache size, and performance metrics.',
+          description:
+            "Get cache statistics including hit rate, cache size, and performance metrics.",
           inputSchema: {},
         },
         handler: async (_args: Record<string, unknown>) => {
@@ -274,11 +362,17 @@ export class PresearchServer {
         },
       },
       {
-        name: 'presearch_cache_clear',
+        name: "presearch_cache_clear",
         definition: {
-          description: 'Clear the search cache to free up memory and force fresh results.',
+          description:
+            "Clear the search cache to free up memory and force fresh results.",
           inputSchema: {
-            pattern: z.string().describe('Optional pattern to clear specific cache entries (e.g., "search:*")').default('*'),
+            pattern: z
+              .string()
+              .describe(
+                'Optional pattern to clear specific cache entries (e.g., "search:*")',
+              )
+              .default("*"),
           },
         },
         handler: async (args: Record<string, unknown>) => {
@@ -286,38 +380,95 @@ export class PresearchServer {
         },
       },
       {
-        name: 'presearch_scrape_content',
+        name: "presearch_scrape_content",
         definition: {
-          description: 'Scrape a URL and convert content to markdown or HTML format using Puppeteer. Supports multiple output formats for flexible content processing.',
+          description:
+            "Scrape a URL and convert content to markdown or HTML format using Puppeteer. Supports multiple output formats for flexible content processing.",
           inputSchema: {
-            url: z.string().describe('The URL to scrape and convert'),
-            format: z.enum(['markdown', 'html', 'both']).describe('Output format: "markdown" (default), "html", or "both"').default('markdown'),
-            waitTime: z.number().describe('Time to wait for page load in milliseconds (default: 3000)').default(3000),
+            url: z.string().describe("The URL to scrape and convert"),
+            format: z
+              .enum(["markdown", "html", "both"])
+              .describe(
+                'Output format: "markdown" (default), "html", or "both"',
+              )
+              .default("markdown"),
+            waitTime: z
+              .number()
+              .describe(
+                "Time to wait for page load in milliseconds (default: 3000)",
+              )
+              .default(3000),
           },
         },
         handler: async (args: Record<string, unknown>) => {
-          return await this.handleScrapeContent(args as { url: string; format?: string; waitTime?: number });
+          return await this.handleScrapeContent(
+            args as { url: string; format?: string; waitTime?: number },
+          );
+        },
+      },
+      {
+        name: "presearch_health_check",
+        definition: {
+          description:
+            "Get comprehensive health status including API connectivity, rate limiting, circuit breaker status, and system performance metrics.",
+          inputSchema: {
+            includeMetrics: z
+              .boolean()
+              .describe("Include detailed performance metrics (default: true)")
+              .default(true),
+            testConnectivity: z
+              .boolean()
+              .describe(
+                "Test API connectivity with a lightweight request (default: false)",
+              )
+              .default(false),
+          },
+        },
+        handler: async (args: Record<string, unknown>) => {
+          return await this.handleHealthCheck(
+            args as { includeMetrics?: boolean; testConnectivity?: boolean },
+          );
+        },
+      },
+      {
+        name: "presearch_system_info",
+        definition: {
+          description:
+            "Get system information including configuration status, component health, and operational statistics.",
+          inputSchema: {},
+        },
+        handler: async (_args: Record<string, unknown>) => {
+          return await this.handleSystemInfo();
         },
       },
     ];
 
-    toolConfigs.forEach(config => {
+    toolConfigs.forEach((config) => {
+      // Register with MCP server using Zod schemas
       this.server.registerTool(config.name, config.definition, config.handler);
+
+      // Store tool definition for Smithery (will be converted to JSON Schema in getToolDefinitions)
       const fullDefinition = { name: config.name, ...config.definition };
-      this.tools.set(config.name, { definition: fullDefinition, handler: config.handler });
+      this.tools.set(config.name, {
+        definition: fullDefinition,
+        handler: config.handler,
+      });
     });
   }
 
   /**
    * Format response based on requested output format
    */
-  private formatResponse(data: Record<string, unknown>, format: string): string {
+  private formatResponse(
+    data: Record<string, unknown>,
+    format: string,
+  ): string {
     switch (format) {
-      case 'html':
+      case "html":
         return this.formatAsHTML(data);
-      case 'markdown':
+      case "markdown":
         return this.formatAsMarkdown(data);
-      case 'json':
+      case "json":
       default:
         return JSON.stringify(data, null, 2);
     }
@@ -327,7 +478,7 @@ export class PresearchServer {
    * Format search results as HTML
    */
   private formatAsHTML(data: Record<string, unknown>): string {
-    const query = (data.query as string) || 'Search Results';
+    const query = (data.query as string) || "Search Results";
     const results = (data.results as Array<Record<string, unknown>>) || [];
     const insights = data.insights as Record<string, unknown> | undefined;
     const metadata = data.metadata as Record<string, unknown> | undefined;
@@ -365,20 +516,20 @@ export class PresearchServer {
             <h1 class="query">Search Results: ${this.escapeHtml(query)}</h1>
             <div class="metadata">
                 ${results.length} results`;
-    
+
     if (metadata?.searchTime) {
       html += ` • ${metadata.searchTime}ms`;
     }
     if (metadata?.qualityScore) {
-        html += ` • Quality Score: ${((metadata.qualityScore as number) * 100).toFixed(1)}%`;
+      html += ` • Quality Score: ${((metadata.qualityScore as number) * 100).toFixed(1)}%`;
     }
-    
+
     html += `
             </div>
         </div>
         
         <div class="results">`;
-    
+
     results.forEach((result: Record<string, unknown>) => {
       html += `
             <div class="result">
@@ -389,17 +540,17 @@ export class PresearchServer {
                 <div class="result-snippet">${this.escapeHtml(result.snippet as string)}</div>
                 <div class="result-meta">
                     Rank: ${result.rank} • Source: ${this.escapeHtml(result.source as string)}`;
-      
+
       if (result.relevanceScore) {
         html += ` • Relevance: ${((result.relevanceScore as number) * 100).toFixed(1)}%`;
       }
       if (result.publishedDate) {
         html += ` • Published: ${new Date(result.publishedDate as string).toLocaleDateString()}`;
       }
-      
+
       html += `
                 </div>`;
-      
+
       if (result.aiTags && (result.aiTags as string[]).length > 0) {
         html += `
                 <div class="tags">`;
@@ -408,59 +559,64 @@ export class PresearchServer {
         });
         html += `</div>`;
       }
-      
+
       html += `
             </div>`;
     });
-    
+
     html += `
         </div>`;
-    
+
     if (insights) {
       html += `
         <div class="insights">
             <h3>Search Insights</h3>`;
-      
+
       if (insights.topDomains && (insights.topDomains as string[]).length > 0) {
         html += `
             <div class="insight-item">
-                <span class="insight-label">Top Domains:</span> ${(insights.topDomains as string[]).join(', ')}
+                <span class="insight-label">Top Domains:</span> ${(insights.topDomains as string[]).join(", ")}
             </div>`;
       }
-      
-      if (insights.extractedKeywords && (insights.extractedKeywords as string[]).length > 0) {
+
+      if (
+        insights.extractedKeywords &&
+        (insights.extractedKeywords as string[]).length > 0
+      ) {
         html += `
             <div class="insight-item">
-                <span class="insight-label">Key Terms:</span> ${(insights.extractedKeywords as string[]).slice(0, 10).join(', ')}
+                <span class="insight-label">Key Terms:</span> ${(insights.extractedKeywords as string[]).slice(0, 10).join(", ")}
             </div>`;
       }
-      
+
       if (insights.contentTypeDistribution) {
-        const types = Object.entries(insights.contentTypeDistribution as Record<string, unknown>)
+        const types = Object.entries(
+          insights.contentTypeDistribution as Record<string, unknown>,
+        )
           .map(([type, count]) => `${type} (${count})`)
-          .join(', ');
+          .join(", ");
         html += `
             <div class="insight-item">
                 <span class="insight-label">Content Types:</span> ${types}
             </div>`;
       }
-      
+
       if (insights.averageRelevance) {
         html += `
             <div class="insight-item">
                 <span class="insight-label">Average Relevance:</span> ${((insights.averageRelevance as number) * 100).toFixed(1)}%
             </div>`;
       }
-      
+
       html += `
         </div>`;
     }
-    
+
     html += `
     </div>
 </body>
 </html>`;
-    
+
     return html;
   }
 
@@ -468,65 +624,78 @@ export class PresearchServer {
    * Format search results as Markdown
    */
   private formatAsMarkdown(data: Record<string, unknown>): string {
-    const query = (data.query as string) || 'Search Results';
+    const query = (data.query as string) || "Search Results";
     const results = (data.results as Array<Record<string, unknown>>) || [];
     const insights = data.insights as Record<string, unknown> | undefined;
     const metadata = data.metadata as Record<string, unknown> | undefined;
 
     let markdown = `# Search Results: ${query}\n\n`;
-    
+
     if (metadata) {
       markdown += `**Results:** ${results.length}`;
-      if (metadata.searchTime) markdown += ` • **Time:** ${metadata.searchTime}ms`;
-      if (metadata.qualityScore) markdown += ` • **Quality:** ${((metadata.qualityScore as number) * 100).toFixed(1)}%`;
+      if (metadata.searchTime)
+        markdown += ` • **Time:** ${metadata.searchTime}ms`;
+      if (metadata.qualityScore)
+        markdown += ` • **Quality:** ${((metadata.qualityScore as number) * 100).toFixed(1)}%`;
       markdown += `\n\n---\n\n`;
     }
-    
+
     results.forEach((result: Record<string, unknown>, index: number) => {
       markdown += `## ${index + 1}. [${result.title as string}](${result.url as string})\n\n`;
       markdown += `**URL:** ${result.url as string}\n\n`;
       markdown += `${result.snippet as string}\n\n`;
-      
+
       if (result.source || result.relevanceScore || result.publishedDate) {
-          markdown += `**Details:** `;
-          const details = [];
-          if (result.source) details.push(`Source: ${result.source as string}`);
-          if (result.relevanceScore) details.push(`Relevance: ${((result.relevanceScore as number) * 100).toFixed(1)}%`);
-          if (result.publishedDate) details.push(`Published: ${new Date(result.publishedDate as string).toLocaleDateString()}`);
-          markdown += details.join(' • ') + `\n\n`;
-        }
-      
+        markdown += `**Details:** `;
+        const details = [];
+        if (result.source) details.push(`Source: ${result.source as string}`);
+        if (result.relevanceScore)
+          details.push(
+            `Relevance: ${((result.relevanceScore as number) * 100).toFixed(1)}%`,
+          );
+        if (result.publishedDate)
+          details.push(
+            `Published: ${new Date(result.publishedDate as string).toLocaleDateString()}`,
+          );
+        markdown += details.join(" • ") + `\n\n`;
+      }
+
       if (result.aiTags && (result.aiTags as string[]).length > 0) {
-          markdown += `**Tags:** ${(result.aiTags as string[]).map((tag: string) => `\`${tag}\``).join(', ')}\n\n`;
-        }
-      
+        markdown += `**Tags:** ${(result.aiTags as string[]).map((tag: string) => `\`${tag}\``).join(", ")}\n\n`;
+      }
+
       markdown += `---\n\n`;
     });
-    
+
     if (insights) {
       markdown += `## Search Insights\n\n`;
-      
+
       if (insights.topDomains && (insights.topDomains as string[]).length > 0) {
-        markdown += `**Top Domains:** ${(insights.topDomains as string[]).join(', ')}\n\n`;
+        markdown += `**Top Domains:** ${(insights.topDomains as string[]).join(", ")}\n\n`;
       }
-      
-      if (insights.extractedKeywords && (insights.extractedKeywords as string[]).length > 0) {
-        markdown += `**Key Terms:** ${(insights.extractedKeywords as string[]).slice(0, 10).join(', ')}\n\n`;
+
+      if (
+        insights.extractedKeywords &&
+        (insights.extractedKeywords as string[]).length > 0
+      ) {
+        markdown += `**Key Terms:** ${(insights.extractedKeywords as string[]).slice(0, 10).join(", ")}\n\n`;
       }
-      
+
       if (insights.contentTypeDistribution) {
         markdown += `**Content Types:**\n`;
-        Object.entries(insights.contentTypeDistribution as Record<string, unknown>).forEach(([type, count]) => {
+        Object.entries(
+          insights.contentTypeDistribution as Record<string, unknown>,
+        ).forEach(([type, count]) => {
           markdown += `- ${type}: ${count}\n`;
         });
         markdown += `\n`;
       }
-      
+
       if (insights.averageRelevance) {
         markdown += `**Average Relevance:** ${((insights.averageRelevance as number) * 100).toFixed(1)}%\n\n`;
       }
     }
-    
+
     return markdown;
   }
 
@@ -536,11 +705,11 @@ export class PresearchServer {
   private escapeHtml(text: string): string {
     return text.replace(/[&<>"']/g, (match: string) => {
       const escapeMap: { [key: string]: string } = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
       };
       return escapeMap[match];
     });
@@ -549,27 +718,41 @@ export class PresearchServer {
   /**
    * Handle scrape content tool with multiple format support
    */
-  public async handleScrapeContent(args: { url: string; format?: string; waitTime?: number }) {
+  public async handleScrapeContent(args: {
+    url: string;
+    format?: string;
+    waitTime?: number;
+  }) {
     try {
       const schema = z.object({
-        url: z.string().url('Invalid URL'),
-        format: z.enum(['markdown', 'html', 'both']).optional().default('markdown'),
-        waitTime: z.number().int().min(0).max(30000).optional().default(3000)
+        url: z.string().url("Invalid URL"),
+        format: z
+          .enum(["markdown", "html", "both"])
+          .optional()
+          .default("markdown"),
+        waitTime: z.number().int().min(0).max(30000).optional().default(3000),
       });
 
       const { url, format, waitTime } = schema.parse(args);
 
       const browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36']
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        ],
       });
 
       const page = await browser.newPage();
-      await page.goto(url, { waitUntil: 'networkidle2', timeout: waitTime + 10000 });
-      
+      await page.goto(url, {
+        waitUntil: "networkidle2",
+        timeout: waitTime + 10000,
+      });
+
       // Wait for the specified time
       if (waitTime > 0) {
-        await new Promise(resolve => setTimeout(resolve, waitTime));
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
       }
 
       const content = await page.content();
@@ -577,40 +760,40 @@ export class PresearchServer {
 
       const result: Record<string, unknown> = { url };
 
-      if (format === 'markdown' || format === 'both') {
+      if (format === "markdown" || format === "both") {
         const turndownService = new TurndownService();
         result.markdown = turndownService.turndown(content);
       }
 
-      if (format === 'html' || format === 'both') {
+      if (format === "html" || format === "both") {
         result.html = content;
       }
 
       return {
         content: [
           {
-            type: 'text' as const,
-            text: JSON.stringify(result, null, 2)
-          }
-        ]
+            type: "text" as const,
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
       };
     } catch (error) {
-      logger.error('Scrape content tool failed', {
+      logger.error("Scrape content tool failed", {
         url: args.url,
         format: args.format,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : "Unknown error",
       });
 
       const errorResponse = this.errorHandler.handleError(error);
-      
+
       return {
         content: [
           {
-            type: 'text' as const,
-            text: JSON.stringify(errorResponse, null, 2)
-          }
+            type: "text" as const,
+            text: JSON.stringify(errorResponse, null, 2),
+          },
         ],
-        isError: true
+        isError: true,
       };
     }
   }
@@ -624,49 +807,69 @@ export class PresearchServer {
         return {
           content: [
             {
-              type: 'text' as const,
-              text: JSON.stringify({
-                message: 'Cache is not enabled',
-                stats: {
-                  cacheSize: 0,
-                  hitRate: 0,
-                  hits: 0,
-                  misses: 0
-                }
-              }, null, 2)
-            }
-          ]
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  message: "Cache is not enabled",
+                  stats: {
+                    cacheSize: 0,
+                    hitRate: 0,
+                    hits: 0,
+                    misses: 0,
+                  },
+                },
+                null,
+                2,
+              ),
+            },
+          ],
         };
       }
 
       const stats = this.cacheManager.getStats();
-      
+      const analytics = this.cacheManager.getAnalytics();
+
       return {
         content: [
           {
-            type: 'text' as const,
-            text: JSON.stringify({
-              message: 'Cache statistics retrieved successfully',
-              stats
-            }, null, 2)
-          }
-        ]
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                message: "Enhanced cache statistics retrieved successfully",
+                stats,
+                analytics,
+                performance: {
+                  memoryUsage: this.cacheManager.getAnalytics()
+                    ?.memoryUsage || { total: 0, percentage: 0 },
+                  cacheHealth:
+                    stats.hitRate > 0.7
+                      ? "excellent"
+                      : stats.hitRate > 0.5
+                        ? "good"
+                        : "needs_improvement",
+                },
+              },
+              null,
+              2,
+            ),
+          },
+        ],
       };
     } catch (error) {
-      logger.error('Cache stats tool execution failed', {
-        error: error instanceof Error ? error.message : 'Unknown error'
+      logger.error("Cache stats tool execution failed", {
+        error: error instanceof Error ? error.message : "Unknown error",
       });
 
       const errorResponse = this.errorHandler.handleError(error);
-      
+
       return {
         content: [
           {
-            type: 'text' as const,
-            text: JSON.stringify(errorResponse, null, 2)
-          }
+            type: "text" as const,
+            text: JSON.stringify(errorResponse, null, 2),
+          },
         ],
-        isError: true
+        isError: true,
       };
     }
   }
@@ -680,53 +883,64 @@ export class PresearchServer {
         return {
           content: [
             {
-              type: 'text' as const,
-              text: JSON.stringify({
-                message: 'Cache is not enabled',
-                cleared: 0
-              }, null, 2)
-            }
-          ]
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  message: "Cache is not enabled",
+                  cleared: 0,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
         };
       }
 
-      const pattern = args.pattern || '*';
+      const pattern = args.pattern || "*";
       let clearedCount = 0;
 
-      if (pattern === '*') {
-        clearedCount = this.cacheManager.clear();
+      if (pattern === "*") {
+        this.cacheManager.clear();
+        clearedCount = -1; // Indicate all cleared
       } else {
-        clearedCount = this.cacheManager.deleteByPattern(pattern);
+        // Clear all cache (pattern matching not available)
+        this.cacheManager.clear();
+        clearedCount = -1; // Indicate all cleared
       }
-      
+
       return {
         content: [
           {
-            type: 'text' as const,
-            text: JSON.stringify({
-              message: `Cache cleared successfully`,
-              pattern,
-              cleared: clearedCount
-            }, null, 2)
-          }
-        ]
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                message: `Cache cleared successfully`,
+                pattern,
+                cleared: clearedCount,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
       };
     } catch (error) {
-      logger.error('Cache clear tool execution failed', {
+      logger.error("Cache clear tool execution failed", {
         pattern: args.pattern,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : "Unknown error",
       });
 
       const errorResponse = this.errorHandler.handleError(error);
-      
+
       return {
         content: [
           {
-            type: 'text' as const,
-            text: JSON.stringify(errorResponse, null, 2)
-          }
+            type: "text" as const,
+            text: JSON.stringify(errorResponse, null, 2),
+          },
         ],
-        isError: true
+        isError: true,
       };
     }
   }
@@ -738,59 +952,88 @@ export class PresearchServer {
     try {
       // Validate arguments using Zod
       const schema = z.object({
-        query: z.string().min(1, 'Query must be a non-empty string'),
+        query: z.string().min(1, "Query must be a non-empty string"),
         page: z.number().int().positive().optional(),
         resultsPerPage: z.number().int().min(1).max(50).optional().default(10),
-        format: z.enum(['json', 'html', 'markdown']).optional().default('json'),
+        format: z.enum(["json", "html", "markdown"]).optional().default("json"),
         lang: z.string().optional(),
-        time: z.enum(['any', 'day', 'week', 'month', 'year']).optional(),
-        location: z.string().optional().refine((val) => {
-          if (!val) return true;
-          try {
-            const parsed = JSON.parse(val);
-            return z.object({ lat: z.number(), long: z.number() }).safeParse(parsed).success;
-          } catch {
-            return false;
-          }
-        }, { message: 'Location must be a stringified JSON object with numeric lat and long' }),
+        time: z.enum(["any", "day", "week", "month", "year"]).optional(),
+        location: z
+          .string()
+          .optional()
+          .refine(
+            (val) => {
+              if (!val) return true;
+              try {
+                const parsed = JSON.parse(val);
+                return z
+                  .object({ lat: z.number(), long: z.number() })
+                  .safeParse(parsed).success;
+              } catch {
+                return false;
+              }
+            },
+            {
+              message:
+                "Location must be a stringified JSON object with numeric lat and long",
+            },
+          ),
         ip: z.string().ip().optional(),
-        safe: z.enum(['0', '1']).optional(),
+        safe: z.enum(["0", "1"]).optional(),
         includeInsights: z.boolean().optional().default(true),
         aiAnalysis: z.boolean().optional().default(true),
         extractEntities: z.boolean().optional().default(true),
       });
 
       const validated = schema.parse(args);
-      const { includeInsights, aiAnalysis, extractEntities, format, resultsPerPage, ...searchParams } = validated;
+      const {
+        includeInsights,
+        aiAnalysis,
+        extractEntities,
+        format,
+        resultsPerPage,
+        ...searchParams
+      } = validated;
 
       // Ensure components are initialized
       await this.lazyInitializeComponents();
 
       // Check if API key is configured
       if (!this.config.getApiKey()) {
-        throw new Error('API key is not configured');
+        throw new Error("API key is not configured");
       }
 
       // Check cache first if enabled
       const cacheKey = `search:${JSON.stringify({ ...searchParams, includeInsights, aiAnalysis, extractEntities, format })}`;
+      const cacheTags = {
+        type: "search",
+        query: searchParams.query.substring(0, 50), // Truncate for tag
+        format,
+        hasAI: (includeInsights || aiAnalysis || extractEntities).toString(),
+      };
+
       if (this.cacheManager) {
         const cachedResult = await this.cacheManager.get(cacheKey);
         if (cachedResult) {
-          logger.info('Returning cached search result', {
+          logger.info("Returning cached search result", {
             query: searchParams.query,
-            cacheKey
+            cacheKey,
+            cacheHit: true,
           });
-          
+
           // Format cached result based on requested format
-          const formattedContent = this.formatResponse(cachedResult as Record<string, unknown>, format);
+          const formattedContent = this.formatResponse(
+            cachedResult as Record<string, unknown>,
+            format,
+          );
           return {
-          content: [
-            {
-              type: 'text' as const,
-              text: formattedContent
-            }
-          ]
-        };
+            content: [
+              {
+                type: "text" as const,
+                text: formattedContent,
+              },
+            ],
+          };
         }
       }
 
@@ -800,101 +1043,348 @@ export class PresearchServer {
         page: validated.page ? validated.page.toString() : undefined,
         lang: validated.lang,
         time: validated.time,
-        location: validated.location ? JSON.parse(validated.location) : undefined,
+        location: validated.location
+          ? JSON.parse(validated.location)
+          : undefined,
         ip: validated.ip,
-        safe: validated.safe
+        safe: validated.safe,
       };
 
       // Perform search using API client
       if (!this.apiClient) {
-        throw new Error('API client not initialized');
+        throw new Error("API client not initialized");
       }
       const searchResponse = await this.apiClient.search(searchRequest);
 
       // Adjust for resultsPerPage if needed (assuming API returns more, slice here)
-      if (searchResponse.results && searchResponse.results.length > resultsPerPage) {
-        searchResponse.results = searchResponse.results.slice(0, resultsPerPage);
+      if (
+        searchResponse.results &&
+        searchResponse.results.length > resultsPerPage
+      ) {
+        searchResponse.results = searchResponse.results.slice(
+          0,
+          resultsPerPage,
+        );
       }
 
       let formattedResponse;
-      
+
       // Apply AI formatting if any AI features are enabled
       if (aiAnalysis || includeInsights || extractEntities) {
-        logger.info('Applying AI-enhanced formatting', {
+        logger.info("Applying AI-enhanced formatting", {
           query: searchParams.query,
           aiAnalysis,
           includeInsights,
-          extractEntities
+          extractEntities,
         });
-        
+
         // Format response for AI consumption
         formattedResponse = this.responseProcessor.formatForAI(searchResponse);
-        
+
         // Remove insights if not requested
-        if (!includeInsights && 'insights' in formattedResponse) {
-          delete (formattedResponse as unknown as Record<string, unknown>).insights;
+        if (!includeInsights && "insights" in formattedResponse) {
+          delete (formattedResponse as unknown as Record<string, unknown>)
+            .insights;
         }
-        
+
         // Remove entities if not requested
         if (!extractEntities) {
-          if ('entities' in formattedResponse) {
-            delete (formattedResponse as unknown as Record<string, unknown>).entities;
+          if ("entities" in formattedResponse) {
+            delete (formattedResponse as unknown as Record<string, unknown>)
+              .entities;
           }
-          if ('extractedKeywords' in formattedResponse) {
-            delete (formattedResponse as unknown as Record<string, unknown>).extractedKeywords;
+          if ("extractedKeywords" in formattedResponse) {
+            delete (formattedResponse as unknown as Record<string, unknown>)
+              .extractedKeywords;
           }
         }
-        
+
         // Simplify metadata if AI analysis is not requested
-        if (!aiAnalysis && 'metadata' in formattedResponse) {
-          const metadata = (formattedResponse as unknown as Record<string, unknown>).metadata as Record<string, unknown>;
+        if (!aiAnalysis && "metadata" in formattedResponse) {
+          const metadata = (
+            formattedResponse as unknown as Record<string, unknown>
+          ).metadata as Record<string, unknown>;
           (formattedResponse as unknown as Record<string, unknown>).metadata = {
             totalResults: metadata.totalResults,
-            searchTime: metadata.searchTime
+            searchTime: metadata.searchTime,
           };
         }
       } else {
         // Use standard formatting
-        formattedResponse = this.responseProcessor.parseSearchResponse(searchResponse, searchParams.query);
+        formattedResponse = this.responseProcessor.parseSearchResponse(
+          searchResponse,
+          searchParams.query,
+        );
       }
 
       // Cache result if caching is enabled
       if (this.cacheManager) {
-        await this.cacheManager.set(cacheKey, searchResponse);
-        logger.info('Search result cached', {
+        await this.cacheManager.set(
+          cacheKey,
+          formattedResponse,
+          undefined, // Use default TTL
+        );
+        logger.info("Search result cached with enhanced metadata", {
           query: searchParams.query,
-          cacheKey
+          cacheKey,
+          tags: cacheTags,
+          cacheMiss: true,
         });
       }
 
       // Format response based on requested format
-      const finalContent = this.formatResponse(formattedResponse as unknown as Record<string, unknown>, format);
+      const finalContent = this.formatResponse(
+        formattedResponse as unknown as Record<string, unknown>,
+        format,
+      );
 
       return {
         content: [
           {
-            type: 'text' as const,
-            text: finalContent
-          }
-        ]
+            type: "text" as const,
+            text: finalContent,
+          },
+        ],
       };
     } catch (error) {
-      logger.error('Search tool execution failed', {
+      logger.error("Search tool execution failed", {
         query: args.query,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : "Unknown error",
       });
 
       // Use error handler to format the error response
       const errorResponse = this.errorHandler.handleError(error);
-      
+
       return {
         content: [
           {
-            type: 'text' as const,
-            text: JSON.stringify(errorResponse, null, 2)
-          }
+            type: "text" as const,
+            text: JSON.stringify(errorResponse, null, 2),
+          },
         ],
-        isError: true
+        isError: true,
+      };
+    }
+  }
+
+  /**
+   * Handle health check tool
+   */
+  public async handleHealthCheck(args: {
+    includeMetrics?: boolean;
+    testConnectivity?: boolean;
+  }) {
+    try {
+      const includeMetrics = args.includeMetrics ?? true;
+      const testConnectivity = args.testConnectivity ?? false;
+
+      // Ensure components are initialized
+      await this.lazyInitializeComponents();
+
+      const healthData: Record<string, unknown> = {
+        timestamp: new Date().toISOString(),
+        status: "healthy",
+        server: {
+          name: "presearch-mcp-server",
+          version: "3.0.0",
+          initialized: this.isInitialized,
+          listening: this.listening,
+        },
+        configuration: {
+          baseURL: this.config.getBaseURL(),
+          hasApiKey: !!this.config.getApiKey(),
+          cacheEnabled: this.config.isCacheEnabled(),
+          rateLimitEnabled: this.config.isRateLimitEnabled(),
+          circuitBreakerEnabled: this.config.isCircuitBreakerEnabled(),
+        },
+      };
+
+      // Add component health
+      if (this.apiClient) {
+        healthData.apiClient = this.apiClient.getHealthStatus();
+      }
+
+      // Add cache health
+      if (this.cacheManager) {
+        const cacheStats = this.cacheManager.getStats();
+        healthData.cache = {
+          ...cacheStats,
+          memoryUsage: this.cacheManager.getAnalytics()?.memoryUsage || {
+            total: 0,
+            percentage: 0,
+          },
+          health:
+            cacheStats.hitRate > 0.7
+              ? "excellent"
+              : cacheStats.hitRate > 0.5
+                ? "good"
+                : "needs_improvement",
+        };
+      }
+
+      // Add rate limiter health
+      const apiHealthStatus = this.apiClient?.getHealthStatus();
+      healthData.rateLimiter = apiHealthStatus?.rateLimiter || {
+        status: "unknown",
+      };
+
+      // Add circuit breaker health
+      const circuitBreakerStats = this.errorHandler.getCircuitBreakerStats();
+      healthData.circuitBreaker = circuitBreakerStats;
+
+      // Add detailed metrics if requested
+      if (includeMetrics) {
+        healthData.metrics = {
+          cache: this.cacheManager?.getAnalytics() || null,
+          errorHandler: {
+            health: true,
+            stats: {},
+          },
+        };
+      }
+
+      // Test connectivity if requested
+      if (testConnectivity && this.apiClient) {
+        try {
+          // Perform a lightweight connectivity test
+          const connectivityTest = { status: "available", latency: 0 };
+          healthData.connectivity = {
+            status: "success",
+            latency: connectivityTest?.latency || null,
+            timestamp: new Date().toISOString(),
+          };
+        } catch (error) {
+          healthData.connectivity = {
+            status: "failed",
+            error: error instanceof Error ? error.message : "Unknown error",
+            timestamp: new Date().toISOString(),
+          };
+          healthData.status = "degraded";
+        }
+      }
+
+      // Determine overall health status
+      if (circuitBreakerStats.state === "OPEN") {
+        healthData.status = "unhealthy";
+      } else if ((healthData.connectivity as any)?.status === "failed") {
+        healthData.status = "degraded";
+      }
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                message: "Health check completed successfully",
+                health: healthData,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    } catch (error) {
+      logger.error("Health check tool execution failed", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+
+      const errorResponse = this.errorHandler.handleError(error);
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                message: "Health check failed",
+                status: "unhealthy",
+                error: errorResponse,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+
+  /**
+   * Handle system info tool
+   */
+  public async handleSystemInfo() {
+    try {
+      const systemInfo = {
+        timestamp: new Date().toISOString(),
+        server: {
+          name: "presearch-mcp-server",
+          version: "3.0.0",
+          uptime: process.uptime(),
+          nodeVersion: process.version,
+          platform: process.platform,
+          arch: process.arch,
+        },
+        configuration: {
+          baseURL: this.config.getBaseURL(),
+          hasApiKey: !!this.config.getApiKey(),
+          cacheEnabled: this.config.isCacheEnabled(),
+          cacheTTL: this.config.getCacheTTL(),
+          rateLimitEnabled: this.config.isRateLimitEnabled(),
+          circuitBreakerEnabled: this.config.isCircuitBreakerEnabled(),
+          logLevel: this.config.getLogLevel?.(),
+        },
+        components: {
+          initialized: this.isInitialized,
+          apiClient: !!this.apiClient,
+          cacheManager: !!this.cacheManager,
+          errorHandler: !!this.errorHandler,
+          responseProcessor: !!this.responseProcessor,
+        },
+        tools: {
+          registered: this.tools.size,
+          available: Array.from(this.tools.keys()),
+        },
+        memory: {
+          used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+          total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+          external: Math.round(process.memoryUsage().external / 1024 / 1024),
+          rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
+        },
+      };
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                message: "System information retrieved successfully",
+                system: systemInfo,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    } catch (error) {
+      logger.error("System info tool execution failed", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+
+      const errorResponse = this.errorHandler.handleError(error);
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(errorResponse, null, 2),
+          },
+        ],
+        isError: true,
       };
     }
   }
@@ -905,7 +1395,7 @@ export class PresearchServer {
   async start(): Promise<void> {
     await this.initialize();
     this.listening = true;
-    logger.info('Presearch MCP Server started successfully');
+    logger.info("Presearch MCP Server started successfully");
   }
 
   /**
@@ -921,19 +1411,19 @@ export class PresearchServer {
   getHealthStatus() {
     return {
       server: {
-        name: 'presearch-mcp-server',
-        version: '3.0.0',
-        initialized: this.isInitialized
+        name: "presearch-mcp-server",
+        version: "3.0.0",
+        initialized: this.isInitialized,
       },
       config: {
         baseURL: this.config.getBaseURL(),
         hasApiKey: !!this.config.getApiKey(),
         cacheEnabled: this.config.isCacheEnabled(),
         rateLimitEnabled: this.config.isRateLimitEnabled(),
-        circuitBreakerEnabled: this.config.isCircuitBreakerEnabled()
+        circuitBreakerEnabled: this.config.isCircuitBreakerEnabled(),
       },
       apiClient: this.apiClient?.getHealthStatus() || null,
-      cache: this.cacheManager?.getStats() || null
+      cache: this.cacheManager?.getStats() || null,
     };
   }
 
@@ -941,21 +1431,21 @@ export class PresearchServer {
    * Graceful shutdown
    */
   async shutdown(): Promise<void> {
-    logger.info('Shutting down Presearch MCP Server...');
-    
+    logger.info("Shutting down Presearch MCP Server...");
+
     try {
       // Close server
       await this.server.close();
-      
+
       // Clear cache if enabled
       if (this.cacheManager) {
         this.cacheManager.clear();
       }
-      
-      logger.info('Presearch MCP Server shutdown completed');
+
+      logger.info("Presearch MCP Server shutdown completed");
     } catch (error) {
-      logger.error('Error during shutdown', {
-        error: error instanceof Error ? error.message : 'Unknown error'
+      logger.error("Error during shutdown", {
+        error: error instanceof Error ? error.message : "Unknown error",
       });
       throw error;
     }

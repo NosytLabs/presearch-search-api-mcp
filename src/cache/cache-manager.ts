@@ -1,16 +1,16 @@
-import { Configuration } from '../config/configuration.js';
-import { logger } from '../utils/logger.js';
-import { PresearchResponse } from '../types/presearch-types.js';
-import { EventEmitter } from 'events';
+import { Configuration } from "../config/configuration.js";
+import { logger } from "../utils/logger.js";
+import { PresearchResponse } from "../types/presearch-types.js";
+import { EventEmitter } from "events";
 
 /**
  * Cache eviction strategies
  */
 enum EvictionStrategy {
-  LRU = 'lru',
-  LFU = 'lfu',
-  FIFO = 'fifo',
-  TTL = 'ttl',
+  LRU = "lru",
+  LFU = "lfu",
+  FIFO = "fifo",
+  TTL = "ttl",
 }
 
 /**
@@ -178,7 +178,7 @@ export class CacheManager extends EventEmitter {
     }
     this.cache.clear();
     this.accessOrder.clear();
-    logger.info('CacheManager stopped and resources cleared');
+    logger.info("CacheManager stopped and resources cleared");
   }
 
   /** Cache warming configuration */
@@ -215,7 +215,7 @@ export class CacheManager extends EventEmitter {
     // Set up event listeners
     this.setupEventListeners();
 
-    logger.debug('Enhanced cache manager initialized', {
+    logger.debug("Enhanced cache manager initialized", {
       config: this.config,
       cleanupInterval: `${this.config.cleanupInterval / 1000}s`,
     });
@@ -271,9 +271,13 @@ export class CacheManager extends EventEmitter {
       ttl?: number;
       priority?: CachePriority;
       tags?: string[];
-    } = {}
+    } = {},
   ): void {
-    const { ttl = this.config.defaultTTL, priority = CachePriority.NORMAL, tags = [] } = options;
+    const {
+      ttl = this.config.defaultTTL,
+      priority = CachePriority.NORMAL,
+      tags = [],
+    } = options;
 
     const memorySize = this.estimateMemorySize(data);
 
@@ -304,9 +308,14 @@ export class CacheManager extends EventEmitter {
     this.accessOrder.add(key);
 
     // Emit cache event
-    this.emit('set', { key: this.sanitizeKey(key), size: memorySize, priority, tags });
+    this.emit("set", {
+      key: this.sanitizeKey(key),
+      size: memorySize,
+      priority,
+      tags,
+    });
 
-    logger.debug('Enhanced cache entry stored', {
+    logger.debug("Enhanced cache entry stored", {
       key: this.sanitizeKey(key),
       ttl,
       priority,
@@ -323,7 +332,7 @@ export class CacheManager extends EventEmitter {
   public setLegacy(
     key: string,
     data: PresearchResponse,
-    ttl: number = this.config.defaultTTL
+    ttl: number = this.config.defaultTTL,
   ): void {
     this.set(key, data, { ttl });
   }
@@ -354,9 +363,9 @@ export class CacheManager extends EventEmitter {
     if (!entry) {
       this.stats.misses++;
       this.updateAccessTime(startTime);
-      this.emit('miss', { key: this.sanitizeKey(key) });
+      this.emit("miss", { key: this.sanitizeKey(key) });
 
-      logger.debug('Cache miss', {
+      logger.debug("Cache miss", {
         key: this.sanitizeKey(key),
         totalMisses: this.stats.misses,
       });
@@ -371,9 +380,12 @@ export class CacheManager extends EventEmitter {
       this.accessOrder.delete(key);
       this.stats.misses++;
       this.updateAccessTime(startTime);
-      this.emit('expired', { key: this.sanitizeKey(key), age: now - entry.timestamp });
+      this.emit("expired", {
+        key: this.sanitizeKey(key),
+        age: now - entry.timestamp,
+      });
 
-      logger.debug('Cache entry expired', {
+      logger.debug("Cache entry expired", {
         key: this.sanitizeKey(key),
         age: now - entry.timestamp,
         ttl: entry.ttl,
@@ -391,13 +403,13 @@ export class CacheManager extends EventEmitter {
 
     this.stats.hits++;
     this.updateAccessTime(startTime);
-    this.emit('hit', {
+    this.emit("hit", {
       key: this.sanitizeKey(key),
       age: now - entry.timestamp,
       accessCount: entry.accessCount,
     });
 
-    logger.debug('Cache hit', {
+    logger.debug("Cache hit", {
       key: this.sanitizeKey(key),
       age: now - entry.timestamp,
       accessCount: entry.accessCount,
@@ -429,16 +441,16 @@ export class CacheManager extends EventEmitter {
    * Set up event listeners for cache monitoring
    */
   private setupEventListeners(): void {
-    this.on('memoryPressure', data => {
-      logger.warn('Cache memory pressure detected', data);
+    this.on("memoryPressure", (data) => {
+      logger.warn("Cache memory pressure detected", data);
     });
 
-    this.on('eviction', data => {
-      logger.debug('Cache entry evicted', data);
+    this.on("eviction", (data) => {
+      logger.debug("Cache entry evicted", data);
     });
 
-    this.on('warming', data => {
-      logger.debug('Cache warming event', data);
+    this.on("warming", (data) => {
+      logger.debug("Cache warming event", data);
     });
   }
 
@@ -464,7 +476,7 @@ export class CacheManager extends EventEmitter {
     const memoryPressure = projectedUsage / this.config.maxMemory;
 
     if (memoryPressure > this.config.memoryPressureThreshold) {
-      this.emit('memoryPressure', {
+      this.emit("memoryPressure", {
         current: this.currentMemoryUsage,
         projected: projectedUsage,
         threshold: this.config.maxMemory * this.config.memoryPressureThreshold,
@@ -504,7 +516,7 @@ export class CacheManager extends EventEmitter {
       evicted++;
       this.stats.evictions++;
 
-      this.emit('eviction', {
+      this.emit("eviction", {
         key: this.sanitizeKey(key),
         reason: this.config.evictionStrategy,
         memoryFreed: entry.memorySize,
@@ -512,7 +524,7 @@ export class CacheManager extends EventEmitter {
       });
     }
 
-    logger.debug('Cache eviction completed', {
+    logger.debug("Cache eviction completed", {
       evicted,
       freedSpace,
       remainingEntries: this.cache.size,
@@ -523,7 +535,9 @@ export class CacheManager extends EventEmitter {
   /**
    * Sort entries for eviction based on strategy
    */
-  private sortEntriesForEviction(entries: [string, CacheEntry][]): [string, CacheEntry][] {
+  private sortEntriesForEviction(
+    entries: [string, CacheEntry][],
+  ): [string, CacheEntry][] {
     switch (this.config.evictionStrategy) {
       case EvictionStrategy.LRU:
         return entries.sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
@@ -567,12 +581,12 @@ export class CacheManager extends EventEmitter {
       this.currentMemoryUsage -= entry.memorySize;
       this.accessOrder.delete(key);
 
-      this.emit('delete', {
+      this.emit("delete", {
         key: this.sanitizeKey(key),
         memoryFreed: entry.memorySize,
       });
 
-      logger.debug('Cache entry deleted', {
+      logger.debug("Cache entry deleted", {
         key: this.sanitizeKey(key),
         memoryFreed: entry.memorySize,
         cacheSize: this.cache.size,
@@ -597,12 +611,12 @@ export class CacheManager extends EventEmitter {
     this.stats.totalAccessTime = 0;
     this.stats.accessCount = 0;
 
-    this.emit('clear', {
+    this.emit("clear", {
       entriesCleared: previousSize,
       memoryFreed: previousMemory,
     });
 
-    logger.info('Cache cleared', {
+    logger.info("Cache cleared", {
       previousSize,
       previousMemory,
       currentSize: this.cache.size,
@@ -617,7 +631,7 @@ export class CacheManager extends EventEmitter {
   public deleteByPattern(pattern: string): number {
     let deletedCount = 0;
     let memoryFreed = 0;
-    const regex = new RegExp(pattern, 'i');
+    const regex = new RegExp(pattern, "i");
 
     for (const [key, entry] of this.cache.entries()) {
       if (regex.test(key)) {
@@ -630,13 +644,13 @@ export class CacheManager extends EventEmitter {
     }
 
     if (deletedCount > 0) {
-      this.emit('patternDelete', {
+      this.emit("patternDelete", {
         pattern,
         deletedCount,
         memoryFreed,
       });
 
-      logger.debug('Cache entries deleted by pattern', {
+      logger.debug("Cache entries deleted by pattern", {
         pattern,
         deletedCount,
         memoryFreed,
@@ -655,7 +669,7 @@ export class CacheManager extends EventEmitter {
     let memoryFreed = 0;
 
     for (const [key, entry] of this.cache.entries()) {
-      const hasMatchingTag = tags.some(tag => entry.tags.includes(tag));
+      const hasMatchingTag = tags.some((tag) => entry.tags.includes(tag));
       if (hasMatchingTag) {
         this.cache.delete(key);
         this.currentMemoryUsage -= entry.memorySize;
@@ -666,13 +680,13 @@ export class CacheManager extends EventEmitter {
     }
 
     if (deletedCount > 0) {
-      this.emit('tagDelete', {
+      this.emit("tagDelete", {
         tags,
         deletedCount,
         memoryFreed,
       });
 
-      logger.debug('Cache entries deleted by tags', {
+      logger.debug("Cache entries deleted by tags", {
         tags,
         deletedCount,
         memoryFreed,
@@ -697,17 +711,23 @@ export class CacheManager extends EventEmitter {
     const entries = Array.from(this.cache.entries());
     const timestamps = entries.map(([, entry]) => entry.timestamp);
 
-    const oldestTimestamp = timestamps.length > 0 ? Math.min(...timestamps) : undefined;
-    const newestTimestamp = timestamps.length > 0 ? Math.max(...timestamps) : undefined;
+    const oldestTimestamp =
+      timestamps.length > 0 ? Math.min(...timestamps) : undefined;
+    const newestTimestamp =
+      timestamps.length > 0 ? Math.max(...timestamps) : undefined;
 
     const totalRequests = this.stats.hits + this.stats.misses;
     const hitRate = totalRequests > 0 ? this.stats.hits / totalRequests : 0;
     const averageAccessTime =
-      this.stats.accessCount > 0 ? this.stats.totalAccessTime / this.stats.accessCount : 0;
+      this.stats.accessCount > 0
+        ? this.stats.totalAccessTime / this.stats.accessCount
+        : 0;
 
     // Calculate memory usage percentage
     const memoryUsagePercent =
-      this.config.maxMemory > 0 ? this.currentMemoryUsage / this.config.maxMemory : 0;
+      this.config.maxMemory > 0
+        ? this.currentMemoryUsage / this.config.maxMemory
+        : 0;
 
     // Calculate efficiency (hit rate weighted by access speed)
     const efficiency = hitRate * (1 - Math.min(averageAccessTime / 100, 1));
@@ -736,8 +756,12 @@ export class CacheManager extends EventEmitter {
       hits: this.stats.hits,
       misses: this.stats.misses,
       hitRate: Math.round(hitRate * 100) / 100,
-      oldestEntry: oldestTimestamp ? new Date(oldestTimestamp).toISOString() : undefined,
-      newestEntry: newestTimestamp ? new Date(newestTimestamp).toISOString() : undefined,
+      oldestEntry: oldestTimestamp
+        ? new Date(oldestTimestamp).toISOString()
+        : undefined,
+      newestEntry: newestTimestamp
+        ? new Date(newestTimestamp).toISOString()
+        : undefined,
       memoryUsage: this.currentMemoryUsage,
       memoryUsagePercent: Math.round(memoryUsagePercent * 100) / 100,
       averageAccessTime: Math.round(averageAccessTime * 100) / 100,
@@ -767,13 +791,13 @@ export class CacheManager extends EventEmitter {
     }
 
     if (removedCount > 0) {
-      this.emit('cleanup', {
+      this.emit("cleanup", {
         removedEntries: removedCount,
         memoryFreed,
         remainingEntries: this.cache.size,
       });
 
-      logger.debug('Cache cleanup completed', {
+      logger.debug("Cache cleanup completed", {
         removedEntries: removedCount,
         memoryFreed,
         remainingEntries: this.cache.size,
@@ -796,9 +820,9 @@ export class CacheManager extends EventEmitter {
       }, this.config.cleanupInterval);
     }
 
-    this.emit('configure', { config: this.config });
+    this.emit("configure", { config: this.config });
 
-    logger.info('Cache configuration updated', {
+    logger.info("Cache configuration updated", {
       config: this.config,
     });
   }
@@ -808,7 +832,7 @@ export class CacheManager extends EventEmitter {
    */
   public enableWarming(
     config: WarmingConfig,
-    searchFunction: (query: string) => Promise<PresearchResponse>
+    searchFunction: (query: string) => Promise<PresearchResponse>,
   ): void {
     this.warmingConfig = config;
 
@@ -820,9 +844,9 @@ export class CacheManager extends EventEmitter {
       await this.performWarming(searchFunction);
     }, config.interval);
 
-    this.emit('warmingEnabled', { config });
+    this.emit("warmingEnabled", { config });
 
-    logger.info('Cache warming enabled', {
+    logger.info("Cache warming enabled", {
       popularQueries: config.popularQueries.length,
       interval: config.interval,
       maxConcurrent: config.maxConcurrent,
@@ -839,28 +863,28 @@ export class CacheManager extends EventEmitter {
     }
 
     this.warmingConfig = undefined;
-    this.emit('warmingDisabled');
+    this.emit("warmingDisabled");
 
-    logger.info('Cache warming disabled');
+    logger.info("Cache warming disabled");
   }
 
   /**
    * Perform cache warming
    */
   private async performWarming(
-    searchFunction: (query: string) => Promise<PresearchResponse>
+    searchFunction: (query: string) => Promise<PresearchResponse>,
   ): Promise<void> {
     if (!this.warmingConfig) return;
 
     const { popularQueries, maxConcurrent } = this.warmingConfig;
-    const queriesToWarm = popularQueries.filter(query => {
+    const queriesToWarm = popularQueries.filter((query) => {
       const key = this.generateKey({ q: query });
       return !this.has(key);
     });
 
     if (queriesToWarm.length === 0) return;
 
-    this.emit('warming', {
+    this.emit("warming", {
       totalQueries: queriesToWarm.length,
       maxConcurrent,
     });
@@ -869,7 +893,7 @@ export class CacheManager extends EventEmitter {
     for (let i = 0; i < queriesToWarm.length; i += maxConcurrent) {
       const batch = queriesToWarm.slice(i, i + maxConcurrent);
 
-      const promises = batch.map(async query => {
+      const promises = batch.map(async (query) => {
         try {
           const result = await searchFunction(query);
           const key = this.generateKey({ q: query });
@@ -877,14 +901,14 @@ export class CacheManager extends EventEmitter {
           this.set(key, result, {
             ttl: this.config.defaultTTL,
             priority: CachePriority.LOW,
-            tags: ['warmed', 'popular'],
+            tags: ["warmed", "popular"],
           });
 
           return { query, success: true };
         } catch (error) {
-          logger.warn('Cache warming failed for query', {
+          logger.warn("Cache warming failed for query", {
             query,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: error instanceof Error ? error.message : "Unknown error",
           });
           return { query, success: false, error };
         }
@@ -893,7 +917,7 @@ export class CacheManager extends EventEmitter {
       await Promise.allSettled(promises);
     }
 
-    logger.debug('Cache warming completed', {
+    logger.debug("Cache warming completed", {
       warmedQueries: queriesToWarm.length,
       cacheSize: this.cache.size,
     });
@@ -905,7 +929,10 @@ export class CacheManager extends EventEmitter {
   public generateKey(params: Record<string, unknown>): string {
     // Normalize parameters for consistent caching
     const normalized = {
-      query: typeof params.q === 'string' ? params.q.toLowerCase().trim() : undefined,
+      query:
+        typeof params.q === "string"
+          ? params.q.toLowerCase().trim()
+          : undefined,
       page: params.page || 1,
       lang: params.lang,
       time: params.time,
@@ -916,7 +943,7 @@ export class CacheManager extends EventEmitter {
 
     // Remove undefined values
     const filtered = Object.fromEntries(
-      Object.entries(normalized).filter(([, value]) => value !== undefined)
+      Object.entries(normalized).filter(([, value]) => value !== undefined),
     );
 
     return JSON.stringify(filtered);
@@ -932,12 +959,12 @@ export class CacheManager extends EventEmitter {
 
       // Remove or mask sensitive information
       if (sanitized.ip) {
-        sanitized.ip = '[IP_REDACTED]';
+        sanitized.ip = "[IP_REDACTED]";
       }
 
       return JSON.stringify(sanitized);
     } catch {
-      return '[INVALID_KEY]';
+      return "[INVALID_KEY]";
     }
   }
 
@@ -957,9 +984,9 @@ export class CacheManager extends EventEmitter {
     this.clear();
     this.removeAllListeners();
 
-    this.emit('destroy', { finalStats: stats });
+    this.emit("destroy", { finalStats: stats });
 
-    logger.info('Enhanced cache manager destroyed', {
+    logger.info("Enhanced cache manager destroyed", {
       finalStats: stats,
     });
   }
@@ -994,14 +1021,14 @@ export class CacheManager extends EventEmitter {
       this.stats.evictions++;
       evicted++;
 
-      this.emit('forceEviction', {
+      this.emit("forceEviction", {
         key: this.sanitizeKey(key),
-        reason: 'manual',
+        reason: "manual",
         memoryFreed: entry.memorySize,
       });
     }
 
-    logger.debug('Force eviction completed', {
+    logger.debug("Force eviction completed", {
       evicted,
       remainingEntries: this.cache.size,
     });
@@ -1031,7 +1058,7 @@ export class CacheManager extends EventEmitter {
     const keys: string[] = [];
 
     for (const [key, entry] of this.cache.entries()) {
-      const hasMatchingTag = tags.some(tag => entry.tags.includes(tag));
+      const hasMatchingTag = tags.some((tag) => entry.tags.includes(tag));
       if (hasMatchingTag) {
         keys.push(key);
       }

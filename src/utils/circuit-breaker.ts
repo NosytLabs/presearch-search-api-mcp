@@ -1,13 +1,12 @@
-import { EventEmitter } from 'events';
-
+import { EventEmitter } from "events";
 
 /**
  * Circuit breaker states
  */
 export enum CircuitBreakerState {
-  CLOSED = 'CLOSED', // Normal operation
-  OPEN = 'OPEN', // Failing fast
-  HALF_OPEN = 'HALF_OPEN', // Testing if service recovered
+  CLOSED = "CLOSED", // Normal operation
+  OPEN = "OPEN", // Failing fast
+  HALF_OPEN = "HALF_OPEN", // Testing if service recovered
 }
 
 /**
@@ -66,9 +65,11 @@ export class CircuitBreaker extends EventEmitter {
     if (this.state === CircuitBreakerState.OPEN) {
       if (this.shouldAttemptReset()) {
         this.state = CircuitBreakerState.HALF_OPEN;
-        this.emit('stateChange', this.state);
+        this.emit("stateChange", this.state);
       } else {
-        throw new Error('Circuit breaker is OPEN - service temporarily unavailable');
+        throw new Error(
+          "Circuit breaker is OPEN - service temporarily unavailable",
+        );
       }
     }
 
@@ -90,7 +91,7 @@ export class CircuitBreaker extends EventEmitter {
   private onSuccess(): void {
     this.successCount++;
     this.lastSuccessTime = Date.now();
-    this.emit('success');
+    this.emit("success");
 
     if (this.state === CircuitBreakerState.HALF_OPEN) {
       if (this.successCount >= this.config.successThreshold) {
@@ -108,7 +109,7 @@ export class CircuitBreaker extends EventEmitter {
   private onFailure(error: unknown): void {
     this.failureCount++;
     this.lastFailureTime = Date.now();
-    this.emit('failure', error);
+    this.emit("failure", error);
 
     if (this.state === CircuitBreakerState.HALF_OPEN) {
       this.trip();
@@ -128,7 +129,8 @@ export class CircuitBreaker extends EventEmitter {
     }
 
     const failureRate = this.failureCount / this.totalRequests;
-    const threshold = this.config.failureThreshold / this.config.volumeThreshold;
+    const threshold =
+      this.config.failureThreshold / this.config.volumeThreshold;
 
     return failureRate >= threshold;
   }
@@ -139,8 +141,8 @@ export class CircuitBreaker extends EventEmitter {
   private trip(): void {
     this.state = CircuitBreakerState.OPEN;
     this.nextAttemptTime = Date.now() + this.config.recoveryTimeout;
-    this.emit('stateChange', this.state);
-    this.emit('open');
+    this.emit("stateChange", this.state);
+    this.emit("open");
   }
 
   /**
@@ -151,8 +153,8 @@ export class CircuitBreaker extends EventEmitter {
     this.failureCount = 0;
     this.successCount = 0;
     this.nextAttemptTime = null;
-    this.emit('stateChange', this.state);
-    this.emit('close');
+    this.emit("stateChange", this.state);
+    this.emit("close");
   }
 
   /**
@@ -186,8 +188,8 @@ export class CircuitBreaker extends EventEmitter {
     this.successCount = 0;
     this.nextAttemptTime = null;
     this.totalRequests = 0;
-    this.emit('stateChange', this.state);
-    this.emit('close');
+    this.emit("stateChange", this.state);
+    this.emit("close");
   }
 
   /**
@@ -223,7 +225,7 @@ export class CircuitBreaker extends EventEmitter {
    * Record a failed operation
    */
   recordFailure(): void {
-    this.onFailure(new Error('Operation failed'));
+    this.onFailure(new Error("Operation failed"));
   }
 
   /**
@@ -239,5 +241,4 @@ export class CircuitBreaker extends EventEmitter {
   getFailureCount(): number {
     return this.failureCount;
   }
-
 }

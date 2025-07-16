@@ -21,7 +21,7 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "lib": ["ES2022", "DOM"],
-    "types": ["node", "jest", "jest-extended"],
+    "types": ["node"],
     "baseUrl": "./",
     "paths": {
       "@/*": ["src/*"],

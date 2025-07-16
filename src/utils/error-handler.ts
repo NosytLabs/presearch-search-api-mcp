@@ -1,18 +1,19 @@
-import { AxiosError } from 'axios';
-import { ZodError } from 'zod';
-import { config } from '../config/configuration.js';
-import { logger } from './logger.js';
-import { RetryConfig } from '../types/presearch-types.js';
-import { CircuitBreaker, CircuitBreakerState } from './circuit-breaker.js';
+import { AxiosError } from "axios";
+import { ZodError } from "zod";
+import { config } from "../config/configuration.js";
+import { logger } from "./logger.js";
+import { RetryConfig } from "../types/presearch-types.js";
+import { CircuitBreaker, CircuitBreakerState } from "./circuit-breaker.js";
+import { rateLimiter } from "./rate-limiter.js";
 
 // Error Categories
 export enum ErrorCategory {
-  AUTHENTICATION = 'AUTHENTICATION',
-  RATE_LIMITING = 'RATE_LIMITING',
-  VALIDATION = 'VALIDATION',
-  NETWORK = 'NETWORK',
-  SERVER_ERROR = 'SERVER_ERROR',
-  UNKNOWN = 'UNKNOWN',
+  AUTHENTICATION = "AUTHENTICATION",
+  RATE_LIMITING = "RATE_LIMITING",
+  VALIDATION = "VALIDATION",
+  NETWORK = "NETWORK",
+  SERVER_ERROR = "SERVER_ERROR",
+  UNKNOWN = "UNKNOWN",
 }
 
 export interface CategorizedError {
@@ -30,9 +31,14 @@ export class McpError extends Error {
   public readonly status: number;
   public readonly details?: unknown;
 
-  constructor(message: string, code: string, status: number, details?: unknown) {
+  constructor(
+    message: string,
+    code: string,
+    status: number,
+    details?: unknown,
+  ) {
     super(message);
-    this.name = 'McpError';
+    this.name = "McpError";
     this.code = code;
     this.status = status;
     this.details = details;
@@ -41,67 +47,110 @@ export class McpError extends Error {
 
 export class ApiError extends McpError {
   constructor(message: string, status: number, details?: unknown) {
-    super(message, 'API_ERROR', status, details);
-    this.name = 'ApiError';
+    super(message, "API_ERROR", status, details);
+    this.name = "ApiError";
   }
 }
 
 export class ValidationError extends McpError {
   constructor(message: string, details?: unknown) {
-    super(message, 'VALIDATION_ERROR', 400, details);
-    this.name = 'ValidationError';
+    super(message, "VALIDATION_ERROR", 400, details);
+    this.name = "ValidationError";
   }
 }
 
 export class ConfigError extends McpError {
   constructor(message: string) {
-    super(message, 'CONFIG_ERROR', 500);
-    this.name = 'ConfigError';
+    super(message, "CONFIG_ERROR", 500);
+    this.name = "ConfigError";
   }
 }
 
 export class ToolExecutionError extends McpError {
   constructor(message: string, toolName: string, details?: unknown) {
-    super(`Error executing tool '${toolName}': ${message}`, 'TOOL_EXECUTION_ERROR', 500, details);
-    this.name = 'ToolExecutionError';
+    super(
+      `Error executing tool '${toolName}': ${message}`,
+      "TOOL_EXECUTION_ERROR",
+      500,
+      details,
+    );
+    this.name = "ToolExecutionError";
   }
 }
 
 export class RateLimitExceededError extends ApiError {
   public readonly retryAfter: number;
+  public readonly retryAfterMs: number;
+  public readonly headers?: Record<string, string>;
+  public readonly rateLimitInfo?: {
+    limit?: number;
+    remaining?: number;
+    reset?: number;
+    resetTime?: string;
+  };
 
-  constructor(message: string, retryAfter: number) {
+  constructor(
+    message: string,
+    retryAfter: number,
+    headers?: Record<string, string>,
+    rateLimitInfo?: {
+      limit?: number;
+      remaining?: number;
+      reset?: number;
+      resetTime?: string;
+    },
+  ) {
     super(message, 429);
-    this.name = 'RateLimitExceededError';
+    this.name = "RateLimitExceededError";
     this.retryAfter = retryAfter;
+    this.retryAfterMs = retryAfter * 1000;
+    this.headers = headers;
+    this.rateLimitInfo = rateLimitInfo;
+  }
+
+  /**
+   * Get structured retry guidance
+   */
+  public getRetryGuidance() {
+    return {
+      shouldRetry: true,
+      retryAfterSeconds: this.retryAfter,
+      retryAfterMs: this.retryAfterMs,
+      retryAfterTime: new Date(Date.now() + this.retryAfterMs).toISOString(),
+      rateLimitInfo: this.rateLimitInfo,
+      recommendation:
+        this.retryAfter > 60
+          ? "Consider implementing request queuing or reducing request frequency"
+          : "Retry after the specified delay",
+    };
   }
 }
 
 export class PresearchAPIError extends ApiError {
   constructor(message: string, status: number, details?: unknown) {
     super(message, status, details);
-    this.name = 'PresearchAPIError';
+    this.name = "PresearchAPIError";
   }
 }
 
 export class AuthenticationError extends ApiError {
   constructor(message: string) {
     super(message, 401);
-    this.name = 'AuthenticationError';
+    this.name = "AuthenticationError";
   }
 }
 
 export class NetworkError extends McpError {
   constructor(message: string, details?: unknown) {
-    super(message, 'NETWORK_ERROR', 0, details);
-    this.name = 'NetworkError';
+    super(message, "NETWORK_ERROR", 0, details);
+    this.name = "NetworkError";
   }
 }
 
 export class TimeoutError extends McpError {
   constructor(message: string, details?: unknown) {
-    super(message, 'TIMEOUT_ERROR', 408, details);
-    this.name = 'TimeoutError';
+    super(message, "TIMEOUT_ERROR", 408, details);
+    this.name = "TimeoutError";
   }
 }
 
@@ -113,13 +162,14 @@ export const APIError = ApiError;
 const categorizeAxiosError = (error: AxiosError): CategorizedError => {
   const status = error.response?.status;
   const statusCode = status ?? undefined;
+  const headers = error.response?.headers || {};
 
-  if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+  if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
     return {
       originalError: error,
       category: ErrorCategory.NETWORK,
       isRetryable: true,
-      userMessage: 'Request timed out. Please try again.',
+      userMessage: "Request timed out. Please try again.",
       technicalMessage: `Timeout error: ${error.message}`,
       statusCode,
     };
@@ -131,18 +181,75 @@ const categorizeAxiosError = (error: AxiosError): CategorizedError => {
         originalError: error,
         category: ErrorCategory.AUTHENTICATION,
         isRetryable: false,
-        userMessage: 'Authentication failed. Please check your API key.',
+        userMessage: "Authentication failed. Please check your API key.",
         technicalMessage: `Authentication error: ${error.message}`,
         statusCode,
       };
     }
     if (status === 429) {
+      // Enhanced HTTP 429 handling with header parsing
+      const retryAfter = String(
+        headers["retry-after"] || headers["Retry-After"] || "",
+      );
+      const rateLimitHeaders: Record<string, string> = {
+        "x-ratelimit-limit": String(
+          headers["x-ratelimit-limit"] || headers["X-RateLimit-Limit"] || "",
+        ),
+        "x-ratelimit-remaining": String(
+          headers["x-ratelimit-remaining"] ||
+            headers["X-RateLimit-Remaining"] ||
+            "",
+        ),
+        "x-ratelimit-reset": String(
+          headers["x-ratelimit-reset"] || headers["X-RateLimit-Reset"] || "",
+        ),
+        "retry-after": retryAfter,
+      };
+
+      // Update rate limiter with response headers
+      rateLimiter.handleRateLimitResponse(rateLimitHeaders);
+
+      const retryAfterSeconds = retryAfter
+        ? parseInt(retryAfter, 10) || 60
+        : 60;
+      const rateLimitInfo = {
+        limit: rateLimitHeaders["x-ratelimit-limit"]
+          ? parseInt(rateLimitHeaders["x-ratelimit-limit"], 10)
+          : undefined,
+        remaining: rateLimitHeaders["x-ratelimit-remaining"]
+          ? parseInt(rateLimitHeaders["x-ratelimit-remaining"], 10)
+          : undefined,
+        reset: rateLimitHeaders["x-ratelimit-reset"]
+          ? parseInt(rateLimitHeaders["x-ratelimit-reset"], 10)
+          : undefined,
+        resetTime: rateLimitHeaders["x-ratelimit-reset"]
+          ? new Date(
+              parseInt(rateLimitHeaders["x-ratelimit-reset"], 10) * 1000,
+            ).toISOString()
+          : undefined,
+      };
+
+      // Convert headers to Record<string, string> for RateLimitExceededError
+      const headersRecord: Record<string, string> = {};
+      if (headers && typeof headers === "object") {
+        Object.entries(headers).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            headersRecord[key] = String(value);
+          }
+        });
+      }
+
       return {
-        originalError: error,
+        originalError: new RateLimitExceededError(
+          `Rate limit exceeded. Retry after ${retryAfterSeconds} seconds.`,
+          retryAfterSeconds,
+          headersRecord,
+          rateLimitInfo,
+        ),
         category: ErrorCategory.RATE_LIMITING,
         isRetryable: true,
-        userMessage: 'Rate limit exceeded. Please try again later.',
-        technicalMessage: `Rate limit error: ${error.message}`,
+        userMessage: `Rate limit exceeded. Please wait ${retryAfterSeconds} seconds before trying again.`,
+        technicalMessage: `Rate limit error: ${error.message}. Retry-After: ${retryAfterSeconds}s`,
         statusCode,
       };
     }
@@ -151,7 +258,7 @@ const categorizeAxiosError = (error: AxiosError): CategorizedError => {
         originalError: error,
         category: ErrorCategory.VALIDATION,
         isRetryable: false,
-        userMessage: 'Invalid request. Please check your parameters.',
+        userMessage: "Invalid request. Please check your parameters.",
         technicalMessage: `Client error: ${error.message}`,
         statusCode,
       };
@@ -161,7 +268,7 @@ const categorizeAxiosError = (error: AxiosError): CategorizedError => {
         originalError: error,
         category: ErrorCategory.SERVER_ERROR,
         isRetryable: true,
-        userMessage: 'Server error occurred. Please try again later.',
+        userMessage: "Server error occurred. Please try again later.",
         technicalMessage: `Server error: ${error.message}`,
         statusCode,
       };
@@ -172,7 +279,7 @@ const categorizeAxiosError = (error: AxiosError): CategorizedError => {
     originalError: error,
     category: ErrorCategory.NETWORK,
     isRetryable: true,
-    userMessage: 'Network error occurred. Please try again.',
+    userMessage: "Network error occurred. Please try again.",
     technicalMessage: `Network error: ${error.message}`,
     statusCode,
   };
@@ -180,13 +287,13 @@ const categorizeAxiosError = (error: AxiosError): CategorizedError => {
 
 const categorizeZodError = (error: ZodError): CategorizedError => {
   const issues = error.issues
-    .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
-    .join(', ');
+    .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+    .join(", ");
   return {
     originalError: error,
     category: ErrorCategory.VALIDATION,
     isRetryable: false,
-    userMessage: 'Invalid data format. Please check your input.',
+    userMessage: "Invalid data format. Please check your input.",
     technicalMessage: `Schema validation failed: ${issues}`,
   };
 };
@@ -196,7 +303,7 @@ const categorizeGenericError = (error: Error): CategorizedError => {
     originalError: error,
     category: ErrorCategory.UNKNOWN,
     isRetryable: true,
-    userMessage: 'An unexpected error occurred. Please try again.',
+    userMessage: "An unexpected error occurred. Please try again.",
     technicalMessage: `Unknown error: ${error.message}`,
   };
 };
@@ -264,7 +371,7 @@ export class ErrorHandler {
       maxRetries: config.getMaxRetries(),
       baseDelay: config.getRetryDelay(),
       maxDelay: 30000, // 30 seconds max delay
-      backoffFactor: 2
+      backoffFactor: 2,
     };
 
     // Initialize circuit breaker
@@ -277,19 +384,21 @@ export class ErrorHandler {
     });
 
     // Set up circuit breaker event listeners
-    this.circuitBreaker.on('open', () => {
-      logger.warn('Circuit breaker opened - API calls will be blocked temporarily');
+    this.circuitBreaker.on("open", () => {
+      logger.warn(
+        "Circuit breaker opened - API calls will be blocked temporarily",
+      );
     });
 
-    this.circuitBreaker.on('close', () => {
-      logger.info('Circuit breaker closed - API calls resumed');
+    this.circuitBreaker.on("close", () => {
+      logger.info("Circuit breaker closed - API calls resumed");
     });
 
-    this.circuitBreaker.on('stateChange', (state: CircuitBreakerState) => {
+    this.circuitBreaker.on("stateChange", (state: CircuitBreakerState) => {
       logger.info(`Circuit breaker state changed to: ${state}`);
     });
 
-    logger.debug('Error handler initialized', {
+    logger.debug("Error handler initialized", {
       retryConfig: this.retryConfig,
     });
   }
@@ -313,7 +422,7 @@ export class ErrorHandler {
    */
   public forceResetCircuitBreaker(): void {
     this.circuitBreaker.forceReset();
-    logger.info('Circuit breaker manually reset');
+    logger.info("Circuit breaker manually reset");
   }
 
   /**
@@ -372,7 +481,7 @@ export class ErrorHandler {
    */
   public async withRetry<T>(
     operation: () => Promise<T>,
-    context: { operationName: string; [key: string]: unknown }
+    context: { operationName: string; [key: string]: unknown },
   ): Promise<T> {
     // Wrap operation with circuit breaker
     return this.circuitBreaker.execute(async () => {
@@ -385,7 +494,7 @@ export class ErrorHandler {
    */
   private async executeWithRetryInternal<T>(
     operation: () => Promise<T>,
-    context: { operationName: string; [key: string]: unknown }
+    context: { operationName: string; [key: string]: unknown },
   ): Promise<T> {
     let lastError: Error;
 
@@ -394,7 +503,7 @@ export class ErrorHandler {
         const result = await operation();
 
         if (attempt > 0) {
-          logger.info('Operation succeeded after retry', {
+          logger.info("Operation succeeded after retry", {
             ...context,
             attempt: attempt + 1,
             totalAttempts: this.retryConfig.maxRetries + 1,
@@ -413,13 +522,16 @@ export class ErrorHandler {
           isRetryable: categorizedError.isRetryable,
         });
 
-        if (!categorizedError.isRetryable || attempt === this.retryConfig.maxRetries) {
+        if (
+          !categorizedError.isRetryable ||
+          attempt === this.retryConfig.maxRetries
+        ) {
           this.logFinalError(categorizedError, context);
           throw lastError;
         }
 
         const delay = this.calculateRetryDelay(attempt, lastError);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
 
@@ -450,8 +562,11 @@ export class ErrorHandler {
    * }
    * ```
    */
-  private logFinalError(categorizedError: CategorizedError, context: { [key: string]: unknown }): void {
-    logger.error('Operation failed after all retries', {
+  private logFinalError(
+    categorizedError: CategorizedError,
+    context: { [key: string]: unknown },
+  ): void {
+    logger.error("Operation failed after all retries", {
       ...context,
       statusCode: categorizedError.statusCode,
       errorMessage: categorizedError.userMessage,
@@ -472,7 +587,6 @@ export class ErrorHandler {
    * @returns {Error} Standardized Error object with message and optional cause
    */
 
-
   /**
    * Handle Axios-specific errors
    *
@@ -484,16 +598,13 @@ export class ErrorHandler {
    * @returns {Error} Processed error with user-friendly message
    */
 
-
   /**
    * Extract meaningful error message from AxiosError
    */
 
-
   /**
    * Determines if an error should not be retried
    */
-
 
   /**
    * Calculate retry delay with enhanced exponential backoff and jitter
@@ -505,10 +616,37 @@ export class ErrorHandler {
 
     // Handle rate limit errors with retry-after header
     if (error instanceof RateLimitExceededError && error.retryAfter) {
-      // Convert retry-after to milliseconds and add smart buffer
+      // Use the enhanced rate limiter's backoff calculation
+      const rateLimiterDelay = rateLimiter.calculateBackoffDelay(attempt, {
+        maxRetries: this.retryConfig.maxRetries,
+        baseDelay: baseDelay,
+        maxDelay: maxDelay,
+        jitterFactor: 0.1,
+      });
+
+      if (rateLimiterDelay > 0) {
+        logger.debug("Using rate limiter calculated delay", {
+          attempt,
+          rateLimiterDelay,
+          retryAfter: error.retryAfter,
+        });
+        return rateLimiterDelay;
+      }
+
+      // Fallback to retry-after with buffer
       const retryAfterMs = error.retryAfter * 1000;
       const buffer = Math.random() * 2000 + 500; // 0.5-2.5 second buffer
       return Math.min(retryAfterMs + buffer, maxDelay);
+    }
+
+    // Check if rate limiter suggests waiting
+    const rateLimitCheck = rateLimiter.checkLimitWithRetryAfter();
+    if (!rateLimitCheck.allowed && rateLimitCheck.waitTime) {
+      logger.debug("Rate limiter suggests waiting", {
+        waitTime: rateLimitCheck.waitTime,
+        reason: rateLimitCheck.reason,
+      });
+      return Math.min(rateLimitCheck.waitTime, maxDelay);
     }
 
     // Enhanced base delay with error type consideration
@@ -527,7 +665,9 @@ export class ErrorHandler {
     // Enhanced exponential backoff with fibonacci-like progression
     const fibonacciMultiplier = this.getFibonacciMultiplier(attempt);
     const exponentialDelay =
-      adjustedBaseDelay * Math.pow(backoffFactor, attempt) * fibonacciMultiplier;
+      adjustedBaseDelay *
+      Math.pow(backoffFactor, attempt) *
+      fibonacciMultiplier;
 
     // Enhanced jitter with normal distribution
     const jitterRange = exponentialDelay * 0.3; // ±30% jitter
@@ -560,11 +700,9 @@ export class ErrorHandler {
     return Math.max(-range, Math.min(range, z0 * (range / 3)));
   }
 
-
-
   /**
    * Handle and categorize errors
-   * 
+   *
    * @param {unknown} error - The error to handle
    * @param {Record<string, unknown>} [context] - Optional context object for logging
    * @returns {CategorizedError} Categorized error with additional context
@@ -572,35 +710,41 @@ export class ErrorHandler {
   public handle(error: unknown, context?: Record<string, unknown>): Error {
     const normalizedError = this.normalizeError(error);
     const categorizedError = ErrorCategorizer.categorize(normalizedError);
-    
+
     if (context) {
-      logger.error('Error occurred', {
+      logger.error("Error occurred", {
         ...context,
         error: categorizedError.technicalMessage,
         category: categorizedError.category,
-        statusCode: categorizedError.statusCode
+        statusCode: categorizedError.statusCode,
       });
     }
-    
+
     switch (categorizedError.category) {
       case ErrorCategory.AUTHENTICATION:
         return new AuthenticationError(categorizedError.userMessage);
       case ErrorCategory.RATE_LIMITING:
-        return new RateLimitExceededError(categorizedError.userMessage, 0); // retryAfter can be extracted if available
+        if (categorizedError.originalError instanceof RateLimitExceededError) {
+          return categorizedError.originalError; // Preserve enhanced rate limit error
+        }
+        return new RateLimitExceededError(categorizedError.userMessage, 60); // Default 60s retry
       case ErrorCategory.VALIDATION:
         return new ValidationError(categorizedError.userMessage);
       case ErrorCategory.NETWORK:
         return new NetworkError(categorizedError.userMessage);
       case ErrorCategory.SERVER_ERROR:
-        return new PresearchAPIError(categorizedError.userMessage, categorizedError.statusCode || 500);
+        return new PresearchAPIError(
+          categorizedError.userMessage,
+          categorizedError.statusCode || 500,
+        );
       default:
-        return new McpError(categorizedError.userMessage, 'UNKNOWN_ERROR', 500);
+        return new McpError(categorizedError.userMessage, "UNKNOWN_ERROR", 500);
     }
   }
 
   /**
    * Handle and categorize errors (alias for backward compatibility)
-   * 
+   *
    * @param {unknown} error - The error to handle
    * @param {Record<string, unknown>} [context] - Optional context object for logging
    * @returns {Error} Specific custom error based on category
@@ -616,16 +760,16 @@ export class ErrorHandler {
     if (error instanceof Error) {
       return error;
     }
-    
-    if (typeof error === 'string') {
+
+    if (typeof error === "string") {
       return new Error(error);
     }
-    
-    if (error && typeof error === 'object' && 'message' in error) {
+
+    if (error && typeof error === "object" && "message" in error) {
       return new Error(String(error.message));
     }
-    
-    return new Error('Unknown error occurred');
+
+    return new Error("Unknown error occurred");
   }
 
   /**
@@ -634,13 +778,13 @@ export class ErrorHandler {
   public createUserFriendlyMessage(error: Error): string {
     if (error instanceof McpError) {
       switch (error.name) {
-        case 'ApiError':
+        case "ApiError":
           return `An API error occurred: ${error.message}`;
-        case 'ValidationError':
+        case "ValidationError":
           return `A validation error occurred: ${error.message}`;
-        case 'ConfigError':
+        case "ConfigError":
           return `A configuration error occurred: ${error.message}`;
-        case 'ToolExecutionError':
+        case "ToolExecutionError":
           return error.message;
         default:
           return `An unexpected error occurred: ${error.message}`;

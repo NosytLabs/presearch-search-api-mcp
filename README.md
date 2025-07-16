@@ -32,17 +32,10 @@ Edit `.env` with your configuration:
 ```env
 # Presearch API Configuration
 PRESEARCH_API_KEY=your_presearch_api_key_here
-PRESEARCH_BASE_URL=https://api.presearch.io
 
 # Server Configuration
-PORT=3003
-DEBUG=presearch-mcp
-
-# Performance Settings
-REQUEST_TIMEOUT=30000
-MAX_RETRIES=3
-RATE_LIMIT=100
-CACHE_TTL=300000
+PORT=3001
+LOG_LEVEL=info
 ```
 
 ### 3. Build and Start
@@ -51,7 +44,7 @@ npm run build
 npm start
 ```
 
-The server will be available at `http://localhost:3003/mcp`
+The server will be available at `http://localhost:3001/mcp`
 
 ## 🎯 Use Cases
 
@@ -93,12 +86,12 @@ Enhanced search using Presearch decentralized search engine with AI insights, en
 ```
 
 ### 2. `presearch_scrape_content`
-Scrape a URL and convert content to markdown or HTML format using Puppeteer.
+Scrape a URL and convert content to markdown or HTML format using Puppeteer. Supports multiple output formats for flexible content processing.
 
 **Parameters:**
 - `url` (string, required): The URL to scrape and convert
 - `format` (string, optional): Output format - "markdown" (default), "html", or "both"
-- `waitTime` (number, optional): Page load wait time in milliseconds (default: 3000)
+- `waitTime` (number, optional): Time to wait for page load in milliseconds (default: 3000)
 
 **Example:**
 ```json
@@ -129,7 +122,7 @@ Get cache statistics including hit rate, cache size, and performance metrics.
 Clear the search cache to free up memory and force fresh results.
 
 **Parameters:**
-- `pattern` (string, optional): Pattern to clear specific cache entries (default: "*")
+- `pattern` (string, optional): Optional pattern to clear specific cache entries (e.g., "search:*") (default: "*")
 
 **Example:**
 ```json
@@ -145,17 +138,16 @@ Clear the search cache to free up memory and force fresh results.
 
 Connect to any MCP-compatible AI platform:
 
-1. Add MCP server endpoint: `http://localhost:3003/mcp`
+1. Add MCP server endpoint: `http://localhost:3001/mcp`
 2. Configure available tools: `presearch_search`, `presearch_scrape_content`, `presearch_cache_stats`, `presearch_cache_clear`
 
 
 ## 🐛 Troubleshooting
 
-**Server Won't Start**: Check if port 3003 is in use
+**Server Won't Start**: Check if port 3001 is in use
 **API Key Issues**: Verify `PRESEARCH_API_KEY` is set in `.env`
-**Connection Refused**: Ensure server is running and firewall allows port 3003
+**Connection Refused**: Ensure server is running and firewall allows port 3001
 **Search Results Empty**: Verify your Presearch API key has sufficient credits
-**Rate Limiting**: Adjust `RATE_LIMIT` in `.env` if experiencing throttling
 
 ## 🤝 Contributing
 

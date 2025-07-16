@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * @fileoverview Type definitions and validation schemas for Presearch MCP Server
@@ -33,10 +33,10 @@ export interface PresearchSearchRequest {
   page?: string;
   count?: number;
   lang?: string;
-  time?: 'any' | 'day' | 'week' | 'month' | 'year';
+  time?: "any" | "day" | "week" | "month" | "year";
   location?: string;
   ip?: string;
-  safe?: '0' | '1';
+  safe?: "0" | "1";
 }
 
 /**
@@ -54,24 +54,30 @@ export interface PresearchSearchRequest {
  * ```
  */
 export const SearchParamsSchema = z.object({
-  q: z.string().min(1, 'Query cannot be empty').describe('The search query'),
-  ip: z.string().optional().describe('The IP address of the user'),
+  q: z.string().min(1, "Query cannot be empty").describe("The search query"),
+  ip: z.string().optional().describe("The IP address of the user"),
   lang: z
     .string()
     .optional()
-    .describe('The language for search results (BCP 47 language code format)'),
+    .describe("The language for search results (BCP 47 language code format)"),
   time: z
-    .enum(['any', 'day', 'week', 'month', 'year'])
+    .enum(["any", "day", "week", "month", "year"])
     .optional()
-    .describe('The desired timeframe for the search results'),
+    .describe("The desired timeframe for the search results"),
   location: z
     .string()
     .optional()
     .describe(
-      'The location where search results should be localized or filtered (JSON object with lat and long keys)'
+      "The location where search results should be localized or filtered (JSON object with lat and long keys)",
     ),
-  page: z.string().optional().describe('The page number for paginating search results'),
-  safe: z.enum(['0', '1']).optional().describe('The safe search mode (1: enabled, 0: disabled)'),
+  page: z
+    .string()
+    .optional()
+    .describe("The page number for paginating search results"),
+  safe: z
+    .enum(["0", "1"])
+    .optional()
+    .describe("The safe search mode (1: enabled, 0: disabled)"),
 });
 
 /**
@@ -631,12 +637,10 @@ export interface RetryConfig {
   backoffFactor: number;
 }
 
-
-
 // MCP Tool response interface
 export interface MCPToolResponse {
   content?: Array<{
-    type: 'text';
+    type: "text";
     text: string;
   }>;
   success?: boolean;

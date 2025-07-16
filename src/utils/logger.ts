@@ -1,6 +1,6 @@
-import { config } from '../config/configuration.js';
+import { config } from "../config/configuration.js";
 
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+export type LogLevel = "debug" | "info" | "warn" | "error";
 
 interface LogContext {
   requestId?: string;
@@ -34,36 +34,37 @@ export class Logger {
    */
   public log(level: LogLevel, message: string, context?: LogContext): void {
     const logLevel = config.getLogLevel();
-    
+
     // Skip logs based on configured log level
-    const levels = ['error', 'warn', 'info', 'debug'];
+    const levels = ["error", "warn", "info", "debug"];
     const currentLevelIndex = levels.indexOf(logLevel);
     const messageLevelIndex = levels.indexOf(level);
-    
+
     if (messageLevelIndex > currentLevelIndex) return;
 
     const timestamp = new Date().toISOString();
-    const requestIdPart = this.requestId ? ` [${this.requestId}]` : '';
+    const requestIdPart = this.requestId ? ` [${this.requestId}]` : "";
     const prefix = `[${timestamp}]${requestIdPart} [${level.toUpperCase()}]`;
 
-    const logMessage = context && Object.keys(context).length > 0
-      ? [`${prefix} ${message}`, this.formatContext(context)]
-      : [`${prefix} ${message}`];
+    const logMessage =
+      context && Object.keys(context).length > 0
+        ? [`${prefix} ${message}`, this.formatContext(context)]
+        : [`${prefix} ${message}`];
 
     switch (level) {
-      case 'debug':
+      case "debug":
         // eslint-disable-next-line no-console
         console.debug(...logMessage);
         break;
-      case 'info':
+      case "info":
         // eslint-disable-next-line no-console
         console.info(...logMessage);
         break;
-      case 'warn':
+      case "warn":
         // eslint-disable-next-line no-console
         console.warn(...logMessage);
         break;
-      case 'error':
+      case "error":
         // eslint-disable-next-line no-console
         console.error(...logMessage);
         break;
@@ -74,28 +75,28 @@ export class Logger {
    * Log debug message
    */
   public debug(message: string, context?: LogContext): void {
-    this.log('debug', message, context);
+    this.log("debug", message, context);
   }
 
   /**
    * Log info message
    */
   public info(message: string, context?: LogContext): void {
-    this.log('info', message, context);
+    this.log("info", message, context);
   }
 
   /**
    * Log warning message
    */
   public warn(message: string, context?: LogContext): void {
-    this.log('warn', message, context);
+    this.log("warn", message, context);
   }
 
   /**
    * Log error message
    */
   public error(message: string, context?: LogContext): void {
-    this.log('error', message, context);
+    this.log("error", message, context);
   }
 
   /**
@@ -115,19 +116,19 @@ export class Logger {
   private jsonReplacer(key: string, value: unknown): unknown {
     // Hide sensitive information
     if (
-      key.toLowerCase().includes('key') ||
-      key.toLowerCase().includes('token') ||
-      key.toLowerCase().includes('password')
+      key.toLowerCase().includes("key") ||
+      key.toLowerCase().includes("token") ||
+      key.toLowerCase().includes("password")
     ) {
-      return '[REDACTED]';
+      return "[REDACTED]";
     }
 
     // Handle circular references
-    if (typeof value === 'object' && value !== null) {
+    if (typeof value === "object" && value !== null) {
       if (value.constructor === Object || Array.isArray(value)) {
         return value;
       }
-      return '[Object]';
+      return "[Object]";
     }
 
     return value;
@@ -147,7 +148,7 @@ export class Logger {
 export class ChildLogger {
   constructor(
     private parent: Logger,
-    private context: LogContext
+    private context: LogContext,
   ) {}
 
   public debug(message: string, additionalContext?: LogContext): void {
