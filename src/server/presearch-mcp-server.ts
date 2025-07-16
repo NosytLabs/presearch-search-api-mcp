@@ -257,7 +257,7 @@ export class PresearchServer {
     logger.info("Setting up MCP request handlers...");
 
     // Handle tools/list requests
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+    this.server.server.setRequestHandler(ListToolsRequestSchema, async () => {
       logger.debug("Handling tools/list request");
       return {
         tools: this.getToolDefinitions(),
@@ -265,7 +265,7 @@ export class PresearchServer {
     });
 
     // Handle tools/call requests
-    this.server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
+    this.server.server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
       const { name, arguments: args } = request.params as {
         name: string;
         arguments: Record<string, unknown>;
