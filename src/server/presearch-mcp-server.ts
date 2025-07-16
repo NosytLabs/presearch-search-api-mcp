@@ -209,6 +209,9 @@ export class PresearchServer {
     this.toolDefinitionsCache = Array.from(this.tools.values()).map((tool) => tool.definition);
     logger.info(`Pre-registered ${this.toolDefinitionsCache.length} tools for instant discovery`);
 
+    // Setup MCP request handlers for standard protocol compliance
+    this.setupMcpRequestHandlers();
+
     logger.info("All components initialized successfully", {
       apiClientInitialized: !!this.apiClient,
       cacheManagerInitialized: !!this.cacheManager,
@@ -249,6 +252,36 @@ export class PresearchServer {
   /**
    * Setup request handlers for MCP protocol
    */
+  private setupMcpRequestHandlers(): void {
+    logger.info("Setting up MCP request handlers...");
+
+    // Handle tools/list requests
+    this.server.setRequestHandler("tools/list", async () => {
+      logger.debug("Handling tools/list request");
+      return {
+        tools: this.getToolDefinitions(),
+      };
+    });
+
+    // Handle tools/call requests
+    this.server.setRequestHandler("tools/call", async (request) => {
+      const { name, arguments: args } = request.params as {
+        name: string;
+        arguments: Record<string, unknown>;
+      };
+      
+      logger.debug("Handling tools/call request", { toolName: name });
+      
+      const tool = this.getTool(name);
+      if (!tool) {
+        throw new Error(`Tool '${name}' not found`);
+      }
+      
+      return await tool.handler(args || {});
+    });
+
+    logger.info("MCP request handlers setup completed");
+  }
 
   /**
    * Get tool definitions with instant response
