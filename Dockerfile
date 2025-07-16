@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -17,4 +17,4 @@ RUN npm run build
 # Expose the port (assuming default 8000, adjust if needed)
 EXPOSE 8000
 
-CMD ["node", "dist/http-server.js"]
+CMD ["node", "dist/index.js"]
