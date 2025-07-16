@@ -24,9 +24,6 @@ export class PresearchHttpServer {
     const initialConfig = createConfigFromEnv();
     this.presearchServer = new PresearchServer(initialConfig);
     
-    // Initialize the MCP server to trigger tool pre-registration
-    this.presearchServer.initialize();
-
     this.setupRoutes();
     
     logger.info("PresearchHttpServer initialized", {
@@ -296,6 +293,10 @@ export class PresearchHttpServer {
    */
   public async start(): Promise<void> {
     try {
+      // Initialize the MCP server to trigger tool pre-registration
+      await this.presearchServer.initialize();
+      logger.info("PresearchServer initialized successfully");
+      
       // eslint-disable-next-line no-console
       console.log("Starting Presearch HTTP Server...");
       logger.info("Starting Presearch HTTP Server for Smithery deployment");
