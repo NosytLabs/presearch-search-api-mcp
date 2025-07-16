@@ -241,28 +241,8 @@ export class PresearchServer {
    * Get tool definitions
    */
   getToolDefinitions(): any[] {
-    return Array.from(this.tools.values()).map((tool) => {
-      const definition = tool.definition;
-      // Convert Zod schema to JSON Schema for Smithery compatibility
-      if (
-        definition.inputSchema &&
-        typeof definition.inputSchema === "object"
-      ) {
-        const jsonSchema = zodToJsonSchema(
-          z.object(definition.inputSchema as ZodRawShape),
-          {
-            name: `${definition.name}Schema`,
-            $refStrategy: "none",
-          },
-        );
-
-        return {
-          ...definition,
-          inputSchema: jsonSchema,
-        };
-      }
-      return definition;
-    });
+    // Return pre-computed tool definitions to avoid blocking zodToJsonSchema conversion
+    return Array.from(this.tools.values()).map((tool) => tool.definition);
   }
 
   getTool(name: string):
@@ -454,8 +434,35 @@ export class PresearchServer {
       // Register with MCP server using Zod schemas
       this.server.registerTool(config.name, config.definition, config.handler);
 
-      // Store tool definition for Smithery (will be converted to JSON Schema in getToolDefinitions)
-      const fullDefinition = { name: config.name, ...config.definition };
+      // Convert Zod schema to JSON Schema during registration to avoid blocking during tool scanning
+      let jsonSchema: any;
+      if (
+        config.definition.inputSchema &&
+        typeof config.definition.inputSchema === "object"
+      ) {
+        try {
+          jsonSchema = zodToJsonSchema(
+            z.object(config.definition.inputSchema as ZodRawShape),
+            {
+              name: `${config.name}Schema`,
+              $refStrategy: "none",
+            },
+          );
+        } catch (error) {
+          logger.error(`Failed to convert schema for tool ${config.name}`, { error });
+          // Fallback to empty schema
+          jsonSchema = { type: "object", properties: {}, required: [] };
+        }
+      } else {
+        jsonSchema = { type: "object", properties: {}, required: [] };
+      }
+
+      // Store tool definition with pre-computed JSON schema
+      const fullDefinition = {
+        name: config.name,
+        description: config.definition.description,
+        inputSchema: jsonSchema,
+      };
       this.tools.set(config.name, {
         definition: fullDefinition,
         handler: config.handler,
