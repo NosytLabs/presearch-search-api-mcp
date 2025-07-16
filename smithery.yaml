@@ -10,7 +10,7 @@ startCommand:
       baseUrl:
         type: "string"
         description: "Presearch Base URL"
-        default: "https://api.presearch.com"
+        default: "https://na-us-1.presearch.com"
       requestTimeout:
         type: "number"
         description: "Request timeout in milliseconds"
@@ -31,11 +31,18 @@ startCommand:
         type: "boolean"
         description: "Enable debug logging"
         default: false
+      port:
+        type: "number"
+        description: "HTTP server port"
+        default: 3001
     required: ["apiKey"]
   exampleConfig:
     apiKey: "your-presearch-api-key"
+    baseUrl: "https://na-us-1.presearch.com"
+    port: 3001
 build:
   dockerfile: "Dockerfile"
   dockerBuildPath: "."
 env:
   NODE_ENV: "production"
+  PORT: "3001"

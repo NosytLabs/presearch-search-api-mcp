@@ -14,7 +14,8 @@ COPY . ./
 # Build the application
 RUN npm run build
 
-# Expose the port (assuming default 8000, adjust if needed)
-EXPOSE 8000
+# Expose the port (default 3001 for HTTP server, 8000 for MCP)
+EXPOSE 3001 8000
 
-CMD ["node", "dist/index.js"]
+# Default to HTTP server for Smithery, can be overridden
+CMD ["node", "dist/http-server-entry.js"]

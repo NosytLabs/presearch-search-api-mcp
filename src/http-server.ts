@@ -323,6 +323,23 @@ export class PresearchHttpServer {
   }
 
   /**
+   * Stop the HTTP server
+   */
+  public async stop(): Promise<void> {
+    return new Promise((resolve) => {
+      logger.info("Stopping HTTP server");
+      if (this.httpServer) {
+        this.httpServer.close(() => {
+          logger.info("HTTP server stopped");
+          resolve();
+        });
+      } else {
+        resolve();
+      }
+    });
+  }
+
+  /**
    * Shutdown the server gracefully
    */
   private shutdown(): void {
