@@ -91,52 +91,46 @@ export class PresearchHttpServer {
     next: express.NextFunction,
   ): Promise<void> {
     try {
-      // Create a config from the request for this request
-      const requestConfig = this.createConfigFromRequest(req);
-      // Update the existing server instance with the new config for this request
-      await this.presearchServer.updateConfig(requestConfig);
+      let mcpRequest;
 
-      try {
-        let mcpRequest;
-
-        if (req.method === "GET") {
-          // Handle GET request for tool listing (lazy loading)
-          mcpRequest = {
-            jsonrpc: "2.0",
-            id: 1,
-            method: "tools/list",
-            params: {},
-          };
-        } else if (req.method === "POST") {
-          // Handle POST request for tool calls
-          mcpRequest = req.body;
-        } else if (req.method === "DELETE") {
-          // Handle DELETE request
-          res.status(200).json({
-            jsonrpc: "2.0",
-            id: 1,
-            result: { message: "Server shutdown requested" },
-          });
-          return;
-        } else {
-          res.status(405).json({
-            jsonrpc: "2.0",
-            id: null,
-            error: {
-              code: -32601,
-              message: "Method not allowed",
-              data: `HTTP method ${req.method} is not supported. Use GET for tool listing or POST for tool calls.`,
-            },
-          });
-          return;
-        }
-
-        // Process MCP request
+      if (req.method === "GET") {
+        // Handle GET request for tool listing (lazy loading) without config
+        mcpRequest = {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/list",
+          params: {},
+        };
         const response = await this.processMcpRequest(mcpRequest);
-
         res.status(200).json(response);
-      } catch (error) {
-        next(error);
+        return;
+      } else if (req.method === "POST") {
+        // Handle POST request for tool calls with config
+        const requestConfig = this.createConfigFromRequest(req);
+        await this.presearchServer.updateConfig(requestConfig);
+        mcpRequest = req.body;
+        const response = await this.processMcpRequest(mcpRequest);
+        res.status(200).json(response);
+        return;
+      } else if (req.method === "DELETE") {
+        // Handle DELETE request
+        res.status(200).json({
+          jsonrpc: "2.0",
+          id: 1,
+          result: { message: "Server shutdown requested" },
+        });
+        return;
+      } else {
+        res.status(405).json({
+          jsonrpc: "2.0",
+          id: null,
+          error: {
+            code: -32601,
+            message: "Method not allowed",
+            data: `HTTP method ${req.method} is not supported. Use GET for tool listing or POST for tool calls.`,
+          },
+        });
+        return;
       }
     } catch (error) {
       next(error);
@@ -161,56 +155,45 @@ export class PresearchHttpServer {
 
     const { method, params, id } = request;
 
-    const routeHandlers: Record<
-      string,
-      () => Promise<Record<string, unknown>>
-    > = {
-      "tools/list": async () => {
-        const tools = this.presearchServer.getToolDefinitions();
-        return { tools };
-      },
-      "tools/call": async () => {
-        const toolParams = (params as Record<string, unknown>) || {};
-        const { name, arguments: args } = toolParams as {
-          name: string;
-          arguments: Record<string, unknown>;
+    if (method === "tools/list") {
+      const tools = this.presearchServer.getToolDefinitions();
+      return { jsonrpc: "2.0", id, result: { tools } };
+    }
+
+    if (method === "tools/call") {
+      // Check for required config (e.g., apiKey)
+      if (!this.presearchServer.config.apiKey) {
+        return {
+          jsonrpc: "2.0",
+          id,
+          error: {
+            code: -32602,
+            message: "Missing required configuration",
+            data: "API key is required for tool calls",
+          },
         };
-        const tool = this.presearchServer.getTool(name);
+      }
 
-        if (!tool) {
-          throw new Error(`Unknown tool: ${name}`);
-        }
-
-        const result = await tool.handler(args || {});
-        return result as Record<string, unknown>;
-      },
-    };
-
-    const handler = routeHandlers[method as string];
-
-    if (!handler) {
-      return {
-        jsonrpc: "2.0",
-        id,
-        error: { code: -32601, message: "Method not found" },
+      const toolParams = (params as Record<string, unknown>) || {};
+      const { name, arguments: args } = toolParams as {
+        name: string;
+        arguments: Record<string, unknown>;
       };
-    }
+      const tool = this.presearchServer.getTool(name);
 
-    try {
-      const result = await handler();
+      if (!tool) {
+        throw new Error(`Unknown tool: ${name}`);
+      }
+
+      const result = await tool.handler(args || {});
       return { jsonrpc: "2.0", id, result };
-    } catch (error) {
-      logger.error("Error processing MCP request", { method, error });
-      return {
-        jsonrpc: "2.0",
-        id,
-        error: {
-          code: -32602,
-          message: "Request processing error",
-          data: (error as Error).message,
-        },
-      };
     }
+
+    return {
+      jsonrpc: "2.0",
+      id,
+      error: { code: -32601, message: "Method not found" },
+    };
   }
 
   /**
