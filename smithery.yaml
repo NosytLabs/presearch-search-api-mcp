@@ -1,4 +1,4 @@
-runtime: "typescript"
+runtime: "container"
 startCommand:
   type: "http"
   configSchema:
@@ -34,3 +34,8 @@ startCommand:
     required: ["apiKey"]
   exampleConfig:
     apiKey: "your-presearch-api-key"
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
+env:
+  NODE_ENV: "production"
