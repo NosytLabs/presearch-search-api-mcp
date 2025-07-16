@@ -1,4 +1,4 @@
-#/usr/bin/env node
+#!/usr/bin/env node
 
 import { PresearchHttpServer } from "./http-server.js";
 import { logger } from "./utils/logger.js";
