@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 // Removed unused imports
 import { Configuration, createConfigFromEnv } from "../config/configuration.js";
 import { PresearchAPIClient } from "../api/api-client.js";
@@ -256,7 +257,7 @@ export class PresearchServer {
     logger.info("Setting up MCP request handlers...");
 
     // Handle tools/list requests
-    this.server.setRequestHandler("tools/list", async () => {
+    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       logger.debug("Handling tools/list request");
       return {
         tools: this.getToolDefinitions(),
@@ -264,7 +265,7 @@ export class PresearchServer {
     });
 
     // Handle tools/call requests
-    this.server.setRequestHandler("tools/call", async (request) => {
+    this.server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
       const { name, arguments: args } = request.params as {
         name: string;
         arguments: Record<string, unknown>;
