@@ -33,9 +33,13 @@ export class PresearchHttpServer {
   }
 
   private setupRoutes(): void {
+    // Handle MCP requests at both root and /mcp paths for Smithery compatibility
     this.app.all("/mcp", this.handleMcpRequest.bind(this));
-    this.app.get("/", (_req: express.Request, res: express.Response) => {
-      res.status(200).json({ message: "Presearch MCP Server is running" });
+    this.app.all("/", this.handleMcpRequest.bind(this));
+    
+    // Health check endpoint
+    this.app.get("/health", (_req: express.Request, res: express.Response) => {
+      res.status(200).json({ message: "Presearch MCP Server is running", status: "healthy" });
     });
 
     // Centralized error handler
