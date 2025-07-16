@@ -1002,13 +1002,14 @@ export class PresearchServer {
         ...searchParams
       } = validated;
 
-      // Ensure components are initialized
-      await this.lazyInitializeComponents();
-
-      // Check if API key is configured
+      // Check if API key is configured BEFORE initializing components
+      // This enables lazy loading for tool discovery without authentication
       if (!this.config.getApiKey()) {
-        throw new Error("API key is not configured");
+        throw new Error("API key is required for search execution. Please configure PRESEARCH_API_KEY environment variable.");
       }
+
+      // Ensure components are initialized only when API key is available
+      await this.lazyInitializeComponents();
 
       // Check cache first if enabled
       const cacheKey = `search:${JSON.stringify({ ...searchParams, includeInsights, aiAnalysis, extractEntities, format })}`;
@@ -1185,8 +1186,11 @@ export class PresearchServer {
       const includeMetrics = args.includeMetrics ?? true;
       const testConnectivity = args.testConnectivity ?? false;
 
-      // Ensure components are initialized
-      await this.lazyInitializeComponents();
+      // Only initialize components if API key is available
+      // This enables lazy loading for tool discovery without authentication
+      if (this.config.getApiKey()) {
+        await this.lazyInitializeComponents();
+      }
 
       const healthData: Record<string, unknown> = {
         timestamp: new Date().toISOString(),
