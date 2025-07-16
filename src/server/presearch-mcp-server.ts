@@ -75,8 +75,9 @@ export class PresearchServer {
    */
   async initialize(): Promise<void> {
     try {
-      await this.lazyInitializeComponents();
-      logger.info("Presearch MCP Server initialized successfully");
+      // Skip component initialization for true lazy loading
+      // Components will be initialized only when tools are actually called
+      logger.info("Presearch MCP Server initialized successfully (lazy loading enabled)");
     } catch (error) {
       logger.error("Failed to initialize Presearch MCP Server", {
         error: error instanceof Error ? error.message : "Unknown error",
