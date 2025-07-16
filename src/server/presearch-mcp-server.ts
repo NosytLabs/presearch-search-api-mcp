@@ -8,8 +8,7 @@ import { ErrorHandler } from "../utils/error-handler.js";
 import { ResponseProcessor } from "../utils/response-processor.js";
 import { z, ZodRawShape } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import puppeteer from "puppeteer";
-import TurndownService from "turndown";
+// Puppeteer and TurndownService are now imported lazily in handleScrapeContent
 
 /**
  * Presearch MCP Server implementation
@@ -750,6 +749,8 @@ export class PresearchServer {
 
       const { url, format, waitTime } = schema.parse(args);
 
+      // Lazy import puppeteer to avoid blocking during module loading
+      const puppeteer = (await import("puppeteer")).default;
       const browser = await puppeteer.launch({
         headless: true,
         args: [
@@ -776,6 +777,8 @@ export class PresearchServer {
       const result: Record<string, unknown> = { url };
 
       if (format === "markdown" || format === "both") {
+        // Lazy import TurndownService to avoid blocking during module loading
+        const TurndownService = (await import("turndown")).default;
         const turndownService = new TurndownService();
         result.markdown = turndownService.turndown(content);
       }
