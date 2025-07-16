@@ -107,6 +107,13 @@ export class PresearchServer {
   }
 
   /**
+   * Check if API key is available
+   */
+  hasApiKey(): boolean {
+    return !!this.config.getApiKey();
+  }
+
+  /**
    * Lazy initialization of components when needed
    */
   private async lazyInitializeComponents(): Promise<void> {

@@ -162,7 +162,7 @@ export class PresearchHttpServer {
 
     if (method === "tools/call") {
       // Check for required config (e.g., apiKey)
-      if (!this.presearchServer.config.apiKey) {
+      if (!this.presearchServer.hasApiKey()) {
         return {
           jsonrpc: "2.0",
           id,
