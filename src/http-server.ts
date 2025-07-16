@@ -147,10 +147,15 @@ export class PresearchHttpServer {
         }
         return;
       } else if (req.method === "POST") {
-        // Handle POST request for tool calls with config
-        const requestConfig = this.createConfigFromRequest(req);
-        await this.presearchServer.updateConfig(requestConfig);
+        // Handle POST request - check if it's tools/list (no config needed) or tools/call (config required)
         mcpRequest = req.body;
+        
+        // For tools/list requests, skip configuration update to allow tool discovery without API keys
+        if (mcpRequest && typeof mcpRequest === 'object' && 'method' in mcpRequest && mcpRequest.method !== 'tools/list') {
+          const requestConfig = this.createConfigFromRequest(req);
+          await this.presearchServer.updateConfig(requestConfig);
+        }
+        
         const response = await this.processMcpRequest(mcpRequest);
         clearTimeout(timeout);
         if (!res.headersSent) {
