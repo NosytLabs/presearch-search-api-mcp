@@ -265,7 +265,7 @@ export class PresearchServer {
     });
 
     // Handle tools/call requests
-    this.server.server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
+    this.server.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params as {
         name: string;
         arguments: Record<string, unknown>;
@@ -278,7 +278,13 @@ export class PresearchServer {
         throw new Error(`Tool '${name}' not found`);
       }
       
-      return await tool.handler(args || {});
+      const result = await tool.handler(args || {});
+      return {
+        content: [{
+          type: "text" as const,
+          text: typeof result === "string" ? result : JSON.stringify(result, null, 2)
+        }]
+      };
     });
 
     logger.info("MCP request handlers setup completed");
