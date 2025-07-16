@@ -1,0 +1,60 @@
+version: 1
+start:
+  command: ["npm", "start"]
+  port: 3001
+  healthcheck:
+    path: "/health"
+    interval: 30
+    timeout: 5
+    retries: 3
+  rpc:
+    path: "/"
+config:
+  schema:
+    type: object
+    properties:
+      apiKey:
+        type: string
+        title: "Presearch API Key"
+        description: "Your Presearch API key for accessing search functionality"
+        required: true
+      baseUrl:
+        type: string
+        title: "Base URL"
+        description: "Base URL for Presearch API (optional)"
+        default: "https://api.presearch.io"
+      requestTimeout:
+        type: number
+        title: "Request Timeout"
+        description: "Request timeout in milliseconds"
+        default: 30000
+        minimum: 1000
+        maximum: 120000
+      maxRetries:
+        type: number
+        title: "Max Retries"
+        description: "Maximum number of retry attempts"
+        default: 3
+        minimum: 0
+        maximum: 10
+      rateLimit:
+        type: number
+        title: "Rate Limit"
+        description: "Rate limit for requests per minute"
+        default: 60
+        minimum: 1
+        maximum: 1000
+      cacheTtl:
+        type: number
+        title: "Cache TTL"
+        description: "Cache time-to-live in seconds"
+        default: 300
+        minimum: 0
+        maximum: 3600
+      debug:
+        type: boolean
+        title: "Debug Mode"
+        description: "Enable debug logging"
+        default: false
+    required:
+      - apiKey

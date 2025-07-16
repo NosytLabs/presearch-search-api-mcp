@@ -33,9 +33,10 @@ export class PresearchHttpServer {
   }
 
   private setupRoutes(): void {
-    // Handle MCP requests at both root and /mcp paths for Smithery compatibility
-    this.app.all("/mcp", this.handleMcpRequest.bind(this));
+    // Handle MCP requests at root path for Smithery compatibility (primary)
     this.app.all("/", this.handleMcpRequest.bind(this));
+    // Also handle legacy /mcp path for backward compatibility
+    this.app.all("/mcp", this.handleMcpRequest.bind(this));
     
     // Health check endpoint
     this.app.get("/health", (_req: express.Request, res: express.Response) => {
@@ -107,10 +108,11 @@ export class PresearchHttpServer {
   }
 
   /**
-   * Handle HTTP requests to /mcp endpoint
+   * Handle HTTP requests to root and /mcp endpoints
    * Implements Smithery's requirements:
-   * - GET /mcp: Returns tool list without authentication (lazy loading)
-   * - POST /mcp: Handles tool calls with configuration from query parameters
+   * - GET /: Returns tool list without authentication (lazy loading)
+   * - POST /: Handles tool calls with configuration from query parameters
+   * - Also supports legacy /mcp path for backward compatibility
    */
   private async handleMcpRequest(
     req: express.Request,
@@ -315,7 +317,10 @@ export class PresearchHttpServer {
         console.log(`Server listening on port ${this.port}`);
         logger.info(`Presearch HTTP Server listening on port ${this.port}`);
         logger.info(
-          `MCP endpoint available at: http://localhost:${this.port}/mcp`,
+          `MCP endpoint available at: http://localhost:${this.port}/`,
+        );
+        logger.info(
+          `Legacy MCP endpoint available at: http://localhost:${this.port}/mcp`,
         );
       });
       // eslint-disable-next-line no-console
