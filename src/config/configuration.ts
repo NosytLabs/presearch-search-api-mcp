@@ -190,6 +190,14 @@ export class Configuration {
       };
     }
 
+    // Check minimum length requirement
+    if (apiKey.length < 10) {
+      return {
+        isValid: false,
+        message: "API key must be at least 10 characters long",
+      };
+    }
+
     // Check for common invalid patterns
     if (apiKey.includes("your-api-key") || apiKey.includes("placeholder")) {
       return {
@@ -207,6 +215,60 @@ export class Configuration {
     }
 
     return { isValid: true };
+  }
+
+  /**
+   * Validate API key format and accessibility with network test
+   * @param apiKey - The API key to validate (can be undefined for lazy loading)
+   * @returns Promise<boolean> - True if valid or undefined (for lazy loading)
+   */
+  async validateApiKeyWithNetworkTest(apiKey?: string): Promise<boolean> {
+    if (!apiKey) {
+      // Allow undefined for lazy loading scenarios
+      logger.debug("API key validation skipped (lazy loading mode)");
+      return true;
+    }
+
+    // Basic format validation
+    if (typeof apiKey !== "string" || apiKey.length < 10) {
+      logger.error("Invalid API key format", { keyLength: apiKey?.length });
+      throw new Error("Invalid API key format: must be at least 10 characters");
+    }
+
+    // Test API accessibility with a simple request
+    try {
+      logger.debug("Validating API key accessibility...");
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch(`${this.getBaseURL()}/search?q=test&count=1`, {
+        headers: {
+          "X-API-Key": apiKey,
+          "User-Agent": this.getUserAgent(),
+        },
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      const isValid = response.status !== 401 && response.status !== 403;
+      logger.debug("API key validation completed", { 
+        status: response.status, 
+        isValid,
+        responseTime: Date.now() 
+      });
+      
+      return isValid;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        logger.warn("API key validation timed out");
+        return false;
+      }
+      logger.warn("API key validation failed", { 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+      return false;
+    }
   }
 
   /**

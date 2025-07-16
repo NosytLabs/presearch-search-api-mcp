@@ -22,7 +22,13 @@ A Model Context Protocol (MCP) server that integrates Presearch's decentralized 
 npm install
 ```
 
-### 2. Configure Environment
+### 2. Get Presearch API Key
+1. Visit [Presearch API Portal](https://presearch.com/api)
+2. Sign up or log in to your Presearch account
+3. Generate a new API key for search access
+4. Copy your API key for the next step
+
+### 3. Configure Environment
 Copy the example environment file and configure your settings:
 ```bash
 cp .env.example .env
@@ -31,14 +37,16 @@ cp .env.example .env
 Edit `.env` with your configuration:
 ```env
 # Presearch API Configuration
-PRESEARCH_API_KEY=your_presearch_api_key_here
+PRESEARCH_API_KEY=your_actual_api_key_here
 
 # Server Configuration
 PORT=3001
 LOG_LEVEL=info
 ```
 
-### 3. Build and Start
+**⚠️ Important**: Never commit your `.env` file to version control. Your API key should remain private.
+
+### 4. Build and Start
 ```bash
 npm run build
 npm start

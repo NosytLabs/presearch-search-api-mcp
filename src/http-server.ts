@@ -20,11 +20,19 @@ export class PresearchHttpServer {
     this.app.use(express.json());
     this.httpServer = createServer(this.app);
 
-    // Create a single PresearchServer instance
+    // Create a single PresearchServer instance with lazy loading
     const initialConfig = createConfigFromEnv();
     this.presearchServer = new PresearchServer(initialConfig);
+    
+    // Initialize the MCP server to trigger tool pre-registration
+    this.presearchServer.initialize();
 
     this.setupRoutes();
+    
+    logger.info("PresearchHttpServer initialized", {
+      port: this.port,
+      lazyLoading: true
+    });
   }
 
   private setupRoutes(): void {
@@ -34,7 +42,7 @@ export class PresearchHttpServer {
     });
 
     // Centralized error handler
-    this.app.use((err: Error, _req: express.Request, res: express.Response) => {
+    this.app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
       logger.error("An unexpected error occurred", {
         error: err.message,
         stack: err.stack,
@@ -53,6 +61,7 @@ export class PresearchHttpServer {
 
   /**
    * Apply configuration from query parameters to environment variables
+   * Supports Smithery's dot-notation format (e.g., server.host=localhost&apiKey=secret123)
    */
   private createConfigFromRequest(
     req: express.Request,
@@ -67,6 +76,20 @@ export class PresearchHttpServer {
     } else if (queryConfig.apiKey) {
       config.PRESEARCH_API_KEY = queryConfig.apiKey;
     }
+
+    // Support Smithery's dot-notation configuration
+    // Handle nested configuration like server.host, server.port, etc.
+    Object.entries(queryConfig).forEach(([key, value]) => {
+      if (key.includes('.')) {
+        // For dot-notation, we'll flatten it for our use case
+        // e.g., server.host -> PRESEARCH_BASE_URL if it's a host setting
+        const parts = key.split('.');
+        if (parts[0] === 'server' && parts[1] === 'host' && value) {
+          config.PRESEARCH_BASE_URL = `https://${value}`;
+        }
+        // Add more dot-notation mappings as needed
+      }
+    });
 
     if (queryConfig.baseUrl) config.PRESEARCH_BASE_URL = queryConfig.baseUrl;
     if (queryConfig.requestTimeout)
@@ -84,6 +107,9 @@ export class PresearchHttpServer {
 
   /**
    * Handle HTTP requests to /mcp endpoint
+   * Implements Smithery's requirements:
+   * - GET /mcp: Returns tool list without authentication (lazy loading)
+   * - POST /mcp: Handles tool calls with configuration from query parameters
    */
   private async handleMcpRequest(
     req: express.Request,
@@ -91,10 +117,26 @@ export class PresearchHttpServer {
     next: express.NextFunction,
   ): Promise<void> {
     try {
+      // Set timeout for requests to prevent hanging
+      const timeout = setTimeout(() => {
+        if (!res.headersSent) {
+          res.status(408).json({
+            jsonrpc: "2.0",
+            id: null,
+            error: {
+              code: -32603,
+              message: "Request timeout",
+              data: "Request took too long to process",
+            },
+          });
+        }
+      }, 10000); // 10 second timeout
+
       let mcpRequest;
 
       if (req.method === "GET") {
         // Handle GET request for tool listing (lazy loading) without config
+        // This must be fast and not require API key validation
         mcpRequest = {
           jsonrpc: "2.0",
           id: 1,
@@ -102,7 +144,10 @@ export class PresearchHttpServer {
           params: {},
         };
         const response = await this.processMcpRequest(mcpRequest);
-        res.status(200).json(response);
+        clearTimeout(timeout);
+        if (!res.headersSent) {
+          res.status(200).json(response);
+        }
         return;
       } else if (req.method === "POST") {
         // Handle POST request for tool calls with config
@@ -110,26 +155,35 @@ export class PresearchHttpServer {
         await this.presearchServer.updateConfig(requestConfig);
         mcpRequest = req.body;
         const response = await this.processMcpRequest(mcpRequest);
-        res.status(200).json(response);
+        clearTimeout(timeout);
+        if (!res.headersSent) {
+          res.status(200).json(response);
+        }
         return;
       } else if (req.method === "DELETE") {
         // Handle DELETE request
-        res.status(200).json({
-          jsonrpc: "2.0",
-          id: 1,
-          result: { message: "Server shutdown requested" },
-        });
+        clearTimeout(timeout);
+        if (!res.headersSent) {
+          res.status(200).json({
+            jsonrpc: "2.0",
+            id: 1,
+            result: { message: "Server shutdown requested" },
+          });
+        }
         return;
       } else {
-        res.status(405).json({
-          jsonrpc: "2.0",
-          id: null,
-          error: {
-            code: -32601,
-            message: "Method not allowed",
-            data: `HTTP method ${req.method} is not supported. Use GET for tool listing or POST for tool calls.`,
-          },
-        });
+        clearTimeout(timeout);
+        if (!res.headersSent) {
+          res.status(405).json({
+            jsonrpc: "2.0",
+            id: null,
+            error: {
+              code: -32601,
+              message: "Method not allowed",
+              data: `HTTP method ${req.method} is not supported. Use GET for tool listing or POST for tool calls.`,
+            },
+          });
+        }
         return;
       }
     } catch (error) {
@@ -141,12 +195,14 @@ export class PresearchHttpServer {
    * Process MCP JSON-RPC request
    *
    * Implements Smithery's lazy loading pattern:
-   * - tools/list: Returns tool definitions without requiring API key
+   * - tools/list: Returns tool definitions without requiring API key (fast response)
    * - tools/call: Validates API key and executes tools
    */
   private async processMcpRequest(
     request: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
+    const startTime = Date.now();
+    
     logger.info("Processing MCP request", {
       method: request.method,
       id: request.id,
@@ -156,8 +212,24 @@ export class PresearchHttpServer {
     const { method, params, id } = request;
 
     if (method === "tools/list") {
-      const tools = this.presearchServer.getToolDefinitions();
-      return { jsonrpc: "2.0", id, result: { tools } };
+      // Fast tool list response - no API key validation or heavy initialization
+      try {
+        const tools = this.presearchServer.getToolDefinitions();
+        const responseTime = Date.now() - startTime;
+        logger.info("Tool list request completed", { responseTime });
+        return { jsonrpc: "2.0", id, result: { tools } };
+      } catch (error) {
+        logger.error("Failed to get tool definitions", { error });
+        return {
+          jsonrpc: "2.0",
+          id,
+          error: {
+            code: -32603,
+            message: "Internal error getting tool definitions",
+            data: error instanceof Error ? error.message : "Unknown error",
+          },
+        };
+      }
     }
 
     if (method === "tools/call") {
@@ -182,11 +254,34 @@ export class PresearchHttpServer {
       const tool = this.presearchServer.getTool(name);
 
       if (!tool) {
-        throw new Error(`Unknown tool: ${name}`);
+        return {
+          jsonrpc: "2.0",
+          id,
+          error: {
+            code: -32601,
+            message: "Tool not found",
+            data: `Unknown tool: ${name}`,
+          },
+        };
       }
 
-      const result = await tool.handler(args || {});
-      return { jsonrpc: "2.0", id, result };
+      try {
+        const result = await tool.handler(args || {});
+        const responseTime = Date.now() - startTime;
+        logger.info("Tool call completed", { tool: name, responseTime });
+        return { jsonrpc: "2.0", id, result };
+      } catch (error) {
+        logger.error("Tool execution failed", { tool: name, error });
+        return {
+          jsonrpc: "2.0",
+          id,
+          error: {
+            code: -32603,
+            message: "Tool execution failed",
+            data: error instanceof Error ? error.message : "Unknown error",
+          },
+        };
+      }
     }
 
     return {
@@ -243,10 +338,4 @@ export class PresearchHttpServer {
   }
 }
 
-(async () => {
-  const server = new PresearchHttpServer();
-  await server.start();
-  // eslint-disable-next-line no-console
-  console.log("Server startup complete, process should remain active.");
-  // Removed: await new Promise(() => {});
-})();
+// Export for use in index.ts - removed IIFE to prevent duplicate server creation

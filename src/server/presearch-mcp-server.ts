@@ -29,6 +29,8 @@ export class PresearchServer {
       handler: (args: Record<string, unknown>) => Promise<unknown>;
     }
   > = new Map();
+  private toolDefinitionsCache?: any[];
+  private toolsRegistered = false;
 
   constructor(config: Configuration) {
     this.config = config;
@@ -40,9 +42,10 @@ export class PresearchServer {
     this.errorHandler = ErrorHandler.getInstance();
     this.responseProcessor = ResponseProcessor.getInstance();
 
-    this.registerTools();
+    // Defer tool registration for true lazy loading
+    // Tools will be registered when first requested
 
-    logger.info("Presearch MCP Server created", {
+    logger.info("Presearch MCP Server created (lazy loading enabled)", {
       name: "presearch-mcp-server",
       version: "3.0.0",
       hasApiKey: !!config.getApiKey(),
@@ -74,9 +77,10 @@ export class PresearchServer {
    */
   async initialize(): Promise<void> {
     try {
-      // Skip component initialization for true lazy loading
-      // Components will be initialized only when tools are actually called
-      logger.info("Presearch MCP Server initialized successfully (lazy loading enabled)");
+      // Initialize components immediately for Smithery compatibility
+      // This ensures tools are pre-registered for instant discovery
+      await this.lazyInitializeComponents();
+      logger.info("Presearch MCP Server initialized successfully (tools pre-registered)");
     } catch (error) {
       logger.error("Failed to initialize Presearch MCP Server", {
         error: error instanceof Error ? error.message : "Unknown error",
@@ -198,10 +202,19 @@ export class PresearchServer {
       "API connectivity test skipped - will test on first actual search request",
     );
 
+    // Pre-register tools for instant Smithery tool discovery
+    logger.info("Pre-registering tools for fast discovery...");
+    this.registerTools();
+    this.toolsRegistered = true;
+    this.toolDefinitionsCache = Array.from(this.tools.values()).map((tool) => tool.definition);
+    logger.info(`Pre-registered ${this.toolDefinitionsCache.length} tools for instant discovery`);
+
     logger.info("All components initialized successfully", {
       apiClientInitialized: !!this.apiClient,
       cacheManagerInitialized: !!this.cacheManager,
       apiKeyConfigured: !!apiKey,
+      toolsPreRegistered: this.toolsRegistered,
+      toolCount: this.toolDefinitionsCache.length,
     });
   }
 
@@ -238,11 +251,24 @@ export class PresearchServer {
    */
 
   /**
-   * Get tool definitions
+   * Get tool definitions with instant response
+   * Tools are pre-registered during server initialization for Smithery compatibility
    */
   getToolDefinitions(): any[] {
-    // Return pre-computed tool definitions to avoid blocking zodToJsonSchema conversion
-    return Array.from(this.tools.values()).map((tool) => tool.definition);
+    // Return pre-cached definitions for instant response
+    if (this.toolDefinitionsCache) {
+      return this.toolDefinitionsCache;
+    }
+
+    // Fallback: register tools if somehow not done during initialization
+    if (!this.toolsRegistered) {
+      logger.warn("Tools not pre-registered, registering now (this may cause delays)");
+      this.registerTools();
+      this.toolsRegistered = true;
+      this.toolDefinitionsCache = Array.from(this.tools.values()).map((tool) => tool.definition);
+    }
+
+    return this.toolDefinitionsCache || [];
   }
 
   getTool(name: string):
@@ -255,9 +281,18 @@ export class PresearchServer {
   }
 
   /**
-   * Handle tool call requests
+   * Register tools with optimized schema conversion
+   * This method is called lazily when tools are first requested
    */
   private registerTools(): void {
+    // Skip registration if tools are already registered
+    if (this.toolsRegistered && this.tools.size > 0) {
+      logger.debug("Tools already registered, skipping re-registration");
+      return;
+    }
+
+    const startTime = Date.now();
+    logger.info("Registering tools (lazy loading)...");
     type ToolConfig = {
       name: string;
       definition: {
@@ -467,6 +502,12 @@ export class PresearchServer {
         definition: fullDefinition,
         handler: config.handler,
       });
+    });
+
+    const registrationTime = Date.now() - startTime;
+    logger.info(`Tools registered successfully in ${registrationTime}ms`, {
+      toolCount: this.tools.size,
+      registrationTime,
     });
   }
 
