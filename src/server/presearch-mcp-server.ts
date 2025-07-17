@@ -1498,7 +1498,11 @@ export class PresearchServer {
   async start(): Promise<void> {
     await this.initialize();
     this.listening = true;
-    logger.info("Presearch MCP Server started successfully");
+    // Add health endpoint for Smithery
+    this.server.server.app.get('/health', (_req, res) => {
+      res.status(200).json({ status: 'healthy' });
+    });
+    logger.info("Presearch MCP Server started successfully with health endpoint");
   }
 
   /**
