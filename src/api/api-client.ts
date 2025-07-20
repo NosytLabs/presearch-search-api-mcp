@@ -146,7 +146,7 @@ export class PresearchApiClient {
     this.circuitBreaker = new CircuitBreaker({
       failureThreshold: 5, // MCP-recommended failure threshold
     });
-    this.circuitBreaker.on('stateChange', (state: string) => {
+    this.circuitBreaker.on("stateChange", (state: string) => {
       logger.warn(`Breaker state: ${state}`);
     });
   }
@@ -181,10 +181,7 @@ export class PresearchApiClient {
 
     if (axiosError.request) {
       // Network error
-      return new Error(
-        "Network error - no response received",
-        axiosError,
-      );
+      return new Error("Network error - no response received", axiosError);
     }
 
     // Other errors
@@ -247,7 +244,9 @@ export class PresearchApiClient {
       params,
     };
 
-    const response = await this.executeRequest(() => this.axiosInstance.request(requestConfig));
+    const response = await this.executeRequest(() =>
+      this.axiosInstance.request(requestConfig),
+    );
 
     if (this.config.isCacheEnabled()) {
       await cacheManager.set(cacheKey, response, this.config.getCacheTTL());
@@ -298,28 +297,30 @@ export class PresearchApiClient {
    */
   getHealthStatus() {
     return {
-      rateLimiter: this.rateLimiter ? {
-        isEnabled: true,
-        requests: this.config.getRateLimitRequests(),
-        window: this.config.getRateLimitWindow()
-      } : { isEnabled: false },
+      rateLimiter: this.rateLimiter
+        ? {
+            isEnabled: true,
+            requests: this.config.getRateLimitRequests(),
+            window: this.config.getRateLimitWindow(),
+          }
+        : { isEnabled: false },
       circuitBreaker: {
         isEnabled: this.config.isCircuitBreakerEnabled(),
-        state: this.circuitBreaker?.getState() || 'unknown'
+        state: this.circuitBreaker?.getState() || "unknown",
       },
       apiKey: {
         configured: !!this.apiKey,
-        validated: this.config.hasApiKey()
-      }
+        validated: this.config.hasApiKey(),
+      },
     };
-   }
+  }
 
-   /**
-     * Reset the API client state
-     */
-    resetState(): void {
-      this.circuitBreaker?.forceReset();
-      this.rateLimiter?.reset();
-      // Reset any other stateful components if needed
-    }
- }
+  /**
+   * Reset the API client state
+   */
+  resetState(): void {
+    this.circuitBreaker?.forceReset();
+    this.rateLimiter?.reset();
+    // Reset any other stateful components if needed
+  }
+}

@@ -1,11 +1,11 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 
 export enum LogLevel {
   ERROR = 0,
   WARN = 1,
   INFO = 2,
-  DEBUG = 3
+  DEBUG = 3,
 }
 
 export interface LogConfig {
@@ -30,21 +30,21 @@ interface LogContext {
  */
 export class Logger {
   private static defaultConfig: LogConfig = {
-  level: LogLevel.INFO,
-  enableConsole: true,
-  enableFile: false,
-  filePath: './logs/app.log',
-  maxFileSize: 10 * 1024 * 1024,
-  maxFiles: 5,
-  enableRotation: true,
-  enableStructuredLogging: true,
-  enablePerformanceLogging: false
-};
+    level: LogLevel.INFO,
+    enableConsole: true,
+    enableFile: false,
+    filePath: "./logs/app.log",
+    maxFileSize: 10 * 1024 * 1024,
+    maxFiles: 5,
+    enableRotation: true,
+    enableStructuredLogging: true,
+    enablePerformanceLogging: false,
+  };
 
-private static instance: Logger | null = null;
+  private static instance: Logger | null = null;
   private config: LogConfig;
-private isShutdown: boolean = false;
-private timers: Map<string, number> = new Map();
+  private isShutdown: boolean = false;
+  private timers: Map<string, number> = new Map();
 
   private constructor(config: LogConfig = Logger.defaultConfig) {
     this.config = config;
@@ -59,12 +59,11 @@ private timers: Map<string, number> = new Map();
     return Logger.instance;
   }
 
-  
   /**
    * Log a message with the specified level
    */
   public log(level: LogLevel, message: any, context?: LogContext | null): void {
-    if (typeof message !== 'string') {
+    if (typeof message !== "string") {
       message = this.stringifySafe(message);
     }
     if (this.isShutdown) return;
@@ -73,13 +72,13 @@ private timers: Map<string, number> = new Map();
     const timestamp = new Date().toISOString();
     const levelStr = LogLevel[level].toUpperCase();
 
-    let callerInfo = '';
+    let callerInfo = "";
     if (level === LogLevel.DEBUG) {
       const stack = new Error().stack;
       if (stack) {
-        const lines = stack.split('\n');
+        const lines = stack.split("\n");
         const callerLine = lines[3] || lines[2];
-        callerInfo = callerLine ? callerLine.trim() : '';
+        callerInfo = callerLine ? callerLine.trim() : "";
       }
     }
 
@@ -97,10 +96,18 @@ private timers: Map<string, number> = new Map();
     if (this.config.enableConsole) {
       let consoleMethod = console.log;
       switch (level) {
-        case LogLevel.ERROR: consoleMethod = console.error; break;
-        case LogLevel.WARN: consoleMethod = console.warn; break;
-        case LogLevel.INFO: consoleMethod = console.info; break;
-        case LogLevel.DEBUG: consoleMethod = console.debug; break;
+        case LogLevel.ERROR:
+          consoleMethod = console.error;
+          break;
+        case LogLevel.WARN:
+          consoleMethod = console.warn;
+          break;
+        case LogLevel.INFO:
+          consoleMethod = console.info;
+          break;
+        case LogLevel.DEBUG:
+          consoleMethod = console.debug;
+          break;
       }
       try {
         consoleMethod(...logArgs);
@@ -110,7 +117,7 @@ private timers: Map<string, number> = new Map();
     }
 
     if (this.config.enableFile) {
-      this.writeToLogFile(logArgs.join(' '));
+      this.writeToLogFile(logArgs.join(" "));
     }
   }
 
@@ -147,18 +154,22 @@ private timers: Map<string, number> = new Map();
   private stringifySafe(obj: any): string {
     const seen = new WeakSet();
     return JSON.stringify(obj, (key, value) => {
-      if (typeof value === 'object' && value !== null) {
+      if (typeof value === "object" && value !== null) {
         if (seen.has(value)) {
-          return '[Circular]';
+          return "[Circular]";
         }
         seen.add(value);
       }
-      if (key.toLowerCase().includes('key') || key.toLowerCase().includes('token') || key.toLowerCase().includes('password')) {
-        return '[REDACTED]';
+      if (
+        key.toLowerCase().includes("key") ||
+        key.toLowerCase().includes("token") ||
+        key.toLowerCase().includes("password")
+      ) {
+        return "[REDACTED]";
       }
-      if (typeof value === 'function') return '[Function]';
-      if (typeof value === 'bigint') return value.toString();
-      if (typeof value === 'symbol') return value.toString();
+      if (typeof value === "function") return "[Function]";
+      if (typeof value === "bigint") return value.toString();
+      if (typeof value === "symbol") return value.toString();
       return value;
     });
   }
@@ -173,9 +184,9 @@ private timers: Map<string, number> = new Map();
           if (stats.size > this.config.maxFileSize) this.rotateLogs();
         }
       }
-      fs.appendFileSync(this.config.filePath, logMessage + '\n', 'utf8');
+      fs.appendFileSync(this.config.filePath, logMessage + "\n", "utf8");
     } catch (e) {
-      console.error('Failed to write to log file', e);
+      console.error("Failed to write to log file", e);
     }
   }
 
@@ -194,12 +205,12 @@ private timers: Map<string, number> = new Map();
       }
       fs.renameSync(this.config.filePath, `${this.config.filePath}.1`);
     } catch (e) {
-      console.error('Log rotation failed', e);
+      console.error("Log rotation failed", e);
     }
   }
 
   public startTimer(operation: string): string {
-    if (!this.config.enablePerformanceLogging) return '';
+    if (!this.config.enablePerformanceLogging) return "";
     this.cleanupOldTimers();
     const id = `${operation}_${Date.now()}`;
     this.timers.set(id, Date.now());

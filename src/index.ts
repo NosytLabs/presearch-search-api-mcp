@@ -25,10 +25,6 @@ async function main(): Promise<void> {
       await server.stop();
       process.exit(0);
     });
-
-
-
-
   } catch (error: any) {
     logger.error("Failed to start server", { error: error.message });
     process.exit(1);

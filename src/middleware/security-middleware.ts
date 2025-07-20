@@ -2,8 +2,11 @@
  * Security middleware for adding security headers and additional protections
  */
 
-import { Logger } from '../utils/logger';
-import { SecurityError, InputSanitizationError } from '../utils/enhanced-error-types';
+import { Logger } from "../utils/logger";
+import {
+  SecurityError,
+  InputSanitizationError,
+} from "../utils/enhanced-error-types";
 
 export interface SecurityConfig {
   enableCSP: boolean;
@@ -21,14 +24,14 @@ export interface SecurityConfig {
 }
 
 export interface SecurityHeaders {
-  'Content-Security-Policy'?: string;
-  'Strict-Transport-Security'?: string;
-  'X-Frame-Options'?: string;
-  'X-Content-Type-Options'?: string;
-  'Referrer-Policy'?: string;
-  'Permissions-Policy'?: string;
-  'X-XSS-Protection'?: string;
-  'X-DNS-Prefetch-Control'?: string;
+  "Content-Security-Policy"?: string;
+  "Strict-Transport-Security"?: string;
+  "X-Frame-Options"?: string;
+  "X-Content-Type-Options"?: string;
+  "Referrer-Policy"?: string;
+  "Permissions-Policy"?: string;
+  "X-XSS-Protection"?: string;
+  "X-DNS-Prefetch-Control"?: string;
 }
 
 export interface SecurityContext {
@@ -44,8 +47,12 @@ export interface SecurityContext {
 }
 
 export interface SuspiciousActivity {
-  type: 'RAPID_REQUESTS' | 'INVALID_INPUT' | 'SUSPICIOUS_HEADERS' | 'MALFORMED_REQUEST';
-  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  type:
+    | "RAPID_REQUESTS"
+    | "INVALID_INPUT"
+    | "SUSPICIOUS_HEADERS"
+    | "MALFORMED_REQUEST";
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   description: string;
   context: SecurityContext;
   timestamp: Date;
@@ -58,7 +65,8 @@ export class SecurityMiddleware {
   private static instance: SecurityMiddleware;
   private logger: Logger;
   private config: SecurityConfig;
-  private requestCounts: Map<string, { count: number; firstRequest: Date }> = new Map();
+  private requestCounts: Map<string, { count: number; firstRequest: Date }> =
+    new Map();
   private suspiciousActivities: SuspiciousActivity[] = [];
   private blockedIPs: Set<string> = new Set();
 
@@ -72,7 +80,7 @@ export class SecurityMiddleware {
       enableReferrerPolicy: true,
       enablePermissionsPolicy: true,
       maxRequestSize: 10 * 1024 * 1024, // 10MB
-      allowedOrigins: ['*'], // Configure based on your needs
+      allowedOrigins: ["*"], // Configure based on your needs
       rateLimitWindow: 60000, // 1 minute
       rateLimitMax: 100, // 100 requests per minute
       enableRequestLogging: true,
@@ -82,12 +90,14 @@ export class SecurityMiddleware {
 
     // Clean up old request counts periodically
     setInterval(() => this.cleanupRequestCounts(), 60000); // Every minute
-    
+
     // Clean up old suspicious activities
     setInterval(() => this.cleanupSuspiciousActivities(), 300000); // Every 5 minutes
   }
 
-  public static getInstance(config?: Partial<SecurityConfig>): SecurityMiddleware {
+  public static getInstance(
+    config?: Partial<SecurityConfig>,
+  ): SecurityMiddleware {
     if (!SecurityMiddleware.instance) {
       SecurityMiddleware.instance = new SecurityMiddleware(config);
     }
@@ -99,14 +109,16 @@ export class SecurityMiddleware {
    */
   public async applySecurityMiddleware(
     request: any,
-    context?: Record<string, unknown>
+    context?: Record<string, unknown>,
   ): Promise<{ headers: SecurityHeaders; context: SecurityContext }> {
     const securityContext = this.createSecurityContext(request);
-    
+
     try {
       // Check if IP is blocked
       if (this.isIPBlocked(securityContext.ipAddress)) {
-        throw new SecurityError(`IP address ${securityContext.ipAddress} is blocked`);
+        throw new SecurityError(
+          `IP address ${securityContext.ipAddress} is blocked`,
+        );
       }
 
       // Apply rate limiting
@@ -133,7 +145,7 @@ export class SecurityMiddleware {
 
       return { headers, context: securityContext };
     } catch (error) {
-      this.logger.error('Security middleware error', {
+      this.logger.error("Security middleware error", {
         error: error instanceof Error ? error.message : String(error),
         context: securityContext,
       });
@@ -148,9 +160,9 @@ export class SecurityMiddleware {
     return {
       requestId: this.generateRequestId(),
       timestamp: new Date(),
-      userAgent: request.headers?.['user-agent'],
-      origin: request.headers?.['origin'],
-      referer: request.headers?.['referer'],
+      userAgent: request.headers?.["user-agent"],
+      origin: request.headers?.["origin"],
+      referer: request.headers?.["referer"],
       ipAddress: this.extractIPAddress(request),
       method: request.method,
       path: request.url || request.path,
@@ -164,32 +176,34 @@ export class SecurityMiddleware {
   private extractIPAddress(request: any): string {
     // Try various headers for IP address
     const ipHeaders = [
-      'x-forwarded-for',
-      'x-real-ip',
-      'x-client-ip',
-      'cf-connecting-ip',
-      'true-client-ip',
+      "x-forwarded-for",
+      "x-real-ip",
+      "x-client-ip",
+      "cf-connecting-ip",
+      "true-client-ip",
     ];
 
     for (const header of ipHeaders) {
       const ip = request.headers?.[header];
       if (ip) {
         // Take the first IP if comma-separated
-        return ip.split(',')[0].trim();
+        return ip.split(",")[0].trim();
       }
     }
 
-    return request.connection?.remoteAddress || 
-           request.socket?.remoteAddress || 
-           request.ip || 
-           'unknown';
+    return (
+      request.connection?.remoteAddress ||
+      request.socket?.remoteAddress ||
+      request.ip ||
+      "unknown"
+    );
   }
 
   /**
    * Apply rate limiting
    */
   private async applyRateLimit(context: SecurityContext): Promise<void> {
-    const key = context.ipAddress || 'unknown';
+    const key = context.ipAddress || "unknown";
     const now = new Date();
     const windowStart = new Date(now.getTime() - this.config.rateLimitWindow);
 
@@ -205,8 +219,8 @@ export class SecurityMiddleware {
     if (requestData.count > this.config.rateLimitMax) {
       // Record suspicious activity
       this.recordSuspiciousActivity({
-        type: 'RAPID_REQUESTS',
-        severity: 'HIGH',
+        type: "RAPID_REQUESTS",
+        severity: "HIGH",
         description: `Rate limit exceeded: ${requestData.count} requests in window`,
         context,
         timestamp: now,
@@ -219,7 +233,7 @@ export class SecurityMiddleware {
       }
 
       throw new SecurityError(
-        `Rate limit exceeded for IP ${key}: ${requestData.count} requests in ${this.config.rateLimitWindow}ms window`
+        `Rate limit exceeded for IP ${key}: ${requestData.count} requests in ${this.config.rateLimitWindow}ms window`,
       );
     }
   }
@@ -228,10 +242,13 @@ export class SecurityMiddleware {
    * Validate request size
    */
   private validateRequestSize(request: any): void {
-    const contentLength = parseInt(request.headers?.['content-length'] || '0', 10);
+    const contentLength = parseInt(
+      request.headers?.["content-length"] || "0",
+      10,
+    );
     if (contentLength > this.config.maxRequestSize) {
       throw new SecurityError(
-        `Request size ${contentLength} exceeds maximum allowed size ${this.config.maxRequestSize}`
+        `Request size ${contentLength} exceeds maximum allowed size ${this.config.maxRequestSize}`,
       );
     }
   }
@@ -251,19 +268,20 @@ export class SecurityMiddleware {
     ];
 
     for (const [name, value] of Object.entries(headers)) {
-      if (typeof value === 'string') {
+      if (typeof value === "string") {
         // Check for suspicious patterns
         for (const pattern of suspiciousPatterns) {
           if (pattern.test(value)) {
             throw new InputSanitizationError(
               value,
-              `Suspicious pattern detected in header ${name}`
+              `Suspicious pattern detected in header ${name}`,
             );
           }
         }
 
         // Validate header length
-        if (value.length > 8192) { // 8KB limit per header
+        if (value.length > 8192) {
+          // 8KB limit per header
           throw new SecurityError(`Header ${name} exceeds maximum length`);
         }
       }
@@ -287,10 +305,12 @@ export class SecurityMiddleware {
         /java/i,
       ];
 
-      if (suspiciousUAPatterns.some(pattern => pattern.test(context.userAgent!))) {
+      if (
+        suspiciousUAPatterns.some((pattern) => pattern.test(context.userAgent!))
+      ) {
         this.recordSuspiciousActivity({
-          type: 'SUSPICIOUS_HEADERS',
-          severity: 'MEDIUM',
+          type: "SUSPICIOUS_HEADERS",
+          severity: "MEDIUM",
           description: `Suspicious user agent: ${context.userAgent}`,
           context,
           timestamp: new Date(),
@@ -299,11 +319,11 @@ export class SecurityMiddleware {
     }
 
     // Check for missing common headers
-    if (!context.headers?.['user-agent'] && !context.headers?.['accept']) {
+    if (!context.headers?.["user-agent"] && !context.headers?.["accept"]) {
       this.recordSuspiciousActivity({
-        type: 'SUSPICIOUS_HEADERS',
-        severity: 'MEDIUM',
-        description: 'Missing common headers (User-Agent, Accept)',
+        type: "SUSPICIOUS_HEADERS",
+        severity: "MEDIUM",
+        description: "Missing common headers (User-Agent, Accept)",
         context,
         timestamp: new Date(),
       });
@@ -317,7 +337,7 @@ export class SecurityMiddleware {
     const headers: SecurityHeaders = {};
 
     if (this.config.enableCSP) {
-      headers['Content-Security-Policy'] = [
+      headers["Content-Security-Policy"] = [
         "default-src 'self'",
         "script-src 'self' 'unsafe-inline'",
         "style-src 'self' 'unsafe-inline'",
@@ -327,38 +347,39 @@ export class SecurityMiddleware {
         "object-src 'none'",
         "media-src 'self'",
         "frame-src 'none'",
-      ].join('; ');
+      ].join("; ");
     }
 
     if (this.config.enableHSTS) {
-      headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload';
+      headers["Strict-Transport-Security"] =
+        "max-age=31536000; includeSubDomains; preload";
     }
 
     if (this.config.enableXFrameOptions) {
-      headers['X-Frame-Options'] = 'DENY';
+      headers["X-Frame-Options"] = "DENY";
     }
 
     if (this.config.enableXContentTypeOptions) {
-      headers['X-Content-Type-Options'] = 'nosniff';
+      headers["X-Content-Type-Options"] = "nosniff";
     }
 
     if (this.config.enableReferrerPolicy) {
-      headers['Referrer-Policy'] = 'strict-origin-when-cross-origin';
+      headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
     }
 
     if (this.config.enablePermissionsPolicy) {
-      headers['Permissions-Policy'] = [
-        'camera=()',
-        'microphone=()',
-        'geolocation=()',
-        'payment=()',
-        'usb=()',
-      ].join(', ');
+      headers["Permissions-Policy"] = [
+        "camera=()",
+        "microphone=()",
+        "geolocation=()",
+        "payment=()",
+        "usb=()",
+      ].join(", ");
     }
 
     // Additional security headers
-    headers['X-XSS-Protection'] = '1; mode=block';
-    headers['X-DNS-Prefetch-Control'] = 'off';
+    headers["X-XSS-Protection"] = "1; mode=block";
+    headers["X-DNS-Prefetch-Control"] = "off";
 
     return headers;
   }
@@ -368,8 +389,8 @@ export class SecurityMiddleware {
    */
   private recordSuspiciousActivity(activity: SuspiciousActivity): void {
     this.suspiciousActivities.push(activity);
-    
-    this.logger.warn('Suspicious activity detected', {
+
+    this.logger.warn("Suspicious activity detected", {
       type: activity.type,
       severity: activity.severity,
       description: activity.description,
@@ -394,7 +415,7 @@ export class SecurityMiddleware {
    */
   private cleanupRequestCounts(): void {
     const cutoff = new Date(Date.now() - this.config.rateLimitWindow * 2);
-    
+
     for (const [key, data] of this.requestCounts.entries()) {
       if (data.firstRequest < cutoff) {
         this.requestCounts.delete(key);
@@ -408,7 +429,7 @@ export class SecurityMiddleware {
   private cleanupSuspiciousActivities(): void {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours
     this.suspiciousActivities = this.suspiciousActivities.filter(
-      activity => activity.timestamp > cutoff
+      (activity) => activity.timestamp > cutoff,
     );
   }
 
@@ -422,8 +443,11 @@ export class SecurityMiddleware {
   /**
    * Log request for security monitoring
    */
-  private logRequest(context: SecurityContext, additionalContext?: Record<string, unknown>): void {
-    this.logger.info('Security middleware request', {
+  private logRequest(
+    context: SecurityContext,
+    additionalContext?: Record<string, unknown>,
+  ): void {
+    this.logger.info("Security middleware request", {
       requestId: context.requestId,
       method: context.method,
       path: context.path,
@@ -457,7 +481,7 @@ export class SecurityMiddleware {
    */
   public updateConfig(newConfig: Partial<SecurityConfig>): void {
     this.config = { ...this.config, ...newConfig };
-    this.logger.info('Security configuration updated', { config: this.config });
+    this.logger.info("Security configuration updated", { config: this.config });
   }
 
   /**

@@ -1,14 +1,17 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { PresearchApiClient } from "../api/api-client.js";
-import { PresearchServerConfig, ConfigType } from "../config/presearch-server-config.js";
+import {
+  PresearchServerConfig,
+  ConfigType,
+} from "../config/presearch-server-config.js";
 import { logger } from "../utils/logger.js";
 
 export class PresearchServer {
   private server: McpServer;
   private config: PresearchServerConfig;
   private apiClient: PresearchApiClient | null = null;
-  
+
   private isInitialized = false;
   private listening = false;
 
@@ -40,7 +43,8 @@ export class PresearchServer {
       "presearch_search",
       {
         title: "Presearch Search",
-        description: "Performs a web search using the Presearch engine with comprehensive filtering options.",
+        description:
+          "Performs a web search using the Presearch engine with comprehensive filtering options.",
         inputSchema: {
           query: z.string().min(1, "Query must be a non-empty string"),
           page: z.number().int().positive().optional(),
@@ -52,7 +56,7 @@ export class PresearchServer {
           safe: z.enum(["0", "1"]).optional(),
         },
       },
-      this.handleSearchTool.bind(this)
+      this.handleSearchTool.bind(this),
     );
 
     this.isInitialized = true;
@@ -72,12 +76,8 @@ export class PresearchServer {
     }
   }
 
-
-
   public async handleSearchTool(args: Record<string, unknown>) {
     try {
-
-
       // Validate arguments using Zod
       const schema = z.object({
         query: z.string().min(1, "Query must be a non-empty string"),
@@ -96,7 +96,9 @@ export class PresearchServer {
       await this.lazyInitializeComponents();
 
       if (!this.config.getApiKey()) {
-        throw new Error("API key is required for search execution. Please configure PRESEARCH_API_KEY environment variable.");
+        throw new Error(
+          "API key is required for search execution. Please configure PRESEARCH_API_KEY environment variable.",
+        );
       }
 
       if (!this.apiClient) {
@@ -115,8 +117,14 @@ export class PresearchServer {
 
       const searchResponse = await this.apiClient.search(searchRequest);
 
-      if (searchResponse.results && searchResponse.results.length > resultsPerPage) {
-        searchResponse.results = searchResponse.results.slice(0, resultsPerPage);
+      if (
+        searchResponse.results &&
+        searchResponse.results.length > resultsPerPage
+      ) {
+        searchResponse.results = searchResponse.results.slice(
+          0,
+          resultsPerPage,
+        );
       }
 
       return {
@@ -137,7 +145,10 @@ export class PresearchServer {
         content: [
           {
             type: "text" as const,
-            text: error instanceof Error ? error.message : "An unknown error occurred",
+            text:
+              error instanceof Error
+                ? error.message
+                : "An unknown error occurred",
           },
         ],
         isError: true,

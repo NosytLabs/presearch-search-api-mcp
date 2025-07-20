@@ -3,23 +3,23 @@
  */
 
 export enum ErrorCategory {
-  AUTHENTICATION = 'AUTHENTICATION',
-  AUTHORIZATION = 'AUTHORIZATION',
-  VALIDATION = 'VALIDATION',
-  NETWORK = 'NETWORK',
-  RATE_LIMIT = 'RATE_LIMIT',
-  API = 'API',
-  CACHE = 'CACHE',
-  CONFIGURATION = 'CONFIGURATION',
-  TIMEOUT = 'TIMEOUT',
-  UNKNOWN = 'UNKNOWN',
+  AUTHENTICATION = "AUTHENTICATION",
+  AUTHORIZATION = "AUTHORIZATION",
+  VALIDATION = "VALIDATION",
+  NETWORK = "NETWORK",
+  RATE_LIMIT = "RATE_LIMIT",
+  API = "API",
+  CACHE = "CACHE",
+  CONFIGURATION = "CONFIGURATION",
+  TIMEOUT = "TIMEOUT",
+  UNKNOWN = "UNKNOWN",
 }
 
 export enum ErrorSeverity {
-  LOW = 'LOW',
-  MEDIUM = 'MEDIUM',
-  HIGH = 'HIGH',
-  CRITICAL = 'CRITICAL',
+  LOW = "LOW",
+  MEDIUM = "MEDIUM",
+  HIGH = "HIGH",
+  CRITICAL = "CRITICAL",
 }
 
 export interface ErrorContext {
@@ -58,7 +58,7 @@ export abstract class BaseError extends Error {
     severity: ErrorSeverity,
     isRetryable: boolean = false,
     retryAfter?: number,
-    context?: ErrorContext
+    context?: ErrorContext,
   ) {
     super(message);
     this.name = this.constructor.name;
@@ -94,20 +94,30 @@ export abstract class BaseError extends Error {
  * Authentication related errors
  */
 export class AuthenticationError extends BaseError {
-  constructor(message: string = 'Authentication failed', context?: ErrorContext) {
-    super(message, ErrorCategory.AUTHENTICATION, ErrorSeverity.HIGH, false, undefined, context);
+  constructor(
+    message: string = "Authentication failed",
+    context?: ErrorContext,
+  ) {
+    super(
+      message,
+      ErrorCategory.AUTHENTICATION,
+      ErrorSeverity.HIGH,
+      false,
+      undefined,
+      context,
+    );
   }
 }
 
 export class InvalidApiKeyError extends AuthenticationError {
   constructor(context?: ErrorContext) {
-    super('Invalid or missing API key', context);
+    super("Invalid or missing API key", context);
   }
 }
 
 export class ExpiredApiKeyError extends AuthenticationError {
   constructor(context?: ErrorContext) {
-    super('API key has expired', context);
+    super("API key has expired", context);
   }
 }
 
@@ -115,8 +125,15 @@ export class ExpiredApiKeyError extends AuthenticationError {
  * Authorization related errors
  */
 export class AuthorizationError extends BaseError {
-  constructor(message: string = 'Access denied', context?: ErrorContext) {
-    super(message, ErrorCategory.AUTHORIZATION, ErrorSeverity.HIGH, false, undefined, context);
+  constructor(message: string = "Access denied", context?: ErrorContext) {
+    super(
+      message,
+      ErrorCategory.AUTHORIZATION,
+      ErrorSeverity.HIGH,
+      false,
+      undefined,
+      context,
+    );
   }
 }
 
@@ -133,31 +150,47 @@ export class ValidationError extends BaseError {
   public readonly validationErrors: Array<{ field: string; message: string }>;
 
   constructor(
-    message: string = 'Validation failed',
+    message: string = "Validation failed",
     validationErrors: Array<{ field: string; message: string }> = [],
-    context?: ErrorContext
+    context?: ErrorContext,
   ) {
-    super(message, ErrorCategory.VALIDATION, ErrorSeverity.MEDIUM, false, undefined, context);
+    super(
+      message,
+      ErrorCategory.VALIDATION,
+      ErrorSeverity.MEDIUM,
+      false,
+      undefined,
+      context,
+    );
     this.validationErrors = validationErrors;
   }
 }
 
 export class InvalidInputError extends ValidationError {
-  constructor(field: string, value: unknown, expectedFormat: string, context?: ErrorContext) {
-    const validationErrors = [{
-      field,
-      message: `Invalid ${field}: expected ${expectedFormat}, got ${typeof value}`,
-    }];
+  constructor(
+    field: string,
+    value: unknown,
+    expectedFormat: string,
+    context?: ErrorContext,
+  ) {
+    const validationErrors = [
+      {
+        field,
+        message: `Invalid ${field}: expected ${expectedFormat}, got ${typeof value}`,
+      },
+    ];
     super(`Invalid input for field '${field}'`, validationErrors, context);
   }
 }
 
 export class MissingRequiredFieldError extends ValidationError {
   constructor(field: string, context?: ErrorContext) {
-    const validationErrors = [{
-      field,
-      message: `Field '${field}' is required but was not provided`,
-    }];
+    const validationErrors = [
+      {
+        field,
+        message: `Field '${field}' is required but was not provided`,
+      },
+    ];
     super(`Missing required field '${field}'`, validationErrors, context);
   }
 }
@@ -170,12 +203,19 @@ export class NetworkError extends BaseError {
   public readonly responseBody?: string;
 
   constructor(
-    message: string = 'Network request failed',
+    message: string = "Network request failed",
     statusCode?: number,
     responseBody?: string,
-    context?: ErrorContext
+    context?: ErrorContext,
   ) {
-    super(message, ErrorCategory.NETWORK, ErrorSeverity.HIGH, true, undefined, context);
+    super(
+      message,
+      ErrorCategory.NETWORK,
+      ErrorSeverity.HIGH,
+      true,
+      undefined,
+      context,
+    );
     this.statusCode = statusCode;
     this.responseBody = responseBody;
   }
@@ -184,14 +224,18 @@ export class NetworkError extends BaseError {
 export class TimeoutError extends BaseError {
   public readonly timeoutMs: number;
 
-  constructor(timeoutMs: number, operation: string = 'operation', context?: ErrorContext) {
+  constructor(
+    timeoutMs: number,
+    operation: string = "operation",
+    context?: ErrorContext,
+  ) {
     super(
       `${operation} timed out after ${timeoutMs}ms`,
       ErrorCategory.TIMEOUT,
       ErrorSeverity.MEDIUM,
       true,
       Math.min(timeoutMs * 2, 30000), // Retry after double the timeout, max 30s
-      context
+      context,
     );
     this.timeoutMs = timeoutMs;
   }
@@ -209,7 +253,7 @@ export class RateLimitError extends BaseError {
     limit: number,
     remaining: number = 0,
     resetTime: Date,
-    context?: ErrorContext
+    context?: ErrorContext,
   ) {
     const retryAfter = Math.ceil((resetTime.getTime() - Date.now()) / 1000);
     super(
@@ -218,7 +262,7 @@ export class RateLimitError extends BaseError {
       ErrorSeverity.MEDIUM,
       true,
       retryAfter,
-      context
+      context,
     );
     this.limit = limit;
     this.remaining = remaining;
@@ -237,12 +281,20 @@ export class ApiError extends BaseError {
     message: string,
     statusCode: number,
     apiResponse?: Record<string, unknown>,
-    context?: ErrorContext
+    context?: ErrorContext,
   ) {
     const isRetryable = statusCode >= 500 || statusCode === 429;
-    const severity = statusCode >= 500 ? ErrorSeverity.HIGH : ErrorSeverity.MEDIUM;
-    
-    super(message, ErrorCategory.API, severity, isRetryable, undefined, context);
+    const severity =
+      statusCode >= 500 ? ErrorSeverity.HIGH : ErrorSeverity.MEDIUM;
+
+    super(
+      message,
+      ErrorCategory.API,
+      severity,
+      isRetryable,
+      undefined,
+      context,
+    );
     this.statusCode = statusCode;
     this.apiResponse = apiResponse;
   }
@@ -250,7 +302,12 @@ export class ApiError extends BaseError {
 
 export class ApiUnavailableError extends ApiError {
   constructor(serviceName: string, context?: ErrorContext) {
-    super(`${serviceName} API is currently unavailable`, 503, undefined, context);
+    super(
+      `${serviceName} API is currently unavailable`,
+      503,
+      undefined,
+      context,
+    );
   }
 }
 
@@ -258,14 +315,18 @@ export class ApiUnavailableError extends ApiError {
  * Cache related errors
  */
 export class CacheError extends BaseError {
-  constructor(message: string = 'Cache operation failed', severity: ErrorSeverity = ErrorSeverity.LOW, context?: ErrorContext) {
+  constructor(
+    message: string = "Cache operation failed",
+    severity: ErrorSeverity = ErrorSeverity.LOW,
+    context?: ErrorContext,
+  ) {
     super(message, ErrorCategory.CACHE, severity, false, undefined, context);
   }
 }
 
 export class CacheConnectionError extends CacheError {
   constructor(context?: ErrorContext) {
-    super('Failed to connect to cache', ErrorSeverity.MEDIUM, context);
+    super("Failed to connect to cache", ErrorSeverity.MEDIUM, context);
   }
 }
 
@@ -276,7 +337,14 @@ export class ConfigurationError extends BaseError {
   public readonly configKey?: string;
 
   constructor(message: string, configKey?: string, context?: ErrorContext) {
-    super(message, ErrorCategory.CONFIGURATION, ErrorSeverity.HIGH, false, undefined, context);
+    super(
+      message,
+      ErrorCategory.CONFIGURATION,
+      ErrorSeverity.HIGH,
+      false,
+      undefined,
+      context,
+    );
     this.configKey = configKey;
   }
 }
@@ -288,11 +356,15 @@ export class MissingConfigurationError extends ConfigurationError {
 }
 
 export class InvalidConfigurationError extends ConfigurationError {
-  constructor(configKey: string, expectedFormat: string, context?: ErrorContext) {
+  constructor(
+    configKey: string,
+    expectedFormat: string,
+    context?: ErrorContext,
+  ) {
     super(
       `Invalid configuration for ${configKey}: expected ${expectedFormat}`,
       configKey,
-      context
+      context,
     );
   }
 }
@@ -301,8 +373,18 @@ export class InvalidConfigurationError extends ConfigurationError {
  * Security related errors
  */
 export class SecurityError extends BaseError {
-  constructor(message: string = 'Security violation detected', context?: ErrorContext) {
-    super(message, ErrorCategory.AUTHENTICATION, ErrorSeverity.CRITICAL, false, undefined, context);
+  constructor(
+    message: string = "Security violation detected",
+    context?: ErrorContext,
+  ) {
+    super(
+      message,
+      ErrorCategory.AUTHENTICATION,
+      ErrorSeverity.CRITICAL,
+      false,
+      undefined,
+      context,
+    );
   }
 }
 
@@ -314,7 +396,10 @@ export class SuspiciousActivityError extends SecurityError {
 
 export class InputSanitizationError extends SecurityError {
   constructor(input: string, reason: string, context?: ErrorContext) {
-    super(`Input sanitization failed: ${reason}. Input: ${input.substring(0, 100)}...`, context);
+    super(
+      `Input sanitization failed: ${reason}. Input: ${input.substring(0, 100)}...`,
+      context,
+    );
   }
 }
 
@@ -329,7 +414,7 @@ export class ErrorUtils {
     if (error instanceof BaseError) {
       return error.isRetryable;
     }
-    
+
     // Check for common retryable error patterns
     const retryablePatterns = [
       /network/i,
@@ -339,8 +424,8 @@ export class ErrorUtils {
       /service.?unavailable/i,
       /internal.?server.?error/i,
     ];
-    
-    return retryablePatterns.some(pattern => pattern.test(error.message));
+
+    return retryablePatterns.some((pattern) => pattern.test(error.message));
   }
 
   /**
@@ -350,13 +435,13 @@ export class ErrorUtils {
     if (error instanceof BaseError && error.retryAfter) {
       return error.retryAfter * 1000; // Convert to milliseconds
     }
-    
+
     // Exponential backoff with jitter
     const baseDelay = 1000; // 1 second
     const maxDelay = 30000; // 30 seconds
     const delay = Math.min(baseDelay * Math.pow(2, attempt - 1), maxDelay);
     const jitter = Math.random() * 0.1 * delay; // 10% jitter
-    
+
     return delay + jitter;
   }
 
@@ -367,36 +452,46 @@ export class ErrorUtils {
     if (error instanceof BaseError) {
       return error;
     }
-    
+
     let message: string;
     if (error instanceof Error) {
       message = error.message;
       // Try to categorize based on error name or message
-      if (error.name.includes('Validation') || error.message.includes('validation')) {
+      if (
+        error.name.includes("Validation") ||
+        error.message.includes("validation")
+      ) {
         return new ValidationError(message, [], context);
       }
-      
-      if (error.name.includes('Network') || error.message.includes('network')) {
+
+      if (error.name.includes("Network") || error.message.includes("network")) {
         return new NetworkError(message, undefined, undefined, context);
       }
-      
-      if (error.name.includes('Timeout') || error.message.includes('timeout')) {
-        return new TimeoutError(30000, 'operation', context);
+
+      if (error.name.includes("Timeout") || error.message.includes("timeout")) {
+        return new TimeoutError(30000, "operation", context);
       }
-      
-      if (error.name.includes('Auth') || error.message.includes('auth')) {
+
+      if (error.name.includes("Auth") || error.message.includes("auth")) {
         return new AuthenticationError(message, context);
       }
-      
+
       // Default to unknown error
     } else {
-      message = typeof error === 'string' ? error : 'Unknown error occurred';
+      message = typeof error === "string" ? error : "Unknown error occurred";
     }
-    return new class extends BaseError {
+    return new (class extends BaseError {
       constructor() {
-        super(message, ErrorCategory.UNKNOWN, ErrorSeverity.HIGH, false, undefined, context);
+        super(
+          message,
+          ErrorCategory.UNKNOWN,
+          ErrorSeverity.HIGH,
+          false,
+          undefined,
+          context,
+        );
       }
-    }();
+    })();
   }
 
   /**
@@ -405,7 +500,7 @@ export class ErrorUtils {
   static createContext(
     operation: string,
     component: string,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): ErrorContext {
     return {
       operation,

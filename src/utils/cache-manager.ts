@@ -61,7 +61,7 @@ export class CacheManager extends EventEmitter {
     warmingRequests: 0,
   };
   private accessTimes: number[] = [];
-  
+
   private readonly config: CacheConfig;
 
   constructor(config: Partial<CacheConfig> = {}) {
@@ -79,7 +79,10 @@ export class CacheManager extends EventEmitter {
       ...config,
     };
 
-    this.cleanupInterval = setInterval(() => this.cleanup(), this.config.cleanupInterval);
+    this.cleanupInterval = setInterval(
+      () => this.cleanup(),
+      this.config.cleanupInterval,
+    );
     logger.info("Cache manager initialized", { config: this.config });
   }
 
@@ -123,7 +126,12 @@ export class CacheManager extends EventEmitter {
   /**
    * Set value in cache
    */
-  async set<T>(key: string, value: T, ttl?: number, tags: string[] = []): Promise<void> {
+  async set<T>(
+    key: string,
+    value: T,
+    ttl?: number,
+    tags: string[] = [],
+  ): Promise<void> {
     const now = Date.now();
     const entryTtl = ttl || this.config.defaultTtl;
     const size = this.estimateSize(value);
@@ -140,10 +148,17 @@ export class CacheManager extends EventEmitter {
 
     let storedData: T | Buffer = value;
     let isCompressed = false;
-    if (this.config.compressionEnabled && size > this.config.compressionThreshold) {
+    if (
+      this.config.compressionEnabled &&
+      size > this.config.compressionThreshold
+    ) {
       storedData = await this.compress(JSON.stringify(value));
       isCompressed = true;
-      logger.debug('Compressing cache value', { key, originalSize: size, compressedSize: (storedData as Buffer).length });
+      logger.debug("Compressing cache value", {
+        key,
+        originalSize: size,
+        compressedSize: (storedData as Buffer).length,
+      });
     }
 
     const entry: CacheEntry<T> = {
@@ -154,7 +169,7 @@ export class CacheManager extends EventEmitter {
       lastAccessed: now,
       size: isCompressed ? (storedData as Buffer).length : size,
       tags,
-      isCompressed
+      isCompressed,
     };
 
     // Remove old entry if exists
@@ -225,8 +240,8 @@ export class CacheManager extends EventEmitter {
       this.cleanupInterval = null;
     }
     this.cache.clear();
-    this.emit('destroy');
-    logger.info('Cache manager destroyed');
+    this.emit("destroy");
+    logger.info("Cache manager destroyed");
   }
 
   updateConfig(newConfig: Partial<CacheConfig>): void {
@@ -234,8 +249,11 @@ export class CacheManager extends EventEmitter {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
     }
-    this.cleanupInterval = require('timers').setInterval(() => this.cleanup(), this.config.cleanupInterval);
-    logger.info('Cache configuration updated', { config: this.config });
+    this.cleanupInterval = require("timers").setInterval(
+      () => this.cleanup(),
+      this.config.cleanupInterval,
+    );
+    logger.info("Cache configuration updated", { config: this.config });
   }
 
   /**
@@ -337,8 +355,6 @@ export class CacheManager extends EventEmitter {
     return cleaned;
   }
 
-
-
   /**
    * Check if entry should be warmed
    */
@@ -403,7 +419,7 @@ export class CacheManager extends EventEmitter {
    */
   private async compress(data: string): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-      require('zlib').gzip(data, (err: Error | null, result: Buffer) => {
+      require("zlib").gzip(data, (err: Error | null, result: Buffer) => {
         if (err) reject(err);
         resolve(result);
       });
@@ -412,7 +428,7 @@ export class CacheManager extends EventEmitter {
 
   private async decompress(buffer: Buffer): Promise<any> {
     return new Promise((resolve, reject) => {
-      require('zlib').gunzip(buffer, (err: Error | null, result: Buffer) => {
+      require("zlib").gunzip(buffer, (err: Error | null, result: Buffer) => {
         if (err) reject(err);
         resolve(JSON.parse(result.toString()));
       });
@@ -473,7 +489,6 @@ export class CacheManager extends EventEmitter {
   /**
    * Start cleanup timer
    */
-  
 }
 
 /**
