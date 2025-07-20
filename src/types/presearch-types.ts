@@ -29,9 +29,9 @@ import { z } from "zod";
  * @property {'0' | '1'} [safe] - Safe search mode (optional, '1' for on, '0' for off).
  */
 export interface PresearchSearchRequest {
-  query: string;
-  page?: string;
-  count?: number;
+  q: string;
+  page?: number;
+  resultsPerPage?: number;
   lang?: string;
   time?: "any" | "day" | "week" | "month" | "year";
   location?: string;

@@ -5,13 +5,14 @@ import { logger } from "./logger.js";
  * Cache entry with metadata
  */
 export interface CacheEntry<T = any> {
-  data: T;
+  data: T | Buffer;
   timestamp: number;
   ttl: number;
   accessCount: number;
   lastAccessed: number;
   size: number;
   tags: string[];
+  isCompressed: boolean;
 }
 
 /**
@@ -39,6 +40,8 @@ export interface CacheConfig {
   enableAnalytics: boolean;
   enableWarming: boolean;
   warmingThreshold: number; // Percentage of TTL to trigger warming
+  compressionEnabled: boolean;
+  compressionThreshold: number;
 }
 
 /**
@@ -46,6 +49,7 @@ export interface CacheConfig {
  */
 export class CacheManager extends EventEmitter {
   private cache = new Map<string, CacheEntry>();
+  private cleanupInterval: ReturnType<typeof setInterval> | null = null;
   private stats: CacheStats = {
     hits: 0,
     misses: 0,
@@ -57,7 +61,7 @@ export class CacheManager extends EventEmitter {
     warmingRequests: 0,
   };
   private accessTimes: number[] = [];
-  private cleanupTimer?: NodeJS.Timeout;
+  
   private readonly config: CacheConfig;
 
   constructor(config: Partial<CacheConfig> = {}) {
@@ -70,31 +74,35 @@ export class CacheManager extends EventEmitter {
       enableAnalytics: true,
       enableWarming: true,
       warmingThreshold: 0.8, // 80% of TTL
+      compressionEnabled: true,
+      compressionThreshold: 1024,
       ...config,
     };
 
-    this.startCleanupTimer();
-    logger.debug("Cache manager initialized", { config: this.config });
+    this.cleanupInterval = setInterval(() => this.cleanup(), this.config.cleanupInterval);
+    logger.info("Cache manager initialized", { config: this.config });
   }
 
   /**
    * Get value from cache
    */
-  get<T>(key: string): T | null {
+  async get<T>(key: string): Promise<T | null> {
     const startTime = Date.now();
     const entry = this.cache.get(key);
-
     if (!entry) {
       this.recordMiss();
       return null;
     }
-
     const now = Date.now();
     if (now > entry.timestamp + entry.ttl) {
       this.cache.delete(key);
       this.recordMiss();
       this.emit("expired", key, entry);
       return null;
+    }
+    if (entry.isCompressed) {
+      entry.data = await this.decompress(entry.data);
+      entry.isCompressed = false; // Prevent repeated decompression
     }
 
     // Update access metadata
@@ -115,7 +123,7 @@ export class CacheManager extends EventEmitter {
   /**
    * Set value in cache
    */
-  set<T>(key: string, value: T, ttl?: number, tags: string[] = []): void {
+  async set<T>(key: string, value: T, ttl?: number, tags: string[] = []): Promise<void> {
     const now = Date.now();
     const entryTtl = ttl || this.config.defaultTtl;
     const size = this.estimateSize(value);
@@ -130,14 +138,23 @@ export class CacheManager extends EventEmitter {
       this.evictLRU();
     }
 
+    let storedData: T | Buffer = value;
+    let isCompressed = false;
+    if (this.config.compressionEnabled && size > this.config.compressionThreshold) {
+      storedData = await this.compress(JSON.stringify(value));
+      isCompressed = true;
+      logger.debug('Compressing cache value', { key, originalSize: size, compressedSize: (storedData as Buffer).length });
+    }
+
     const entry: CacheEntry<T> = {
-      data: value,
+      data: storedData,
       timestamp: now,
       ttl: entryTtl,
       accessCount: 0,
       lastAccessed: now,
-      size,
+      size: isCompressed ? (storedData as Buffer).length : size,
       tags,
+      isCompressed
     };
 
     // Remove old entry if exists
@@ -197,6 +214,28 @@ export class CacheManager extends EventEmitter {
     this.updateStats();
     this.emit("clear");
     logger.info("Cache cleared", { entriesCleared: size });
+  }
+
+  /**
+   * Destroy the cache manager and clean up resources
+   */
+  public destroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.cache.clear();
+    this.emit('destroy');
+    logger.info('Cache manager destroyed');
+  }
+
+  updateConfig(newConfig: Partial<CacheConfig>): void {
+    Object.assign(this.config, newConfig);
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+    }
+    this.cleanupInterval = require('timers').setInterval(() => this.cleanup(), this.config.cleanupInterval);
+    logger.info('Cache configuration updated', { config: this.config });
   }
 
   /**
@@ -298,17 +337,7 @@ export class CacheManager extends EventEmitter {
     return cleaned;
   }
 
-  /**
-   * Destroy cache manager
-   */
-  destroy(): void {
-    if (this.cleanupTimer) {
-      clearInterval(this.cleanupTimer);
-    }
-    this.clear();
-    this.removeAllListeners();
-    logger.debug("Cache manager destroyed");
-  }
+
 
   /**
    * Check if entry should be warmed
@@ -350,7 +379,7 @@ export class CacheManager extends EventEmitter {
    */
   private evictLRU(): void {
     let oldestKey: string | null = null;
-    let oldestTime = Date.now();
+    let oldestTime = Infinity;
 
     for (const [key, entry] of this.cache.entries()) {
       if (entry.lastAccessed < oldestTime) {
@@ -372,6 +401,24 @@ export class CacheManager extends EventEmitter {
   /**
    * Estimate size of value in bytes
    */
+  private async compress(data: string): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      require('zlib').gzip(data, (err: Error | null, result: Buffer) => {
+        if (err) reject(err);
+        resolve(result);
+      });
+    });
+  }
+
+  private async decompress(buffer: Buffer): Promise<any> {
+    return new Promise((resolve, reject) => {
+      require('zlib').gunzip(buffer, (err: Error | null, result: Buffer) => {
+        if (err) reject(err);
+        resolve(JSON.parse(result.toString()));
+      });
+    });
+  }
+
   private estimateSize(value: any): number {
     try {
       return JSON.stringify(value).length * 2; // Rough estimate (UTF-16)
@@ -426,11 +473,7 @@ export class CacheManager extends EventEmitter {
   /**
    * Start cleanup timer
    */
-  private startCleanupTimer(): void {
-    this.cleanupTimer = setInterval(() => {
-      this.cleanup();
-    }, this.config.cleanupInterval);
-  }
+  
 }
 
 /**

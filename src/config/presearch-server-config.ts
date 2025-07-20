@@ -35,11 +35,17 @@ const configSchema = z.object({
 
 export type ConfigType = z.infer<typeof configSchema>;
 
-export class Configuration {
+function parseIntWithDefault(value: string | undefined, defaultValue: number): number {
+  if (!value) return defaultValue;
+  const parsed = parseInt(value, 10);
+  return isNaN(parsed) ? defaultValue : parsed;
+}
+
+export class PresearchServerConfig {
   private config: ConfigType;
   private apiKeyValidated = false;
   private apiKeyLastCheck = 0;
-  private static CHECK_INTERVAL = 3600000; // 1 hour
+    private static CHECK_INTERVAL = 3600000; // 1 hour
 
   constructor(initialConfig: Partial<ConfigType> = {}) {
     this.config = configSchema.parse({ ...initialConfig });
@@ -80,7 +86,7 @@ export class Configuration {
 
     try {
       const now = Date.now();
-      if (this.apiKeyValidated && now - this.apiKeyLastCheck < Configuration.CHECK_INTERVAL) {
+      if (this.apiKeyValidated && now - this.apiKeyLastCheck < PresearchServerConfig.CHECK_INTERVAL) {
         return true;
       }
 
@@ -114,6 +120,14 @@ export class Configuration {
     }
   }
 
+  public setApiKeyValidated(isValid: boolean): void {
+    this.apiKeyValidated = isValid;
+  }
+
+  public setApiKeyLastCheck(timestamp: number): void {
+    this.apiKeyLastCheck = timestamp;
+  }
+
   getUserAgent(): string {
     return this.config.userAgent;
   }
@@ -135,7 +149,29 @@ export class Configuration {
   }
 
   updateConfig(newConfig: Partial<ConfigType>): void {
-    this.config = configSchema.parse({ ...this.config, ...newConfig });
+    // Deep merge nested configuration objects to prevent overwrites
+    const mergedConfig = {
+      ...this.config,
+      ...newConfig,
+      cache: {
+        ...this.config.cache,
+        ...(newConfig.cache ?? {}),
+      },
+      rateLimit: {
+        ...this.config.rateLimit,
+        ...(newConfig.rateLimit ?? {}),
+      },
+      circuitBreaker: {
+        ...this.config.circuitBreaker,
+        ...(newConfig.circuitBreaker ?? {}),
+      },
+      retry: {
+        ...this.config.retry,
+        ...(newConfig.retry ?? {}),
+      },
+    };
+
+    this.config = configSchema.parse(mergedConfig);
     console.log('Configuration updated');
   }
 
@@ -166,13 +202,9 @@ export class Configuration {
   }
 }
 
-function parseIntWithDefault(value: string | undefined, defaultValue: number): number {
-  if (!value) return defaultValue;
-  const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? defaultValue : parsed;
-}
 
-export function createConfigFromEnv(overrides: Partial<ConfigType> = {}): Configuration {
+
+export function createConfigFromEnv(overrides: Partial<ConfigType> = {}): PresearchServerConfig {
   const envConfig: Partial<ConfigType> = {
     baseURL: process.env.PRESEARCH_BASE_URL,
     apiKey: process.env.PRESEARCH_API_KEY,
@@ -199,7 +231,7 @@ export function createConfigFromEnv(overrides: Partial<ConfigType> = {}): Config
     },
   };
 
-  return new Configuration({ ...envConfig, ...overrides });
+  return new PresearchServerConfig({ ...envConfig, ...overrides });
 }
 
 export const config = createConfigFromEnv();

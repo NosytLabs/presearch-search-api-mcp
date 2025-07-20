@@ -2,10 +2,10 @@
   "mcpServers": {
     "presearch-mcp": {
       "command": "node",
-      "args": ["dist/index.js"],
+      "args": ["dist/mcp-entry.js"],
       "env": {
         "PRESEARCH_API_KEY": "your_presearch_api_key_here",
-        "PRESEARCH_BASE_URL": "https://na-us-1.presearch.com"
+        "PRESEARCH_BASE_URL": "https://api.presearch.io"
       }
     }
   },
@@ -16,7 +16,7 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "q": {
+          "query": {
             "type": "string",
             "description": "Search query"
           },
@@ -24,6 +24,19 @@
             "type": "number",
             "description": "Page number (default: 1)",
             "default": 1
+          },
+          "resultsPerPage": {
+            "type": "number",
+            "description": "Results per page (default: 10, max: 50)",
+            "default": 10,
+            "minimum": 1,
+            "maximum": 50
+          },
+          "format": {
+            "type": "string",
+            "description": "Output format",
+            "enum": ["json", "html", "markdown"],
+            "default": "json"
           },
           "lang": {
             "type": "string",
@@ -41,14 +54,29 @@
           },
           "location": {
             "type": "string",
-            "description": "Location filter"
+            "description": "Location filter (JSON string with lat and long)"
           },
           "ip": {
             "type": "string",
             "description": "IP address for geo-targeting"
+          },
+          "includeInsights": {
+            "type": "boolean",
+            "description": "Include AI insights (default: true)",
+            "default": true
+          },
+          "aiAnalysis": {
+            "type": "boolean",
+            "description": "Enable AI-enhanced formatting (default: true)",
+            "default": true
+          },
+          "extractEntities": {
+            "type": "boolean",
+            "description": "Extract entities and keywords (default: true)",
+            "default": true
           }
         },
-        "required": ["q"],
+        "required": ["query"],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
       }

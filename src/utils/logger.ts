@@ -1,6 +1,24 @@
-import { config } from "../config/configuration.js";
+import * as fs from 'fs';
+import * as path from 'path';
 
-export type LogLevel = "debug" | "info" | "warn" | "error";
+export enum LogLevel {
+  ERROR = 0,
+  WARN = 1,
+  INFO = 2,
+  DEBUG = 3
+}
+
+export interface LogConfig {
+  level: LogLevel;
+  enableConsole: boolean;
+  enableFile: boolean;
+  filePath: string;
+  maxFileSize: number;
+  maxFiles: number;
+  enableRotation: boolean;
+  enableStructuredLogging: boolean;
+  enablePerformanceLogging: boolean;
+}
 
 interface LogContext {
   requestId?: string;
@@ -11,92 +29,108 @@ interface LogContext {
  * Structured logger with configurable levels and context
  */
 export class Logger {
-  private static instance: Logger;
-  private readonly requestId?: string;
+  private static defaultConfig: LogConfig = {
+  level: LogLevel.INFO,
+  enableConsole: true,
+  enableFile: false,
+  filePath: './logs/app.log',
+  maxFileSize: 10 * 1024 * 1024,
+  maxFiles: 5,
+  enableRotation: true,
+  enableStructuredLogging: true,
+  enablePerformanceLogging: false
+};
 
-  private constructor(requestId?: string) {
-    this.requestId = requestId;
+private static instance: Logger | null = null;
+  private config: LogConfig;
+private isShutdown: boolean = false;
+private timers: Map<string, number> = new Map();
+
+  private constructor(config: LogConfig = Logger.defaultConfig) {
+    this.config = config;
   }
 
-  public static getInstance(): Logger {
+  public static getInstance(config?: LogConfig): Logger {
     if (!Logger.instance) {
-      Logger.instance = new Logger();
+      Logger.instance = new Logger(config ?? Logger.defaultConfig);
+    } else if (config) {
+      Logger.instance.updateConfig(config);
     }
     return Logger.instance;
   }
 
-  public createChild(requestId: string): Logger {
-    return new Logger(requestId);
-  }
-
+  
   /**
    * Log a message with the specified level
    */
-  public log(level: LogLevel, message: string, context?: LogContext): void {
-    const logLevel = config.getLogLevel();
-
-    // Skip logs based on configured log level
-    const levels = ["error", "warn", "info", "debug"];
-    const currentLevelIndex = levels.indexOf(logLevel);
-    const messageLevelIndex = levels.indexOf(level);
-
-    if (messageLevelIndex > currentLevelIndex) return;
+  public log(level: LogLevel, message: any, context?: LogContext | null): void {
+    if (typeof message !== 'string') {
+      message = this.stringifySafe(message);
+    }
+    if (this.isShutdown) return;
+    if (level > this.config.level) return;
 
     const timestamp = new Date().toISOString();
-    const requestIdPart = this.requestId ? ` [${this.requestId}]` : "";
-    const prefix = `[${timestamp}]${requestIdPart} [${level.toUpperCase()}]`;
+    const levelStr = LogLevel[level].toUpperCase();
 
-    const logMessage =
-      context && Object.keys(context).length > 0
-        ? [`${prefix} ${message}`, this.formatContext(context)]
-        : [`${prefix} ${message}`];
+    let callerInfo = '';
+    if (level === LogLevel.DEBUG) {
+      const stack = new Error().stack;
+      if (stack) {
+        const lines = stack.split('\n');
+        const callerLine = lines[3] || lines[2];
+        callerInfo = callerLine ? callerLine.trim() : '';
+      }
+    }
 
-    switch (level) {
-      case "debug":
-        // eslint-disable-next-line no-console
-        console.debug(...logMessage);
-        break;
-      case "info":
-        // eslint-disable-next-line no-console
-        console.info(...logMessage);
-        break;
-      case "warn":
-        // eslint-disable-next-line no-console
-        console.warn(...logMessage);
-        break;
-      case "error":
-        // eslint-disable-next-line no-console
-        console.error(...logMessage);
-        break;
+    let prefix: string;
+    if (level === LogLevel.DEBUG) {
+      prefix = `[${levelStr}] ${callerInfo}`;
+    } else {
+      prefix = `${timestamp} [${levelStr}]`;
+    }
+    let logArgs = [prefix, message];
+    if (context && this.config.enableStructuredLogging) {
+      logArgs.push(this.formatContext(context));
+    }
+
+    if (this.config.enableConsole) {
+      let consoleMethod = console.log;
+      switch (level) {
+        case LogLevel.ERROR: consoleMethod = console.error; break;
+        case LogLevel.WARN: consoleMethod = console.warn; break;
+        case LogLevel.INFO: consoleMethod = console.info; break;
+        case LogLevel.DEBUG: consoleMethod = console.debug; break;
+      }
+      try {
+        consoleMethod(...logArgs);
+      } catch (e) {
+        // Handle console error silently to prevent app crash
+      }
+    }
+
+    if (this.config.enableFile) {
+      this.writeToLogFile(logArgs.join(' '));
     }
   }
 
   /**
    * Log debug message
    */
-  public debug(message: string, context?: LogContext): void {
-    this.log("debug", message, context);
+  public debug(message: string, context?: LogContext | null): void {
+    this.log(LogLevel.DEBUG, message, context);
   }
 
-  /**
-   * Log info message
-   */
-  public info(message: string, context?: LogContext): void {
-    this.log("info", message, context);
+  public info(message: string, context?: LogContext | null): void {
+    this.log(LogLevel.INFO, message, context);
   }
 
-  /**
-   * Log warning message
-   */
-  public warn(message: string, context?: LogContext): void {
-    this.log("warn", message, context);
+  public warn(message: string, context?: LogContext | null): void {
+    this.log(LogLevel.WARN, message, context);
   }
 
-  /**
-   * Log error message
-   */
-  public error(message: string, context?: LogContext): void {
-    this.log("error", message, context);
+  public error(message: string, context?: LogContext | null): void {
+    this.log(LogLevel.ERROR, message, context);
   }
 
   /**
@@ -104,67 +138,105 @@ export class Logger {
    */
   private formatContext(context: LogContext): string {
     try {
-      return JSON.stringify(context, this.jsonReplacer, 2);
+      return this.stringifySafe(context);
     } catch (error) {
       return `[Context serialization failed: ${error}]`;
     }
   }
 
-  /**
-   * JSON replacer to handle circular references and sensitive data
-   */
-  private jsonReplacer(key: string, value: unknown): unknown {
-    // Hide sensitive information
-    if (
-      key.toLowerCase().includes("key") ||
-      key.toLowerCase().includes("token") ||
-      key.toLowerCase().includes("password")
-    ) {
-      return "[REDACTED]";
-    }
-
-    // Handle circular references
-    if (typeof value === "object" && value !== null) {
-      if (value.constructor === Object || Array.isArray(value)) {
-        return value;
+  private stringifySafe(obj: any): string {
+    const seen = new WeakSet();
+    return JSON.stringify(obj, (key, value) => {
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) {
+          return '[Circular]';
+        }
+        seen.add(value);
       }
-      return "[Object]";
+      if (key.toLowerCase().includes('key') || key.toLowerCase().includes('token') || key.toLowerCase().includes('password')) {
+        return '[REDACTED]';
+      }
+      if (typeof value === 'function') return '[Function]';
+      if (typeof value === 'bigint') return value.toString();
+      if (typeof value === 'symbol') return value.toString();
+      return value;
+    });
+  }
+
+  private writeToLogFile(logMessage: string) {
+    try {
+      const dir = path.dirname(this.config.filePath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      if (this.config.enableRotation) {
+        if (fs.existsSync(this.config.filePath)) {
+          const stats = fs.statSync(this.config.filePath);
+          if (stats.size > this.config.maxFileSize) this.rotateLogs();
+        }
+      }
+      fs.appendFileSync(this.config.filePath, logMessage + '\n', 'utf8');
+    } catch (e) {
+      console.error('Failed to write to log file', e);
     }
-
-    return value;
   }
 
-  /**
-   * Create a child logger with additional context
-   */
-  public child(context: LogContext): ChildLogger {
-    return new ChildLogger(this, context);
-  }
-}
-
-/**
- * Child logger that includes additional context in all log messages
- */
-export class ChildLogger {
-  constructor(
-    private parent: Logger,
-    private context: LogContext,
-  ) {}
-
-  public debug(message: string, additionalContext?: LogContext): void {
-    this.parent.debug(message, { ...this.context, ...additionalContext });
+  private rotateLogs() {
+    try {
+      for (let i = this.config.maxFiles - 1; i >= 1; i--) {
+        const oldPath = `${this.config.filePath}.${i}`;
+        const newPath = `${this.config.filePath}.${i + 1}`;
+        if (fs.existsSync(oldPath)) {
+          if (i === this.config.maxFiles - 1) {
+            fs.unlinkSync(oldPath);
+          } else {
+            fs.renameSync(oldPath, newPath);
+          }
+        }
+      }
+      fs.renameSync(this.config.filePath, `${this.config.filePath}.1`);
+    } catch (e) {
+      console.error('Log rotation failed', e);
+    }
   }
 
-  public info(message: string, additionalContext?: LogContext): void {
-    this.parent.info(message, { ...this.context, ...additionalContext });
+  public startTimer(operation: string): string {
+    if (!this.config.enablePerformanceLogging) return '';
+    this.cleanupOldTimers();
+    const id = `${operation}_${Date.now()}`;
+    this.timers.set(id, Date.now());
+    return id;
   }
 
-  public warn(message: string, additionalContext?: LogContext): void {
-    this.parent.warn(message, { ...this.context, ...additionalContext });
+  public endTimer(id: string, message: string): void {
+    if (!this.config.enablePerformanceLogging) return;
+    const start = this.timers.get(id);
+    if (start === undefined) {
+      this.warn(`Timer not found: ${id}`);
+      return;
+    }
+    const duration = Date.now() - start;
+    this.info(`${message} - duration: ${duration}ms`, { duration });
+    this.timers.delete(id);
   }
 
-  public error(message: string, additionalContext?: LogContext): void {
-    this.parent.error(message, { ...this.context, ...additionalContext });
+  private cleanupOldTimers(): void {
+    const now = Date.now();
+    for (const [id, start] of this.timers.entries()) {
+      if (now - start > 60000) {
+        this.timers.delete(id);
+      }
+    }
+  }
+
+  public updateConfig(newConfig: Partial<LogConfig>): void {
+    this.config = { ...this.config, ...newConfig };
+  }
+
+  public setLevel(level: LogLevel): void {
+    this.config.level = level;
+  }
+
+  public async shutdown(): Promise<void> {
+    this.isShutdown = true;
   }
 }
 

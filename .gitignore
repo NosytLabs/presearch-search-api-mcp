@@ -36,14 +36,7 @@ coverage/
 # nyc test coverage
 .nyc_output
 
-# Test directories and files
-__tests__/
-*.test.ts
-*.test.js
-*.spec.ts
-*.spec.js
-test/
-tests/
+# Production ready MCP server - no test files
 
 # Development configuration files
 jest.config.js
