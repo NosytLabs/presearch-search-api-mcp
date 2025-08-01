@@ -237,28 +237,28 @@ export function createConfigFromEnv(
     timeout: parseIntWithDefault(process.env.PRESEARCH_TIMEOUT, 30000),
     logLevel: process.env.LOG_LEVEL as ConfigType["logLevel"],
     cache: {
-      enabled: process.env.CACHE_ENABLED === "true",
-      ttl: parseIntWithDefault(process.env.CACHE_TTL, 300000),
-      maxSize: parseIntWithDefault(process.env.CACHE_MAX_SIZE, 1000),
+      enabled: process.env.PRESEARCH_CACHE_ENABLED === "true",
+      ttl: parseIntWithDefault(process.env.PRESEARCH_CACHE_TTL, 300000),
+      maxSize: parseIntWithDefault(process.env.PRESEARCH_CACHE_MAX_SIZE, 1000),
     },
     rateLimit: {
-      requests: parseIntWithDefault(process.env.RATE_LIMIT_REQUESTS, 60),
-      window: parseIntWithDefault(process.env.RATE_LIMIT_WINDOW, 60000),
+      requests: parseIntWithDefault(process.env.PRESEARCH_RATE_LIMIT_REQUESTS, 60),
+      window: parseIntWithDefault(process.env.PRESEARCH_RATE_LIMIT_WINDOW, 60000),
     },
     circuitBreaker: {
-      enabled: process.env.CIRCUIT_BREAKER_ENABLED === "true",
+      enabled: process.env.PRESEARCH_CIRCUIT_BREAKER_ENABLED === "true",
       failureThreshold: parseIntWithDefault(
-        process.env.CIRCUIT_BREAKER_FAILURE_THRESHOLD,
+        process.env.PRESEARCH_CIRCUIT_BREAKER_FAILURE_THRESHOLD,
         5,
       ),
       resetTimeout: parseIntWithDefault(
-        process.env.CIRCUIT_BREAKER_RESET_TIMEOUT,
+        process.env.PRESEARCH_CIRCUIT_BREAKER_RESET_TIMEOUT,
         30000,
       ),
     },
     retry: {
-      maxRetries: parseIntWithDefault(process.env.MAX_RETRIES, 3),
-      baseDelay: parseIntWithDefault(process.env.RETRY_DELAY, 1000),
+      maxRetries: parseIntWithDefault(process.env.PRESEARCH_MAX_RETRIES, 3),
+      baseDelay: parseIntWithDefault(process.env.PRESEARCH_RETRY_DELAY, 1000),
     },
   };
 

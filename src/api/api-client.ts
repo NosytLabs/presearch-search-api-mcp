@@ -157,7 +157,7 @@ export class PresearchApiClient {
   private handleAxiosError(error: unknown): Error {
     const axiosError = error as any;
     if (axiosError.code === "ECONNABORTED" || axiosError.code === "ETIMEDOUT") {
-      return new Error("Request timeout");
+      return new Error(`Request timeout after ${this.config.getTimeout()}ms`);
     }
 
     if (axiosError.response) {
@@ -165,27 +165,35 @@ export class PresearchApiClient {
       const status = axiosError.response.status;
       const message =
         axiosError.response.data?.message ||
+        axiosError.response.data?.error ||
         axiosError.response.statusText ||
         "API Error";
+      
+      if (status === 401) {
+        return new Error(`Authentication failed: ${message}. Please check your PRESEARCH_API_KEY.`);
+      }
+      if (status === 403) {
+        return new Error(`Access forbidden: ${message}. Please verify your API key permissions.`);
+      }
       if (status === 429) {
-        return new Error(message);
+        return new Error(`Rate limit exceeded: ${message}`);
       }
       if (status >= 500 && status < 600) {
-        return new Error(message);
+        return new Error(`Server error (${status}): ${message}`);
       }
       if (status >= 400 && status < 500) {
-        return new Error(message);
+        return new Error(`Client error (${status}): ${message}`);
       }
-      return new Error(message);
+      return new Error(`API error (${status}): ${message}`);
     }
 
     if (axiosError.request) {
       // Network error
-      return new Error("Network error - no response received", axiosError);
+      return new Error(`Network error - no response received from ${this.config.getBaseURL()}`);
     }
 
     // Other errors
-    return new Error(axiosError.message || "Unknown error");
+    return new Error(axiosError.message || "Unknown error occurred");
   }
 
   /**
@@ -238,10 +246,22 @@ export class PresearchApiClient {
       return cached;
     }
 
+    // Map MCP params to Presearch API format
+    const apiParams: Record<string, any> = {
+      q: params.q,
+      ...(params.page && { page: params.page.toString() }),
+      ...(params.resultsPerPage && { limit: params.resultsPerPage.toString() }),
+      ...(params.lang && { lang: params.lang }),
+      ...(params.time && { time: params.time }),
+      ...(params.location && { location: params.location }),
+      ...(params.ip && { ip: params.ip }),
+      ...(params.safe && { safe: params.safe }),
+    };
+
     const requestConfig: AxiosRequestConfig = {
       method: "GET",
       url: "/v1/search",
-      params,
+      params: apiParams,
     };
 
     const response = await this.executeRequest(() =>
@@ -306,7 +326,7 @@ export class PresearchApiClient {
         : { isEnabled: false },
       circuitBreaker: {
         isEnabled: this.config.isCircuitBreakerEnabled(),
-        state: this.circuitBreaker?.getState() || "unknown",
+        state: this.circuitBreaker?.getStats().state || "unknown",
       },
       apiKey: {
         configured: !!this.apiKey,
