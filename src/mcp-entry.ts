@@ -6,7 +6,7 @@
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { PresearchServer } from "./server/presearch-mcp-server.js";
-import { createConfigFromEnv } from "./config/presearch-server-config.js";
+import { createConfigFromEnv } from "./config/configuration.js";
 
 /**
  * Main entry point for MCP stdio server

@@ -4,7 +4,16 @@ import { config as dotenvConfig } from "dotenv";
 // Load environment variables FIRST, before any other imports
 dotenvConfig();
 
-import { LogLevel } from "../utils/logger.js";
+import { LogLevel, logger } from "../utils/logger.js";
+
+function parseIntWithDefault(
+  value: string | undefined,
+  defaultValue: number,
+): number {
+  if (!value) return defaultValue;
+  const parsed = parseInt(value, 10);
+  return isNaN(parsed) ? defaultValue : parsed;
+}
 
 // Enhanced configuration schema with security best practices
 const configSchema = z.object({
@@ -43,7 +52,11 @@ const configSchema = z.object({
 
 export type ConfigType = z.infer<typeof configSchema>;
 
-export class Configuration {
+/**
+ * Unified Presearch Server Configuration
+ * Consolidates functionality from both Configuration and PresearchServerConfig classes
+ */
+export class PresearchServerConfig {
   private config: ConfigType;
   private apiKeyValidated = false;
   private apiKeyLastCheck = 0;
@@ -90,7 +103,7 @@ export class Configuration {
       const now = Date.now();
       if (
         this.apiKeyValidated &&
-        now - this.apiKeyLastCheck < Configuration.CHECK_INTERVAL
+        now - this.apiKeyLastCheck < PresearchServerConfig.CHECK_INTERVAL
       ) {
         return true;
       }
@@ -109,13 +122,13 @@ export class Configuration {
 
       if (!response.ok) {
         this.apiKeyValidated = false;
-        console.warn("API key validation failed", { status: response.status });
+        logger.warn("API key validation failed", { status: response.status });
         throw new Error(`API key validation failed: ${response.status}`);
       }
 
       this.apiKeyValidated = true;
       this.apiKeyLastCheck = Date.now();
-      console.log("API key validated successfully");
+      logger.info("API key validated successfully");
       return true;
     } catch (error) {
       this.apiKeyValidated = false;
@@ -126,9 +139,19 @@ export class Configuration {
       ) {
         throw error;
       }
-      console.warn("API key validation failed:", error);
+      logger.warn("API key validation failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
       return false;
     }
+  }
+
+  public setApiKeyValidated(isValid: boolean): void {
+    this.apiKeyValidated = isValid;
+  }
+
+  public setApiKeyLastCheck(timestamp: number): void {
+    this.apiKeyLastCheck = timestamp;
   }
 
   getUserAgent(): string {
@@ -152,8 +175,30 @@ export class Configuration {
   }
 
   updateConfig(newConfig: Partial<ConfigType>): void {
-    this.config = configSchema.parse({ ...this.config, ...newConfig });
-    console.log("Configuration updated");
+    // Deep merge nested configuration objects to prevent overwrites
+    const mergedConfig = {
+      ...this.config,
+      ...newConfig,
+      cache: {
+        ...this.config.cache,
+        ...(newConfig.cache ?? {}),
+      },
+      rateLimit: {
+        ...this.config.rateLimit,
+        ...(newConfig.rateLimit ?? {}),
+      },
+      circuitBreaker: {
+        ...this.config.circuitBreaker,
+        ...(newConfig.circuitBreaker ?? {}),
+      },
+      retry: {
+        ...this.config.retry,
+        ...(newConfig.retry ?? {}),
+      },
+    };
+
+    this.config = configSchema.parse(mergedConfig);
+    logger.info("Configuration updated");
   }
 
   getConfig(): ConfigType {
@@ -188,18 +233,19 @@ export class Configuration {
   }
 }
 
-function parseIntWithDefault(
-  value: string | undefined,
-  defaultValue: number,
-): number {
-  if (!value) return defaultValue;
-  const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? defaultValue : parsed;
+/**
+ * Legacy Configuration class - maintained for backward compatibility
+ * @deprecated Use PresearchServerConfig instead
+ */
+export class Configuration extends PresearchServerConfig {
+  constructor(initialConfig: Partial<ConfigType> = {}) {
+    super(initialConfig);
+  }
 }
 
 export function createConfigFromEnv(
   overrides: Partial<ConfigType> = {},
-): Configuration {
+): PresearchServerConfig {
   const envConfig: Partial<ConfigType> = {
     baseURL: process.env.PRESEARCH_BASE_URL,
     apiKey: process.env.PRESEARCH_API_KEY,
@@ -207,32 +253,38 @@ export function createConfigFromEnv(
     timeout: parseIntWithDefault(process.env.PRESEARCH_TIMEOUT, 30000),
     logLevel: process.env.LOG_LEVEL as ConfigType["logLevel"],
     cache: {
-      enabled: process.env.CACHE_ENABLED === "true",
-      ttl: parseIntWithDefault(process.env.CACHE_TTL, 300000),
-      maxSize: parseIntWithDefault(process.env.CACHE_MAX_SIZE, 1000),
+      enabled: process.env.PRESEARCH_CACHE_ENABLED === "true",
+      ttl: parseIntWithDefault(process.env.PRESEARCH_CACHE_TTL, 300000),
+      maxSize: parseIntWithDefault(process.env.PRESEARCH_CACHE_MAX_SIZE, 1000),
     },
     rateLimit: {
-      requests: parseIntWithDefault(process.env.RATE_LIMIT_REQUESTS, 60),
-      window: parseIntWithDefault(process.env.RATE_LIMIT_WINDOW, 60000),
+      requests: parseIntWithDefault(
+        process.env.PRESEARCH_RATE_LIMIT_REQUESTS,
+        60,
+      ),
+      window: parseIntWithDefault(
+        process.env.PRESEARCH_RATE_LIMIT_WINDOW,
+        60000,
+      ),
     },
     circuitBreaker: {
-      enabled: process.env.CIRCUIT_BREAKER_ENABLED === "true",
+      enabled: process.env.PRESEARCH_CIRCUIT_BREAKER_ENABLED === "true",
       failureThreshold: parseIntWithDefault(
-        process.env.CIRCUIT_BREAKER_FAILURE_THRESHOLD,
+        process.env.PRESEARCH_CIRCUIT_BREAKER_FAILURE_THRESHOLD,
         5,
       ),
       resetTimeout: parseIntWithDefault(
-        process.env.CIRCUIT_BREAKER_RESET_TIMEOUT,
+        process.env.PRESEARCH_CIRCUIT_BREAKER_RESET_TIMEOUT,
         30000,
       ),
     },
     retry: {
-      maxRetries: parseIntWithDefault(process.env.MAX_RETRIES, 3),
-      baseDelay: parseIntWithDefault(process.env.RETRY_DELAY, 1000),
+      maxRetries: parseIntWithDefault(process.env.PRESEARCH_MAX_RETRIES, 3),
+      baseDelay: parseIntWithDefault(process.env.PRESEARCH_RETRY_DELAY, 1000),
     },
   };
 
-  return new Configuration({ ...envConfig, ...overrides });
+  return new PresearchServerConfig({ ...envConfig, ...overrides });
 }
 
 export const config = createConfigFromEnv();

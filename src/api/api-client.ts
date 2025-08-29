@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
-import { PresearchServerConfig } from "../config/presearch-server-config.js";
+import { PresearchServerConfig } from "../config/configuration.js";
 import { logger } from "../utils/logger.js";
 import { RateLimiter } from "../utils/rate-limiter.js";
 import { CircuitBreaker } from "../utils/circuit-breaker.js";
@@ -168,12 +168,16 @@ export class PresearchApiClient {
         axiosError.response.data?.error ||
         axiosError.response.statusText ||
         "API Error";
-      
+
       if (status === 401) {
-        return new Error(`Authentication failed: ${message}. Please check your PRESEARCH_API_KEY.`);
+        return new Error(
+          `Authentication failed: ${message}. Please check your PRESEARCH_API_KEY.`,
+        );
       }
       if (status === 403) {
-        return new Error(`Access forbidden: ${message}. Please verify your API key permissions.`);
+        return new Error(
+          `Access forbidden: ${message}. Please verify your API key permissions.`,
+        );
       }
       if (status === 429) {
         return new Error(`Rate limit exceeded: ${message}`);
@@ -189,7 +193,9 @@ export class PresearchApiClient {
 
     if (axiosError.request) {
       // Network error
-      return new Error(`Network error - no response received from ${this.config.getBaseURL()}`);
+      return new Error(
+        `Network error - no response received from ${this.config.getBaseURL()}`,
+      );
     }
 
     // Other errors

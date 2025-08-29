@@ -113,11 +113,6 @@ jspm_packages/
 .env.test.local
 .env.production.local
 
-# Smithery platform files
-.smithery/
-smitery.config.js
-smitery.yaml
-
 # Docker files (if not using Docker)
 # Dockerfile* - commented out as we need Dockerfile for Smithery deployment
 .dockerignore

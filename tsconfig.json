@@ -21,7 +21,9 @@
     "noImplicitReturns": true,
     "noImplicitThis": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "downlevelIteration": true,
+    "types": ["jest", "node"]
   },
   "include": [
     "src/**/*"
@@ -29,6 +31,10 @@
   "exclude": [
     "node_modules",
     "dist",
-    "*.config.*"
+    "*.config.*",
+    "**/*.test.ts",
+    "**/__tests__/**/*",
+    "src/**/__tests__/**/*",
+    "tests_backup/**/*"
   ]
 }

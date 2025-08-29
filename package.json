@@ -11,17 +11,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/mcp-entry.js",
-    "start:mcp": "node dist/mcp-entry.js",
-    "dev": "tsx watch src/index.ts",
-    "dev:debug": "tsx watch --inspect src/index.ts",
-    "clean": "rm -rf dist",
-    "format": "prettier --write src/**/*.ts",
-    "format:check": "prettier --check src/**/*.ts",
-    "type-check": "tsc --noEmit",
-    "validate": "npm run type-check && npm run format:check",
-    "security:audit": "npm audit --audit-level=moderate",
-    "security:fix": "npm audit fix",
-    "prepublishOnly": "npm run validate && npm run build"
+    "clean": "rimraf dist || rmdir /s /q dist",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "mcp",
@@ -50,7 +41,6 @@
     "src",
     "README.md",
     "LICENSE",
-    "mcp.config.json",
     ".env.example"
   ],
   "dependencies": {
@@ -62,8 +52,9 @@
   },
   "devDependencies": {
     "@types/node": "^20.12.12",
-    "prettier": "^3.2.5",
-    "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   }
 }
+
+
+

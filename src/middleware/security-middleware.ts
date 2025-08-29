@@ -2,7 +2,7 @@
  * Security middleware for adding security headers and additional protections
  */
 
-import { Logger } from "../utils/logger";
+import { logger } from "../utils/logger";
 import {
   SecurityError,
   InputSanitizationError,
@@ -63,7 +63,7 @@ export interface SuspiciousActivity {
  */
 export class SecurityMiddleware {
   private static instance: SecurityMiddleware;
-  private logger: Logger;
+  private logger: typeof logger;
   private config: SecurityConfig;
   private requestCounts: Map<string, { count: number; firstRequest: Date }> =
     new Map();
@@ -71,7 +71,7 @@ export class SecurityMiddleware {
   private blockedIPs: Set<string> = new Set();
 
   private constructor(config?: Partial<SecurityConfig>) {
-    this.logger = Logger.getInstance();
+    this.logger = logger;
     this.config = {
       enableCSP: true,
       enableHSTS: true,
