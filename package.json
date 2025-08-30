@@ -2,17 +2,12 @@
   "name": "presearch-mcp-server",
   "version": "1.0.0",
   "type": "module",
-  "description": "Model Context Protocol (MCP) server for Presearch decentralized web search functionality",
-  "main": "dist/mcp-entry.js",
-  "module": "src/mcp-entry.ts",
-  "bin": {
-    "presearch-mcp-server": "dist/mcp-entry.js"
-  },
+  "description": "Official Model Context Protocol server for Presearch Search API - Production Ready",
+  "main": "src/server/server_enhanced.js",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/mcp-entry.js",
-    "clean": "rimraf dist || rmdir /s /q dist",
-    "prepublishOnly": "npm run build"
+    "start": "node src/server/server_enhanced.js",
+    "test": "node tests/test.js",
+    "dev": "node src/server/server_enhanced.js"
   },
   "keywords": [
     "mcp",
@@ -23,22 +18,23 @@
     "decentralized-search",
     "privacy-focused",
     "web-scraping",
-    "ai-assistant",
-    "typescript"
+    "ai-assistant"
   ],
   "author": "Presearch Community",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/trycatchjames/presearch-mcp-server.git"
+    "url": "https://github.com/NosytLabs/presearch-search-api-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/trycatchjames/presearch-mcp-server/issues"
+    "url": "https://github.com/NosytLabs/presearch-search-api-mcp/issues"
   },
   "homepage": "https://presearch.io",
   "files": [
-    "dist",
-    "src",
+    "src/server/server_enhanced.js",
+    "config/config.js",
+    "src/logger.js",
+    "tests/test.js",
     "README.md",
     "LICENSE",
     ".env.example"
@@ -47,14 +43,7 @@
     "@modelcontextprotocol/sdk": "^1.15.1",
     "axios": "^1.7.2",
     "dotenv": "^17.2.0",
-    "tsx": "^4.11.0",
-    "zod": "^3.22.4"
-  },
-  "devDependencies": {
-    "@types/node": "^20.12.12",
-    "typescript": "^5.4.5"
+    "zod": "^3.22.4",
+    "winston": "^3.13.0"
   }
 }
-
-
-
