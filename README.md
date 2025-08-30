@@ -1,18 +1,18 @@
-# Brave Search MCP Server
+# Presearch MCP Server
 
-**Production-Ready Model Context Protocol Server for Brave Search API**
+**Production-Ready Model Context Protocol Server for Presearch API**
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/NosytLabs/brave-search-mcp)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/NosytLabs/presearch-search-api-mcp)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![API](https://img.shields.io/badge/API-Brave%20Search%20v1-orange.svg)](https://api.search.brave.com)
+[![API](https://img.shields.io/badge/API-Presearch%20v1-orange.svg)](https://presearch.com)
 [![MCP](https://img.shields.io/badge/MCP-Compliant-brightgreen.svg)](https://modelcontextprotocol.io)
 [![Smithery](https://img.shields.io/badge/Smithery-Ready-purple.svg)](https://smithery.ai)
 
-> **⚠️ Community Project Notice**: This is an independent, community-developed MCP server and is not officially affiliated with, endorsed by, or connected to Brave. It provides access to Brave Search's public API through the Model Context Protocol.
+> **⚠️ Community Project Notice**: This is an independent, community-developed MCP server and is not officially affiliated with, endorsed by, or connected to Presearch. It provides access to Presearch's public API through the Model Context Protocol.
 
 ## 📋 Project Overview
 
-The Brave Search MCP Server is a fully optimized, production-ready implementation that bridges the Model Context Protocol (MCP) with Brave Search's powerful search engine. This server enables seamless integration of Brave Search's capabilities into MCP-compatible applications, providing developers and users with access to high-quality, privacy-focused search results.
+The Presearch MCP Server is a fully optimized, production-ready implementation that bridges the Model Context Protocol (MCP) with Presearch's powerful search engine. This server enables seamless integration of Presearch's capabilities into MCP-compatible applications, providing developers and users with access to high-quality, privacy-focused search results.
 
 **Key Highlights:**
 - **Production Ready**: Fully tested and optimized for production deployments
@@ -25,9 +25,9 @@ The Brave Search MCP Server is a fully optimized, production-ready implementatio
 ## ✨ Features
 
 ### 🔍 Core Search Functionality
-- **Advanced Search API Integration**: Direct connection to Brave Search's official API endpoint
+- **Advanced Search API Integration**: Direct connection to Presearch's official API endpoint
 - **Comprehensive Parameter Support**: Query, pagination, country/language filters, time ranges, safe search, and freshness controls
-- **Real-time Results**: Access to Brave Search's high-quality search index with up-to-date information
+- **Real-time Results**: Access to Presearch's high-quality search index with up-to-date information
 - **Multi-format Export**: JSON, CSV, Markdown export capabilities
 
 ### 🛠️ MCP Protocol Implementation
@@ -61,7 +61,7 @@ The Brave Search MCP Server is a fully optimized, production-ready implementatio
 ### Prerequisites
 - **Node.js**: Version 18.0 or higher
 - **NPM**: Latest version recommended
-- **Brave Search API Key**: Valid API key from [Brave Search API](https://api.search.brave.com)
+- **Presearch API Key**: Valid API key from [Presearch Search API](https://presearch.io/searchapi)
 - **Network**: HTTPS connectivity for API calls
 
 ### Quick Install
@@ -92,8 +92,8 @@ npm install https://github.com/NosytLabs/presearch-search-api-mcp.git
 Create a `.env` file in your project root with the following variables:
 
 ```env
-# Required: Your Brave Search API key
-BRAVE_API_KEY=your_api_key_here
+# Required: Your Presearch API key
+PRESEARCH_API_KEY=your_api_key_here
 
 # Optional: Application configuration
 NODE_ENV=production
@@ -111,7 +111,7 @@ HEALTH_CHECK_INTERVAL=30000
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BRAVE_API_KEY` | - | Your Brave Search API key (required) |
+| `PRESEARCH_API_KEY` | - | Your Presearch API key (required) |
 | `NODE_ENV` | `development` | Environment mode |
 | `LOG_LEVEL` | `info` | Logging verbosity (error, warn, info, debug) |
 | `CACHE_TTL` | `3600000` | Cache time-to-live in milliseconds |
@@ -126,7 +126,7 @@ The Presearch MCP Server is fully optimized for deployment on Smithery.ai, provi
 
 ### Prerequisites
 - Smithery.ai account
-- Valid Brave Search API key
+- Valid Presearch API key
 - Smithery configuration file (included)
 
 ### Deployment Steps
@@ -174,11 +174,11 @@ Add to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "brave-search": {
+    "presearch": {
       "command": "npx",
-      "args": ["brave-search-mcp-server"],
+      "args": ["presearch-mcp-server"],
       "env": {
-        "BRAVE_API_KEY": "your_api_key_here"
+        "PRESEARCH_API_KEY": "your_api_key_here"
       }
     }
   }
@@ -188,12 +188,12 @@ Add to your `claude_desktop_config.json`:
 ### VS Code Extension
 ```json
 {
-  "mcp.server.brave-search": {
+  "mcp.server.presearch": {
     "command": "npm",
     "args": ["run", "dev"],
-    "cwd": "${workspaceFolder}/brave-search-mcp-server",
+    "cwd": "${workspaceFolder}/presearch-mcp-server",
     "env": {
-      "BRAVE_API_KEY": "${env:BRAVE_API_KEY}"
+      "PRESEARCH_API_KEY": "${env:PRESEARCH_API_KEY}"
     }
   }
 }
@@ -335,7 +335,7 @@ Error: 401 Unauthorized
 ```
 **Solutions:**
 - Verify API key in `.env` file
-- Ensure valid API key from Brave Search
+- Ensure valid API key from Presearch
 - Check account credits and subscription
 - Confirm API key hasn't expired
 
@@ -365,8 +365,8 @@ Error: 429 Too Many Requests
 DEBUG=* npm start
 
 # Test API connectivity
-curl -H "X-Subscription-Token: YOUR_API_KEY" \
-     "https://api.search.brave.com/res/v1/web/search?q=test"
+curl -H "Authorization: Bearer YOUR_API_KEY" \
+     "https://na-us-1.presearch.com/v1/search?q=test"
 
 # Check server health
 npm run health-check
@@ -477,4 +477,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Version**: 1.0.0 | **Status**: Production Ready | **API**: Brave Search v1 | **MCP**: Compliant | **Platform**: Smithery.ai Ready
+**Version**: 1.0.0 | **Status**: Production Ready | **API**: Presearch v1 | **MCP**: Compliant | **Platform**: Smithery.ai Ready

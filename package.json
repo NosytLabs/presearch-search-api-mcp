@@ -1,8 +1,8 @@
 {
-  "name": "brave-search-mcp-server",
+  "name": "presearch-mcp-server",
   "version": "1.0.0",
   "type": "module",
-  "description": "Official Model Context Protocol server for Brave Search API - Production Ready",
+  "description": "Official Model Context Protocol server for Presearch API - Production Ready",
   "main": "src/server/server.js",
   "scripts": {
     "start": "node src/server/server.js",
@@ -11,7 +11,7 @@
   },
   "keywords": [
     "mcp",
-    "brave-search",
+    "presearch",
     "search",
     "model-context-protocol",
     "ai-tools",
@@ -19,16 +19,16 @@
     "web-scraping",
     "ai-assistant"
   ],
-  "author": "Brave Search Community",
+  "author": "Presearch Community",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/NosytLabs/brave-search-mcp.git"
+    "url": "https://github.com/NosytLabs/presearch-search-api-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/NosytLabs/brave-search-mcp/issues"
+    "url": "https://github.com/NosytLabs/presearch-search-api-mcp/issues"
   },
-  "homepage": "https://search.brave.com",
+  "homepage": "https://presearch.com",
   "files": [
     "src/server/server.js",
     "config/config.js",

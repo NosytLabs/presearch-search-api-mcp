@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Configuration module for Brave Search MCP Server
+ * Configuration module for Presearch MCP Server
  * Handles environment variables and API configuration
  */
 
@@ -11,7 +11,7 @@ import { config as dotenvConfig } from 'dotenv';
 dotenvConfig();
 
 // Default configuration values
-const DEFAULT_BASE_URL = 'https://api.search.brave.com';
+const DEFAULT_BASE_URL = 'https://na-us-1.presearch.com';
 
 /**
  * Logging configuration class
@@ -77,19 +77,19 @@ export class PerformanceConfig {
 }
 
 /**
- * Configuration class for Brave Search API settings
+ * Configuration class for Presearch API settings
  */
-export class BraveConfig {
+export class PresearchConfig {
     /**
-      * Creates a new configuration instance
-      */
+       * Creates a new configuration instance
+       */
     constructor() {
-        this.apiKey = process.env.BRAVE_API_KEY;
-        this.baseURL = process.env.BRAVE_BASE_URL || DEFAULT_BASE_URL;
-        this.timeout = parseInt(process.env.BRAVE_TIMEOUT) || 30000;
-        this.maxRetries = parseInt(process.env.BRAVE_MAX_RETRIES) || 3;
-        this.retryDelay = parseInt(process.env.BRAVE_RETRY_DELAY) || 1000;
-        this.userAgent = process.env.BRAVE_USER_AGENT || 'BraveSearchMCP/1.0.0';
+        this.apiKey = process.env.PRESEARCH_API_KEY;
+        this.baseURL = process.env.PRESEARCH_BASE_URL || DEFAULT_BASE_URL;
+        this.timeout = parseInt(process.env.PRESEARCH_TIMEOUT) || 30000;
+        this.maxRetries = parseInt(process.env.PRESEARCH_MAX_RETRIES) || 3;
+        this.retryDelay = parseInt(process.env.PRESEARCH_RETRY_DELAY) || 1000;
+        this.userAgent = process.env.PRESEARCH_USER_AGENT || 'PresearchMCP/1.0.0';
 
         // Initialize sub-configurations
         this.logging = new LoggingConfig();
@@ -128,7 +128,7 @@ export class BraveConfig {
      */
     validateConfiguration() {
         if (!this.hasValidApiKey()) {
-            throw new Error('BRAVE_API_KEY environment variable is required and cannot be empty');
+            throw new Error('PRESEARCH_API_KEY environment variable is required and cannot be empty');
         }
 
         // Validate sub-configurations
@@ -179,8 +179,8 @@ export class BraveConfig {
 
 /**
  * Creates a configuration instance from environment variables
- * @returns {BraveConfig} New configuration instance
+ * @returns {PresearchConfig} New configuration instance
  */
 export function createConfigFromEnv() {
-    return new BraveConfig();
+    return new PresearchConfig();
 }

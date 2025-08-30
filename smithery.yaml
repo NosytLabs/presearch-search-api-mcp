@@ -1,7 +1,7 @@
-name: brave-search-mcp-server
+name: presearch-mcp-server
 version: "1.0.0"
-description: "Official Model Context Protocol server for Brave Search API - Production Ready"
-author: "Brave Search Community"
+description: "Official Model Context Protocol server for Presearch API - Production Ready"
+author: "Presearch Community"
 license: "MIT"
 
 # Runtime specification
@@ -19,25 +19,25 @@ startCommand:
 
 # Environment variables
 env:
-  - name: BRAVE_API_KEY
+  - name: PRESEARCH_API_KEY
     required: true
-    description: "Brave Search API key for authentication"
+    description: "Presearch API key for authentication"
     type: string
-  - name: BRAVE_BASE_URL
+  - name: PRESEARCH_BASE_URL
     required: false
-    description: "Brave Search API base URL"
+    description: "Presearch API base URL"
     type: string
-    default: "https://api.search.brave.com"
-  - name: BRAVE_TIMEOUT
+    default: "https://na-us-1.presearch.com"
+  - name: PRESEARCH_TIMEOUT
     required: false
     description: "API request timeout in milliseconds"
     type: number
     default: 30000
-  - name: BRAVE_USER_AGENT
+  - name: PRESEARCH_USER_AGENT
     required: false
     description: "User agent string for API requests"
     type: string
-    default: "BraveSearchMCP/1.0.0"
+    default: "PresearchMCP/1.0.0"
   - name: LOG_LEVEL
     required: false
     description: "Logging level (error, warn, info, debug)"
@@ -105,9 +105,9 @@ env:
     default: false
 
 exampleConfig:
-  BRAVE_API_KEY: "your-brave-api-key-here"
-  BRAVE_BASE_URL: "https://api.search.brave.com"
-  BRAVE_TIMEOUT: 30000
+  PRESEARCH_API_KEY: "your-presearch-api-key-here"
+  PRESEARCH_BASE_URL: "https://na-us-1.presearch.com"
+  PRESEARCH_TIMEOUT: 30000
   LOG_LEVEL: "info"
   LOG_ENABLE_CONSOLE: true
   ERROR_MAX_RETRIES: 3
@@ -165,7 +165,7 @@ mcp:
   # Tool definitions
   tools:
     - name: "search"
-      description: "Search the web using Brave Search API"
+      description: "Search the web using Presearch API"
       parameters:
         query: "string"
         count: "number (optional)"
@@ -226,15 +226,15 @@ dependencies:
 # Repository information
 repository:
   type: "git"
-  url: "https://github.com/NosytLabs/brave-search-mcp.git"
+  url: "https://github.com/NosytLabs/presearch-search-api-mcp.git"
 
 # Homepage
-homepage: "https://search.brave.com"
+homepage: "https://presearch.com"
 
 # Keywords
 keywords:
   - "mcp"
-  - "brave-search"
+  - "presearch"
   - "search"
   - "model-context-protocol"
   - "ai-tools"

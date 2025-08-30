@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Brave Search MCP Server - Production Test Suite v1.0
+ * Presearch MCP Server - Production Test Suite v1.0
  * Tests real API functionality with authentic responses
  */
 
@@ -9,21 +9,21 @@ import { createConfigFromEnv } from '../config/config.js';
 import axios from 'axios';
 
 /**
- * Test suite for Brave Search API functionality
+ * Test suite for Presearch API functionality
  */
-class BraveSearchAPITester {
+class PresearchAPITester {
     constructor() {
         this.config = createConfigFromEnv();
         this.apiKey = this.config.getApiKey();
-        this.baseURL = process.env.BRAVE_BASE_URL || 'https://api.search.brave.com';
+        this.baseURL = process.env.PRESEARCH_BASE_URL || 'https://na-us-1.presearch.com';
         this.testResults = [];
         this.passedTests = 0;
         this.failedTests = 0;
     }
 
     async runTests() {
-        console.log('🧪 Brave Search MCP Server v1.0 - Production Test Suite\n');
-        console.log('🔗 Testing against: https://api.search.brave.com/res/v1/web/search\n');
+        console.log('🧪 Presearch MCP Server v1.0 - Production Test Suite\n');
+        console.log('🔗 Testing against: https://na-us-1.presearch.com/v1/search\n');
 
         const tests = [
             { name: 'Basic Search', test: () => this.testBasicSearch() },
@@ -131,9 +131,9 @@ class BraveSearchAPITester {
     async testErrorHandling() {
         try {
             // Test with invalid API key
-            const invalidResponse = await axios.get(`${this.baseURL}/res/v1/web/search`, {
+            const invalidResponse = await axios.get(`${this.baseURL}/v1/search`, {
                 params: { q: 'test', count: 1 },
-                headers: { 'X-Subscription-Token': 'invalid_key' },
+                headers: { 'Authorization': 'Bearer invalid_key' },
                 timeout: 10000
             });
 
@@ -175,13 +175,13 @@ class BraveSearchAPITester {
         const startTime = Date.now();
 
         try {
-            const response = await axios.get(`${this.baseURL}/res/v1/web/search`, {
+            const response = await axios.get(`${this.baseURL}/v1/search`, {
                 params,
                 headers: {
-                    'X-Subscription-Token': this.apiKey,
+                    'Authorization': `Bearer ${this.apiKey}`,
                     'Accept': 'application/json',
                     'Accept-Encoding': 'gzip',
-                    'User-Agent': 'BraveSearchMCP/1.0.0 (Test Suite)'
+                    'User-Agent': 'PresearchMCP/1.0.0 (Test Suite)'
                 },
                 timeout: 30000
             });
@@ -248,12 +248,12 @@ class BraveSearchAPITester {
 // Run tests
 async function main() {
     try {
-        const tester = new BraveSearchAPITester();
+        const tester = new PresearchAPITester();
         await tester.runTests();
     } catch (error) {
         console.error('❌ Test suite failed to initialize:', error.message);
         console.log('\n💡 Make sure:');
-        console.log('- .env file exists with BRAVE_API_KEY');
+        console.log('- .env file exists with PRESEARCH_API_KEY');
         console.log('- API key is valid and has credits');
         console.log('- Network connection is working');
         process.exit(1);

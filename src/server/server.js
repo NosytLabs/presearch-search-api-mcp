@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Brave Search MCP Server
- * Official Model Context Protocol server for Brave Search API
+ * Presearch MCP Server
+ * Official Model Context Protocol server for Presearch API
  * Production-ready implementation with comprehensive error handling and monitoring
  */
 
@@ -30,9 +30,9 @@ function isValidUrl(url) {
 }
 
 // Helper function for common API call patterns with error handling
-async function makeBraveApiCall(params, operationId, context) {
+async function makePresearchApiCall(params, operationId, context) {
     try {
-        const response = await braveApi.get('/res/v1/web/search', { params });
+        const response = await presearchApi.get('/v1/search', { params });
         return response;
     } catch (error) {
         const errorInfo = ErrorHandler.handleError(error, context, { params });
@@ -152,22 +152,22 @@ try {
     process.exit(1);
 }
 
-// Create axios instance for Brave Search API with enhanced configuration
-const braveApi = axios.create({
-    baseURL: 'https://api.search.brave.com',
+// Create axios instance for Presearch API with enhanced configuration
+const presearchApi = axios.create({
+    baseURL: 'https://na-us-1.presearch.com',
     timeout: config.timeout,
     headers: {
         'Accept': 'application/json',
-        'X-Subscription-Token': config.apiKey,
+        'Authorization': `Bearer ${config.apiKey}`,
         'Accept-Encoding': 'gzip'
     }
 });
 
 // Add axios interceptors for request/response logging
-braveApi.interceptors.request.use(
+presearchApi.interceptors.request.use(
     (requestConfig) => {
         if (config.logging.enableRequestLogging) {
-            requestLogger.logRequest('Brave Search API Request', {
+            requestLogger.logRequest('Presearch API Request', {
                 url: requestConfig.url,
                 method: requestConfig.method,
                 params: requestConfig.params
@@ -177,16 +177,16 @@ braveApi.interceptors.request.use(
     },
     (error) => {
         if (config.logging.enableRequestLogging) {
-            requestLogger.logError('Brave Search API Request Setup', error);
+            requestLogger.logError('Presearch API Request Setup', error);
         }
         return Promise.reject(error);
     }
 );
 
-braveApi.interceptors.response.use(
+presearchApi.interceptors.response.use(
     (response) => {
         if (config.logging.enableRequestLogging) {
-            requestLogger.logResponse('Brave Search API Response', response, 0, {
+            requestLogger.logResponse('Presearch API Response', response, 0, {
                 status: response.status,
                 url: response.config.url
             });
@@ -200,7 +200,7 @@ braveApi.interceptors.response.use(
         if (config.logging.enableRequestLogging) {
             const duration = error.config?.metadata?.startTime ?
                 Date.now() - error.config.metadata.startTime : 0;
-            requestLogger.logError('Brave Search API Response', error, duration);
+            requestLogger.logError('Presearch API Response', error, duration);
         }
 
         return Promise.reject(error);
@@ -209,7 +209,7 @@ braveApi.interceptors.response.use(
 
 // Create MCP server
 const server = new McpServer({
-    name: "brave-search-mcp-server",
+    name: "presearch-mcp-server",
     version: "1.0.0"
 });
 
@@ -277,7 +277,7 @@ server.tool(
             let lastError;
             for (let attempt = 1; attempt <= config.errorHandling.maxRetries; attempt++) {
                 try {
-                    const response = await braveApi.get('/res/v1/web/search', { params });
+                    const response = await presearchApi.get('/v1/search', { params });
 
                     // Cache the result
                     if (useCache && config.performance.enableMetrics) {
@@ -324,7 +324,7 @@ server.tool(
             }
 
             // All retries exhausted
-            const errorInfo = ErrorHandler.handleError(lastError, 'Brave Search API', { query, attempts: config.errorHandling.maxRetries });
+            const errorInfo = ErrorHandler.handleError(lastError, 'Presearch API', { query, attempts: config.errorHandling.maxRetries });
             performanceLogger.end(operationId, { status: 'error', attempts: config.errorHandling.maxRetries });
 
             throw new Error(`Search failed: ${errorInfo.message}`);
@@ -357,7 +357,7 @@ server.tool(
             };
             if (country) params.country = country;
 
-            const response = await braveApi.get('/res/v1/web/search', { params });
+            const response = await presearchApi.get('/v1/search', { params });
 
             const data = response.data;
             let exportData = data.web?.results?.slice(0, count) || [];
@@ -447,7 +447,7 @@ server.tool(
             // In a production system, you'd want a proper scraping library
             const response = await axios.get(url, {
                 headers: {
-                    'User-Agent': 'BraveSearchMCP/1.0.0'
+                    'User-Agent': 'PresearchMCP/1.0.0'
                 },
                 timeout: config.timeout
             });
@@ -575,7 +575,7 @@ server.tool(
 
         try {
             const startTime = Date.now();
-            const response = await braveApi.get('/res/v1/web/search', {
+            const response = await presearchApi.get('/v1/search', {
                 params: { q: 'test', count: 1 }
             });
             const responseTime = Date.now() - startTime;
@@ -642,7 +642,7 @@ if (config.performance.enableMetrics) {
 const transport = new StdioServerTransport();
 
 // Log server startup
-logger.info('Brave Search MCP server starting', {
+logger.info('Presearch MCP server starting', {
     version: '1.0.0',
     nodeVersion: process.version,
     platform: process.platform,
@@ -650,7 +650,7 @@ logger.info('Brave Search MCP server starting', {
 });
 
 await server.connect(transport);
-logger.info('Brave Search MCP server running on stdio', {
+logger.info('Presearch MCP server running on stdio', {
     transport: 'stdio',
     pid: process.pid
 });
