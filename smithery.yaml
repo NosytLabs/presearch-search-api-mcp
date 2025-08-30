@@ -21,6 +21,6 @@ startCommand:
   commandFunction: |-
     (config) => ({
       command: "docker",
-      args: ["run", "-i", "--rm", "presearch-mcp-server:1.0.0"],
+      args: ["run", "-i", "--rm", "presearch"],
       env: { PRESEARCH_API_KEY: config.presearchApiKey }
     })
