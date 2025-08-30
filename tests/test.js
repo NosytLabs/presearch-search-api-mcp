@@ -15,7 +15,7 @@ class PresearchAPITester {
     constructor() {
         this.config = createConfigFromEnv();
         this.apiKey = this.config.getApiKey();
-        this.baseURL = 'https://na-us-1.presearch.com';
+        this.baseURL = process.env.PRESEARCH_BASE_URL || 'https://na-us-1.presearch.com';
         this.testResults = [];
         this.passedTests = 0;
         this.failedTests = 0;

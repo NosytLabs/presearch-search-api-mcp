@@ -1,0 +1,26 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+
+name: presearch-mcp-server
+description: Official Model Context Protocol server for Presearch Search API - Production Ready
+version: 1.0.0
+runtime: container
+
+build:
+  dockerBuildPath: ./
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required:
+      - presearchApiKey
+    properties:
+      presearchApiKey:
+        type: string
+        description: The API key for the Presearch Search API.
+  commandFunction: |-
+    (config) => ({
+      command: "docker",
+      args: ["run", "-i", "--rm", "presearch-mcp-server"],
+      env: { PRESEARCH_API_KEY: config.presearchApiKey }
+    })

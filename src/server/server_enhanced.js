@@ -13,9 +13,36 @@ import axios from 'axios';
 import { createConfigFromEnv } from '../../config/config.js';
 import { logger, performanceLogger, requestLogger, ErrorHandler } from '../logger.js';
 
+// Constants for configuration and defaults
+const DEFAULT_IP_ADDRESS = '8.8.8.8';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const MAX_SCRAPE_TEXT_LENGTH = 2000;
+const MAX_SCRAPE_LINKS = 20;
+const MAX_SCRAPE_IMAGES = 10;
+
+// URL validation utility
+function isValidUrl(url) {
+    try {
+        const parsedUrl = new URL(url);
+        return ['http:', 'https:'].includes(parsedUrl.protocol);
+    } catch {
+        return false;
+// Helper function for common API call patterns with error handling
+async function makePresearchApiCall(params, operationId, context) {
+    try {
+        const response = await presearchApi.get('/v1/search', { params });
+        return response;
+    } catch (error) {
+        const errorInfo = ErrorHandler.handleError(error, context, { params });
+        performanceLogger.end(operationId, { status: 'error' });
+        throw error;
+    }
+}
+    }
+}
+
 // Simple in-memory cache with TTL
 const cache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // Circuit breaker state
 let circuitBreakerState = 'CLOSED'; // CLOSED, OPEN, HALF_OPEN
@@ -198,7 +225,7 @@ server.tool(
         ip: z.string().optional().describe("Client IP address"),
         useCache: z.boolean().optional().describe("Whether to use cached results")
     },
-    async ({ query, page = "1", lang, time, safe, ip = "8.8.8.8", useCache = true }) => {
+    async ({ query, page = "1", lang, time, safe, ip = DEFAULT_IP_ADDRESS, useCache = true }) => {
         const operationId = performanceLogger.start('presearch_search', { query, page });
 
         try {
@@ -291,29 +318,13 @@ server.tool(
             const errorInfo = ErrorHandler.handleError(lastError, 'Presearch Search API', { query, attempts: config.errorHandling.maxRetries });
             performanceLogger.end(operationId, { status: 'error', attempts: config.errorHandling.maxRetries });
 
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: `Search failed: ${errorInfo.message}`
-                    }
-                ],
-                isError: true
-            };
+            throw new Error(`Search failed: ${errorInfo.message}`);
 
         } catch (error) {
             const errorInfo = ErrorHandler.handleError(error, 'Search Tool Execution', { query });
             performanceLogger.end(operationId, { status: 'error' });
 
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: `Search tool error: ${errorInfo.message}`
-                    }
-                ],
-                isError: true
-            };
+            throw new Error(`Search tool error: ${errorInfo.message}`);
         }
     }
 );
@@ -331,7 +342,7 @@ server.tool(
 
         try {
             const response = await presearchApi.get('/v1/search', {
-                params: { q: query, ip: '8.8.8.8' }
+                params: { q: query, ip: DEFAULT_IP_ADDRESS }
             });
 
             const data = response.data;
@@ -389,15 +400,7 @@ server.tool(
             const errorInfo = ErrorHandler.handleError(error, 'Export Results', { query, format });
             performanceLogger.end(operationId, { status: 'error' });
 
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: `Export failed: ${errorInfo.message}`
-                    }
-                ],
-                isError: true
-            };
+            throw new Error(`Export failed: ${errorInfo.message}`);
         }
     }
 );
@@ -416,6 +419,16 @@ server.tool(
         const operationId = performanceLogger.start('presearch_scrape_content', { url });
 
         try {
+            // Validate URL for security
+            if (!isValidUrl(url)) {
+                throw ErrorHandler.createError(
+                    ErrorHandler.ERROR_CODES.VALIDATION_ERROR,
+                    'Invalid URL provided for scraping',
+                    null,
+                    { url }
+                );
+            }
+
             // For now, we'll use a simple approach with axios
             // In a production system, you'd want a proper scraping library
             const response = await axios.get(url, {
@@ -449,7 +462,7 @@ server.tool(
                     .replace(/\s+/g, ' ')
                     .trim();
 
-                results.textContent = textContent.substring(0, 2000) + (textContent.length > 2000 ? '...' : '');
+                results.textContent = textContent.substring(0, MAX_SCRAPE_TEXT_LENGTH) + (textContent.length > MAX_SCRAPE_TEXT_LENGTH ? '...' : '');
             }
 
             if (extractLinks) {
@@ -497,15 +510,7 @@ server.tool(
             const errorInfo = ErrorHandler.handleError(error, 'Content Scraping', { url });
             performanceLogger.end(operationId, { status: 'error' });
 
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: `Scraping failed for ${url}: ${errorInfo.message}`
-                    }
-                ],
-                isError: true
-            };
+            throw new Error(`Scraping failed for ${url}: ${errorInfo.message}`);
         }
     }
 );
@@ -594,22 +599,7 @@ server.tool(
             const errorInfo = ErrorHandler.handleError(error, 'Health Check');
             performanceLogger.end(operationId, { status: 'unhealthy' });
 
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: `❌ Health Check Failed:\n${JSON.stringify({
-                        status: 'unhealthy',
-                        error: errorInfo.message,
-                        code: errorInfo.code,
-                        apiKeyValid: false,
-                        circuitBreakerState,
-                        timestamp: new Date().toISOString()
-                    }, null, 2)}`
-                    }
-                ],
-                isError: true
-            };
+            throw new Error(`Health Check Failed: ${errorInfo.message}`);
         }
     }
 );
