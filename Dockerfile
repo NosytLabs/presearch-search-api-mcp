@@ -39,6 +39,12 @@ COPY --chown=mcpuser:nodejs config/ ./config/
 # Copy environment template (actual .env should be mounted at runtime)
 COPY --chown=mcpuser:nodejs .env.example ./.env.example
 
+# Copy health check script
+COPY --chown=mcpuser:nodejs healthcheck.js ./healthcheck.js
+
+# Make health check script executable
+RUN chmod +x healthcheck.js
+
 # Create logs directory with proper permissions
 RUN mkdir -p logs && chown -R mcpuser:nodejs logs
 
@@ -49,9 +55,9 @@ ENV LOG_DIRECTORY=/app/logs
 # Switch to non-root user
 USER mcpuser
 
-# Health check for MCP server (checks if process is responding)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "console.log('MCP server health check')" || exit 1
+# Health check for MCP server (tests MCP protocol via stdio)
+HEALTHCHECK --interval=30s --timeout=15s --start-period=10s --retries=3 \
+    CMD node healthcheck.js || exit 1
 
 # Set entrypoint with dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
