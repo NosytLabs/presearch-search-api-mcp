@@ -27,6 +27,9 @@ function isValidUrl(url) {
         return ['http:', 'https:'].includes(parsedUrl.protocol);
     } catch {
         return false;
+    }
+}
+
 // Helper function for common API call patterns with error handling
 async function makePresearchApiCall(params, operationId, context) {
     try {
@@ -36,8 +39,6 @@ async function makePresearchApiCall(params, operationId, context) {
         const errorInfo = ErrorHandler.handleError(error, context, { params });
         performanceLogger.end(operationId, { status: 'error' });
         throw error;
-    }
-}
     }
 }
 

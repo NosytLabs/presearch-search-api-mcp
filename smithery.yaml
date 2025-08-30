@@ -1,0 +1,341 @@
+name: presearch-mcp-server
+version: "1.0.0"
+description: "Official Model Context Protocol server for Presearch Search API - Production Ready"
+author: "Presearch Community"
+license: "MIT"
+
+# Runtime specification
+runtime: nodejs
+runtimeVersion: "18"
+
+# Build configuration
+build:
+  command: npm install
+  workingDirectory: "."
+
+# Start configuration
+startCommand:
+  command: node src/server/server_enhanced.js
+  workingDirectory: "."
+  configSchema:
+    type: object
+    required:
+      - PRESEARCH_API_KEY
+    properties:
+      PRESEARCH_API_KEY:
+        type: string
+        description: "Presearch API key for authentication"
+      PRESEARCH_BASE_URL:
+        type: string
+        description: "Presearch API base URL"
+        default: "https://na-us-1.presearch.com"
+      PRESEARCH_TIMEOUT:
+        type: integer
+        description: "API request timeout in milliseconds"
+        default: 30000
+        minimum: 1000
+        maximum: 120000
+      PRESEARCH_USER_AGENT:
+        type: string
+        description: "User agent string for API requests"
+        default: "PresearchMCP/1.0.0"
+      LOG_LEVEL:
+        type: string
+        enum: ["error", "warn", "info", "debug"]
+        description: "Logging level"
+        default: "info"
+      LOG_ENABLE_CONSOLE:
+        type: boolean
+        description: "Enable console logging"
+        default: true
+      LOG_ENABLE_FILE:
+        type: boolean
+        description: "Enable file logging"
+        default: false
+      LOG_DIRECTORY:
+        type: string
+        description: "Directory for log files"
+        default: "./logs"
+      LOG_ENABLE_PERFORMANCE:
+        type: boolean
+        description: "Enable performance logging"
+        default: false
+      LOG_ENABLE_REQUEST:
+        type: boolean
+        description: "Enable request/response logging"
+        default: false
+      ERROR_MAX_RETRIES:
+        type: integer
+        description: "Maximum number of API retries"
+        default: 3
+        minimum: 0
+        maximum: 10
+      ERROR_RETRY_DELAY:
+        type: integer
+        description: "Delay between retries in milliseconds"
+        default: 1000
+        minimum: 100
+        maximum: 10000
+      ERROR_CIRCUIT_BREAKER_ENABLED:
+        type: boolean
+        description: "Enable circuit breaker pattern"
+        default: true
+      ERROR_CIRCUIT_BREAKER_THRESHOLD:
+        type: integer
+        description: "Circuit breaker failure threshold"
+        default: 5
+        minimum: 1
+        maximum: 20
+      PERF_ENABLE_METRICS:
+        type: boolean
+        description: "Enable performance metrics collection"
+        default: true
+      PERF_SLOW_QUERY_THRESHOLD:
+        type: integer
+        description: "Slow query threshold in milliseconds"
+        default: 5000
+        minimum: 1000
+        maximum: 30000
+      PERF_ENABLE_MEMORY_MONITORING:
+        type: boolean
+        description: "Enable memory usage monitoring"
+        default: false
+
+# Environment variables
+env:
+  - name: PRESEARCH_API_KEY
+    required: true
+    description: "Presearch API key for authentication"
+    type: string
+  - name: PRESEARCH_BASE_URL
+    required: false
+    description: "Presearch API base URL"
+    type: string
+    default: "https://na-us-1.presearch.com"
+  - name: PRESEARCH_TIMEOUT
+    required: false
+    description: "API request timeout in milliseconds"
+    type: number
+    default: 30000
+  - name: PRESEARCH_USER_AGENT
+    required: false
+    description: "User agent string for API requests"
+    type: string
+    default: "PresearchMCP/1.0.0"
+  - name: LOG_LEVEL
+    required: false
+    description: "Logging level (error, warn, info, debug)"
+    type: string
+    default: "info"
+  - name: LOG_ENABLE_CONSOLE
+    required: false
+    description: "Enable console logging"
+    type: boolean
+    default: true
+  - name: LOG_ENABLE_FILE
+    required: false
+    description: "Enable file logging"
+    type: boolean
+    default: false
+  - name: LOG_DIRECTORY
+    required: false
+    description: "Directory for log files"
+    type: string
+    default: "./logs"
+  - name: LOG_ENABLE_PERFORMANCE
+    required: false
+    description: "Enable performance logging"
+    type: boolean
+    default: false
+  - name: LOG_ENABLE_REQUEST
+    required: false
+    description: "Enable request/response logging"
+    type: boolean
+    default: false
+  - name: ERROR_MAX_RETRIES
+    required: false
+    description: "Maximum number of API retries"
+    type: number
+    default: 3
+  - name: ERROR_RETRY_DELAY
+    required: false
+    description: "Delay between retries in milliseconds"
+    type: number
+    default: 1000
+  - name: ERROR_CIRCUIT_BREAKER_ENABLED
+    required: false
+    description: "Enable circuit breaker pattern"
+    type: boolean
+    default: true
+  - name: ERROR_CIRCUIT_BREAKER_THRESHOLD
+    required: false
+    description: "Circuit breaker failure threshold"
+    type: number
+    default: 5
+  - name: PERF_ENABLE_METRICS
+    required: false
+    description: "Enable performance metrics collection"
+    type: boolean
+    default: true
+  - name: PERF_SLOW_QUERY_THRESHOLD
+    required: false
+    description: "Slow query threshold in milliseconds"
+    type: number
+    default: 5000
+  - name: PERF_ENABLE_MEMORY_MONITORING
+    required: false
+    description: "Enable memory usage monitoring"
+    type: boolean
+    default: false
+
+exampleConfig:
+  PRESEARCH_API_KEY: "your-presearch-api-key-here"
+  PRESEARCH_BASE_URL: "https://na-us-1.presearch.com"
+  PRESEARCH_TIMEOUT: 30000
+  LOG_LEVEL: "info"
+  LOG_ENABLE_CONSOLE: true
+  ERROR_MAX_RETRIES: 3
+  PERF_ENABLE_METRICS: true
+
+
+# Deployment settings
+deployment:
+  # Resource requirements
+  resources:
+    memory: "256Mi"
+    cpu: "100m"
+    ephemeralStorage: "100Mi"
+
+  # Scaling parameters
+  scaling:
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+  # Health check configuration
+  healthCheck:
+    enabled: true
+    path: "/health"
+    port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+  # Timeout settings
+  timeouts:
+    startup: "60s"
+    readiness: "10s"
+    liveness: "30s"
+
+  # Network configuration
+  network:
+    port: 8080
+    protocol: "TCP"
+    allowExternalTraffic: false
+
+# Security and access controls
+security:
+  # Environment variable handling
+  envVarHandling:
+    redactSecrets: true
+    validateInputs: true
+
+  # Isolation settings
+  isolation:
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+
+  # Network security
+  networkSecurity:
+    restrictExternalAccess: true
+    allowedPorts: [8080]
+    enableTLS: false
+
+# MCP-specific configuration
+mcp:
+  # Transport specification
+  transport:
+    type: "stdio"
+    protocolVersion: "2024-11-05"
+
+  # Tool definitions
+  tools:
+    - name: "presearch_search"
+      description: "Search the Presearch decentralized search engine"
+      parameters:
+        query: "string"
+        page: "string (optional)"
+        lang: "string (optional)"
+        time: "string (optional)"
+        safe: "string (optional)"
+        ip: "string (optional)"
+        useCache: "boolean (optional)"
+
+    - name: "presearch_export_results"
+      description: "Export search results in various formats"
+      parameters:
+        query: "string"
+        format: "enum (json, csv, markdown)"
+        maxResults: "number (optional)"
+
+    - name: "presearch_scrape_content"
+      description: "Scrape content from web pages"
+      parameters:
+        url: "string"
+        extractText: "boolean (optional)"
+        extractLinks: "boolean (optional)"
+        extractImages: "boolean (optional)"
+        includeMetadata: "boolean (optional)"
+
+    - name: "presearch_cache_stats"
+      description: "Get cache statistics"
+      parameters: {}
+
+    - name: "presearch_cache_clear"
+      description: "Clear the search cache"
+      parameters: {}
+
+    - name: "presearch_health_check"
+      description: "Perform health check on the server"
+      parameters: {}
+
+  # Protocol compatibility
+  protocol:
+    version: "1.0"
+    supportedVersions: ["1.0"]
+    features:
+      - "tool-calling"
+      - "resource-access"
+      - "prompt-management"
+
+# Dependencies
+dependencies:
+  - "@modelcontextprotocol/sdk@^1.15.1"
+  - "axios@^1.7.2"
+  - "dotenv@^17.2.0"
+  - "zod@^3.22.4"
+  - "winston@^3.13.0"
+
+# Repository information
+repository:
+  type: "git"
+  url: "https://github.com/NosytLabs/presearch-search-api-mcp.git"
+
+# Homepage
+homepage: "https://presearch.io"
+
+# Keywords
+keywords:
+  - "mcp"
+  - "presearch"
+  - "search"
+  - "model-context-protocol"
+  - "ai-tools"
+  - "decentralized-search"
+  - "privacy-focused"
+  - "web-scraping"
+  - "ai-assistant"
