@@ -15,91 +15,94 @@ build:
 
 # Start configuration
 startCommand:
+  type: "http"
   command: node src/server/server_enhanced.js
   workingDirectory: "."
-  configSchema:
-    type: object
-    required:
-      - PRESEARCH_API_KEY
-    properties:
-      PRESEARCH_API_KEY:
-        type: string
-        description: "Presearch API key for authentication"
-      PRESEARCH_BASE_URL:
-        type: string
-        description: "Presearch API base URL"
-        default: "https://na-us-1.presearch.com"
-      PRESEARCH_TIMEOUT:
-        type: integer
-        description: "API request timeout in milliseconds"
-        default: 30000
-        minimum: 1000
-        maximum: 120000
-      PRESEARCH_USER_AGENT:
-        type: string
-        description: "User agent string for API requests"
-        default: "PresearchMCP/1.0.0"
-      LOG_LEVEL:
-        type: string
-        enum: ["error", "warn", "info", "debug"]
-        description: "Logging level"
-        default: "info"
-      LOG_ENABLE_CONSOLE:
-        type: boolean
-        description: "Enable console logging"
-        default: true
-      LOG_ENABLE_FILE:
-        type: boolean
-        description: "Enable file logging"
-        default: false
-      LOG_DIRECTORY:
-        type: string
-        description: "Directory for log files"
-        default: "./logs"
-      LOG_ENABLE_PERFORMANCE:
-        type: boolean
-        description: "Enable performance logging"
-        default: false
-      LOG_ENABLE_REQUEST:
-        type: boolean
-        description: "Enable request/response logging"
-        default: false
-      ERROR_MAX_RETRIES:
-        type: integer
-        description: "Maximum number of API retries"
-        default: 3
-        minimum: 0
-        maximum: 10
-      ERROR_RETRY_DELAY:
-        type: integer
-        description: "Delay between retries in milliseconds"
-        default: 1000
-        minimum: 100
-        maximum: 10000
-      ERROR_CIRCUIT_BREAKER_ENABLED:
-        type: boolean
-        description: "Enable circuit breaker pattern"
-        default: true
-      ERROR_CIRCUIT_BREAKER_THRESHOLD:
-        type: integer
-        description: "Circuit breaker failure threshold"
-        default: 5
-        minimum: 1
-        maximum: 20
-      PERF_ENABLE_METRICS:
-        type: boolean
-        description: "Enable performance metrics collection"
-        default: true
-      PERF_SLOW_QUERY_THRESHOLD:
-        type: integer
-        description: "Slow query threshold in milliseconds"
-        default: 5000
-        minimum: 1000
-        maximum: 30000
-      PERF_ENABLE_MEMORY_MONITORING:
-        type: boolean
-        description: "Enable memory usage monitoring"
-        default: false
+
+# Configuration schema
+configSchema:
+  type: object
+  required:
+    - PRESEARCH_API_KEY
+  properties:
+    PRESEARCH_API_KEY:
+      type: string
+      description: "Presearch API key for authentication"
+    PRESEARCH_BASE_URL:
+      type: string
+      description: "Presearch API base URL"
+      default: "https://na-us-1.presearch.com"
+    PRESEARCH_TIMEOUT:
+      type: integer
+      description: "API request timeout in milliseconds"
+      default: 30000
+      minimum: 1000
+      maximum: 120000
+    PRESEARCH_USER_AGENT:
+      type: string
+      description: "User agent string for API requests"
+      default: "PresearchMCP/1.0.0"
+    LOG_LEVEL:
+      type: string
+      enum: ["error", "warn", "info", "debug"]
+      description: "Logging level"
+      default: "info"
+    LOG_ENABLE_CONSOLE:
+      type: boolean
+      description: "Enable console logging"
+      default: true
+    LOG_ENABLE_FILE:
+      type: boolean
+      description: "Enable file logging"
+      default: false
+    LOG_DIRECTORY:
+      type: string
+      description: "Directory for log files"
+      default: "./logs"
+    LOG_ENABLE_PERFORMANCE:
+      type: boolean
+      description: "Enable performance logging"
+      default: false
+    LOG_ENABLE_REQUEST:
+      type: boolean
+      description: "Enable request/response logging"
+      default: false
+    ERROR_MAX_RETRIES:
+      type: integer
+      description: "Maximum number of API retries"
+      default: 3
+      minimum: 0
+      maximum: 10
+    ERROR_RETRY_DELAY:
+      type: integer
+      description: "Delay between retries in milliseconds"
+      default: 1000
+      minimum: 100
+      maximum: 10000
+    ERROR_CIRCUIT_BREAKER_ENABLED:
+      type: boolean
+      description: "Enable circuit breaker pattern"
+      default: true
+    ERROR_CIRCUIT_BREAKER_THRESHOLD:
+      type: integer
+      description: "Circuit breaker failure threshold"
+      default: 5
+      minimum: 1
+      maximum: 20
+    PERF_ENABLE_METRICS:
+      type: boolean
+      description: "Enable performance metrics collection"
+      default: true
+    PERF_SLOW_QUERY_THRESHOLD:
+      type: integer
+      description: "Slow query threshold in milliseconds"
+      default: 5000
+      minimum: 1000
+      maximum: 30000
+    PERF_ENABLE_MEMORY_MONITORING:
+      type: boolean
+      description: "Enable memory usage monitoring"
+      default: false
 
 # Environment variables
 env:
