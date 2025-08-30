@@ -1,4 +1,4 @@
-# Multi-stage build for production-ready MCP server
+# Multi-stage build for production-ready Brave Search MCP server
 # Stage 1: Dependencies
 FROM node:18-alpine AS deps
 # Install dumb-init for proper signal handling
@@ -63,4 +63,4 @@ HEALTHCHECK --interval=30s --timeout=15s --start-period=10s --retries=3 \
 ENTRYPOINT ["dumb-init", "--"]
 
 # Run the MCP server
-CMD ["node", "src/server/server_enhanced.js"]
+CMD ["node", "src/server/server.js"]

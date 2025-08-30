@@ -1,7 +1,7 @@
-name: presearch-mcp-server
+name: brave-search-mcp-server
 version: "1.0.0"
-description: "Official Model Context Protocol server for Presearch Search API - Production Ready"
-author: "Presearch Community"
+description: "Official Model Context Protocol server for Brave Search API - Production Ready"
+author: "Brave Search Community"
 license: "MIT"
 
 # Runtime specification
@@ -14,30 +14,30 @@ build:
 
 # Start configuration
 startCommand:
-  command: node src/server/server_enhanced.js
+  command: node src/server/server.js
   workingDirectory: "."
 
 # Environment variables
 env:
-  - name: PRESEARCH_API_KEY
+  - name: BRAVE_API_KEY
     required: true
-    description: "Presearch API key for authentication"
+    description: "Brave Search API key for authentication"
     type: string
-  - name: PRESEARCH_BASE_URL
+  - name: BRAVE_BASE_URL
     required: false
-    description: "Presearch API base URL"
+    description: "Brave Search API base URL"
     type: string
-    default: "https://na-us-1.presearch.com"
-  - name: PRESEARCH_TIMEOUT
+    default: "https://api.search.brave.com"
+  - name: BRAVE_TIMEOUT
     required: false
     description: "API request timeout in milliseconds"
     type: number
     default: 30000
-  - name: PRESEARCH_USER_AGENT
+  - name: BRAVE_USER_AGENT
     required: false
     description: "User agent string for API requests"
     type: string
-    default: "PresearchMCP/1.0.0"
+    default: "BraveSearchMCP/1.0.0"
   - name: LOG_LEVEL
     required: false
     description: "Logging level (error, warn, info, debug)"
@@ -105,9 +105,9 @@ env:
     default: false
 
 exampleConfig:
-  PRESEARCH_API_KEY: "your-presearch-api-key-here"
-  PRESEARCH_BASE_URL: "https://na-us-1.presearch.com"
-  PRESEARCH_TIMEOUT: 30000
+  BRAVE_API_KEY: "your-brave-api-key-here"
+  BRAVE_BASE_URL: "https://api.search.brave.com"
+  BRAVE_TIMEOUT: 30000
   LOG_LEVEL: "info"
   LOG_ENABLE_CONSOLE: true
   ERROR_MAX_RETRIES: 3
@@ -164,25 +164,28 @@ mcp:
 
   # Tool definitions
   tools:
-    - name: "presearch_search"
-      description: "Search the Presearch decentralized search engine"
+    - name: "search"
+      description: "Search the web using Brave Search API"
       parameters:
         query: "string"
-        page: "string (optional)"
-        lang: "string (optional)"
-        time: "string (optional)"
-        safe: "string (optional)"
-        ip: "string (optional)"
+        count: "number (optional)"
+        offset: "number (optional)"
+        country: "string (optional)"
+        search_lang: "string (optional)"
+        ui_lang: "string (optional)"
+        safesearch: "string (optional)"
+        freshness: "string (optional)"
         useCache: "boolean (optional)"
 
-    - name: "presearch_export_results"
+    - name: "export_results"
       description: "Export search results in various formats"
       parameters:
         query: "string"
         format: "enum (json, csv, markdown)"
-        maxResults: "number (optional)"
+        count: "number (optional)"
+        country: "string (optional)"
 
-    - name: "presearch_scrape_content"
+    - name: "scrape_content"
       description: "Scrape content from web pages"
       parameters:
         url: "string"
@@ -191,15 +194,15 @@ mcp:
         extractImages: "boolean (optional)"
         includeMetadata: "boolean (optional)"
 
-    - name: "presearch_cache_stats"
+    - name: "cache_stats"
       description: "Get cache statistics"
       parameters: {}
 
-    - name: "presearch_cache_clear"
+    - name: "cache_clear"
       description: "Clear the search cache"
       parameters: {}
 
-    - name: "presearch_health_check"
+    - name: "health_check"
       description: "Perform health check on the server"
       parameters: {}
 
@@ -223,19 +226,18 @@ dependencies:
 # Repository information
 repository:
   type: "git"
-  url: "https://github.com/NosytLabs/presearch-search-api-mcp.git"
+  url: "https://github.com/NosytLabs/brave-search-mcp.git"
 
 # Homepage
-homepage: "https://presearch.io"
+homepage: "https://search.brave.com"
 
 # Keywords
 keywords:
   - "mcp"
-  - "presearch"
+  - "brave-search"
   - "search"
   - "model-context-protocol"
   - "ai-tools"
-  - "decentralized-search"
   - "privacy-focused"
   - "web-scraping"
   - "ai-assistant"

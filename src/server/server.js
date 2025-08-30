@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * Enhanced Presearch MCP Server
- * Official Model Context Protocol server for Presearch Search API
- * Includes comprehensive logging, error handling, and performance monitoring
+ * Brave Search MCP Server
+ * Official Model Context Protocol server for Brave Search API
+ * Production-ready implementation with comprehensive error handling and monitoring
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -14,7 +14,6 @@ import { createConfigFromEnv } from '../../config/config.js';
 import { logger, performanceLogger, requestLogger, ErrorHandler } from '../logger.js';
 
 // Constants for configuration and defaults
-const DEFAULT_IP_ADDRESS = '8.8.8.8';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const MAX_SCRAPE_TEXT_LENGTH = 2000;
 const MAX_SCRAPE_LINKS = 20;
@@ -31,9 +30,9 @@ function isValidUrl(url) {
 }
 
 // Helper function for common API call patterns with error handling
-async function makePresearchApiCall(params, operationId, context) {
+async function makeBraveApiCall(params, operationId, context) {
     try {
-        const response = await presearchApi.get('/v1/search', { params });
+        const response = await braveApi.get('/res/v1/web/search', { params });
         return response;
     } catch (error) {
         const errorInfo = ErrorHandler.handleError(error, context, { params });
@@ -153,22 +152,22 @@ try {
     process.exit(1);
 }
 
-// Create axios instance for Presearch API with enhanced configuration
-const presearchApi = axios.create({
-    baseURL: config.baseURL,
+// Create axios instance for Brave Search API with enhanced configuration
+const braveApi = axios.create({
+    baseURL: 'https://api.search.brave.com',
     timeout: config.timeout,
     headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
         'Accept': 'application/json',
-        'User-Agent': config.userAgent
+        'X-Subscription-Token': config.apiKey,
+        'Accept-Encoding': 'gzip'
     }
 });
 
 // Add axios interceptors for request/response logging
-presearchApi.interceptors.request.use(
+braveApi.interceptors.request.use(
     (requestConfig) => {
         if (config.logging.enableRequestLogging) {
-            requestLogger.logRequest('Presearch API Request', {
+            requestLogger.logRequest('Brave Search API Request', {
                 url: requestConfig.url,
                 method: requestConfig.method,
                 params: requestConfig.params
@@ -178,16 +177,16 @@ presearchApi.interceptors.request.use(
     },
     (error) => {
         if (config.logging.enableRequestLogging) {
-            requestLogger.logError('Presearch API Request Setup', error);
+            requestLogger.logError('Brave Search API Request Setup', error);
         }
         return Promise.reject(error);
     }
 );
 
-presearchApi.interceptors.response.use(
+braveApi.interceptors.response.use(
     (response) => {
         if (config.logging.enableRequestLogging) {
-            requestLogger.logResponse('Presearch API Response', response, 0, {
+            requestLogger.logResponse('Brave Search API Response', response, 0, {
                 status: response.status,
                 url: response.config.url
             });
@@ -201,7 +200,7 @@ presearchApi.interceptors.response.use(
         if (config.logging.enableRequestLogging) {
             const duration = error.config?.metadata?.startTime ?
                 Date.now() - error.config.metadata.startTime : 0;
-            requestLogger.logError('Presearch API Response', error, duration);
+            requestLogger.logError('Brave Search API Response', error, duration);
         }
 
         return Promise.reject(error);
@@ -210,24 +209,26 @@ presearchApi.interceptors.response.use(
 
 // Create MCP server
 const server = new McpServer({
-    name: "presearch-mcp-server",
+    name: "brave-search-mcp-server",
     version: "1.0.0"
 });
 
 // Enhanced search tool with comprehensive error handling and logging
 server.tool(
-    "presearch_search",
+    "search",
     {
         query: z.string().describe("Search query"),
-        page: z.string().optional().describe("Page number (1-based)"),
-        lang: z.string().optional().describe("Language code (e.g., en-US)"),
-        time: z.string().optional().describe("Time filter (week, month, year)"),
-        safe: z.string().optional().describe("Safe search (0=off, 1=on)"),
-        ip: z.string().optional().describe("Client IP address"),
+        count: z.number().optional().describe("Number of results (1-20, default 10)"),
+        offset: z.number().optional().describe("Pagination offset (default 0)"),
+        country: z.string().optional().describe("Country code (e.g., US, GB)"),
+        search_lang: z.string().optional().describe("Search language (e.g., en, es)"),
+        ui_lang: z.string().optional().describe("UI language (e.g., en-US)"),
+        safesearch: z.string().optional().describe("Safe search level (off, moderate, strict)"),
+        freshness: z.string().optional().describe("Time filter (pd, pw, pm, py)"),
         useCache: z.boolean().optional().describe("Whether to use cached results")
     },
-    async ({ query, page = "1", lang, time, safe, ip = DEFAULT_IP_ADDRESS, useCache = true }) => {
-        const operationId = performanceLogger.start('presearch_search', { query, page });
+    async ({ query, count = 10, offset = 0, country, search_lang, ui_lang, safesearch, freshness, useCache = true }) => {
+        const operationId = performanceLogger.start('search', { query, count, offset });
 
         try {
             // Check circuit breaker
@@ -240,10 +241,17 @@ server.tool(
                 );
             }
 
-            const params = { q: query, page, ip };
-            if (lang) params.lang = lang;
-            if (time) params.time = time;
-            if (safe) params.safe = safe;
+            const params = {
+                q: query,
+                count: Math.min(Math.max(count, 1), 20), // Ensure count is between 1-20
+                offset
+            };
+
+            if (country) params.country = country;
+            if (search_lang) params.search_lang = search_lang;
+            if (ui_lang) params.ui_lang = ui_lang;
+            if (safesearch) params.safesearch = safesearch;
+            if (freshness) params.freshness = freshness;
 
             const cacheKey = getCacheKey(params);
 
@@ -269,7 +277,7 @@ server.tool(
             let lastError;
             for (let attempt = 1; attempt <= config.errorHandling.maxRetries; attempt++) {
                 try {
-                    const response = await presearchApi.get('/v1/search', { params });
+                    const response = await braveApi.get('/res/v1/web/search', { params });
 
                     // Cache the result
                     if (useCache && config.performance.enableMetrics) {
@@ -279,7 +287,7 @@ server.tool(
                     const duration = performanceLogger.end(operationId, {
                         attempt,
                         status: 'success',
-                        resultCount: response.data?.data?.standardResults?.length || 0
+                        resultCount: response.data?.web?.results?.length || 0
                     });
 
                     // Log slow queries
@@ -316,7 +324,7 @@ server.tool(
             }
 
             // All retries exhausted
-            const errorInfo = ErrorHandler.handleError(lastError, 'Presearch Search API', { query, attempts: config.errorHandling.maxRetries });
+            const errorInfo = ErrorHandler.handleError(lastError, 'Brave Search API', { query, attempts: config.errorHandling.maxRetries });
             performanceLogger.end(operationId, { status: 'error', attempts: config.errorHandling.maxRetries });
 
             throw new Error(`Search failed: ${errorInfo.message}`);
@@ -332,22 +340,27 @@ server.tool(
 
 // Export results tool with enhanced error handling
 server.tool(
-    "presearch_export_results",
+    "export_results",
     {
         query: z.string().describe("Search query to export"),
         format: z.enum(["json", "csv", "markdown"]).describe("Export format"),
-        maxResults: z.number().optional().describe("Maximum number of results to export")
+        count: z.number().optional().describe("Number of results to export"),
+        country: z.string().optional().describe("Country code for search")
     },
-    async ({ query, format, maxResults = 10 }) => {
-        const operationId = performanceLogger.start('presearch_export_results', { query, format, maxResults });
+    async ({ query, format, count = 10, country }) => {
+        const operationId = performanceLogger.start('export_results', { query, format, count });
 
         try {
-            const response = await presearchApi.get('/v1/search', {
-                params: { q: query, ip: DEFAULT_IP_ADDRESS }
-            });
+            const params = {
+                q: query,
+                count: Math.min(Math.max(count, 1), 20)
+            };
+            if (country) params.country = country;
+
+            const response = await braveApi.get('/res/v1/web/search', { params });
 
             const data = response.data;
-            let exportData = data.data?.standardResults?.slice(0, maxResults) || [];
+            let exportData = data.web?.results?.slice(0, count) || [];
 
             let exportedContent = "";
 
@@ -377,7 +390,7 @@ server.tool(
                     exportedContent += `Generated: ${new Date().toISOString()}\n\n`;
                     exportData.forEach((result, index) => {
                         exportedContent += `## ${index + 1}. ${result.title}\n`;
-                        exportedContent += `**Link:** ${result.link}\n`;
+                        exportedContent += `**Link:** ${result.url}\n`;
                         exportedContent += `**Description:** ${result.description}\n\n`;
                     });
                     break;
@@ -408,7 +421,7 @@ server.tool(
 
 // Content scraping tool with enhanced error handling
 server.tool(
-    "presearch_scrape_content",
+    "scrape_content",
     {
         url: z.string().describe("URL to scrape content from"),
         extractText: z.boolean().optional().describe("Extract text content"),
@@ -417,7 +430,7 @@ server.tool(
         includeMetadata: z.boolean().optional().describe("Include page metadata")
     },
     async ({ url, extractText = true, extractLinks = false, extractImages = false, includeMetadata = true }) => {
-        const operationId = performanceLogger.start('presearch_scrape_content', { url });
+        const operationId = performanceLogger.start('scrape_content', { url });
 
         try {
             // Validate URL for security
@@ -434,7 +447,7 @@ server.tool(
             // In a production system, you'd want a proper scraping library
             const response = await axios.get(url, {
                 headers: {
-                    'User-Agent': config.userAgent
+                    'User-Agent': 'BraveSearchMCP/1.0.0'
                 },
                 timeout: config.timeout
             });
@@ -469,7 +482,7 @@ server.tool(
             if (extractLinks) {
                 // Extract links
                 const linkMatches = html.match(/<a[^>]*href=["']([^"']+)["'][^>]*>([^<]*)<\/a>/gi) || [];
-                results.links = linkMatches.slice(0, 20).map(match => {
+                results.links = linkMatches.slice(0, MAX_SCRAPE_LINKS).map(match => {
                     const hrefMatch = match.match(/href=["']([^"']+)["']/);
                     const textMatch = match.match(/>([^<]*)</);
                     return {
@@ -482,7 +495,7 @@ server.tool(
             if (extractImages) {
                 // Extract images
                 const imageMatches = html.match(/<img[^>]*src=["']([^"']+)["'][^>]*>/gi) || [];
-                results.images = imageMatches.slice(0, 10).map(match => {
+                results.images = imageMatches.slice(0, MAX_SCRAPE_IMAGES).map(match => {
                     const srcMatch = match.match(/src=["']([^"']+)["']/);
                     const altMatch = match.match(/alt=["']([^"']+)["']/);
                     return {
@@ -518,7 +531,7 @@ server.tool(
 
 // Cache management tools
 server.tool(
-    "presearch_cache_stats",
+    "cache_stats",
     {},
     async () => {
         const stats = getCacheStats();
@@ -536,7 +549,7 @@ server.tool(
 );
 
 server.tool(
-    "presearch_cache_clear",
+    "cache_clear",
     {},
     async () => {
         const result = clearCache();
@@ -555,15 +568,15 @@ server.tool(
 
 // Enhanced health check tool with comprehensive monitoring
 server.tool(
-    "presearch_health_check",
+    "health_check",
     {},
     async () => {
         const operationId = performanceLogger.start('health_check');
 
         try {
             const startTime = Date.now();
-            const response = await presearchApi.get('/v1/search', {
-                params: { q: 'test', ip: '8.8.8.8' }
+            const response = await braveApi.get('/res/v1/web/search', {
+                params: { q: 'test', count: 1 }
             });
             const responseTime = Date.now() - startTime;
 
@@ -629,7 +642,7 @@ if (config.performance.enableMetrics) {
 const transport = new StdioServerTransport();
 
 // Log server startup
-logger.info('Presearch MCP server starting', {
+logger.info('Brave Search MCP server starting', {
     version: '1.0.0',
     nodeVersion: process.version,
     platform: process.platform,
@@ -637,7 +650,7 @@ logger.info('Presearch MCP server starting', {
 });
 
 await server.connect(transport);
-logger.info('Presearch MCP server running on stdio', {
+logger.info('Brave Search MCP server running on stdio', {
     transport: 'stdio',
     pid: process.pid
 });

@@ -22,7 +22,7 @@ const initMessage = {
   }
 };
 
-const serverPath = path.join(__dirname, 'src/server/server_enhanced.js');
+const serverPath = path.join(__dirname, 'src/server/server.js');
 const server = spawn('node', [serverPath], {
   stdio: ['pipe', 'pipe', 'pipe'],
   env: { ...process.env, NODE_ENV: 'production' }

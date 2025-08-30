@@ -1,37 +1,36 @@
 {
-  "name": "presearch-mcp-server",
+  "name": "brave-search-mcp-server",
   "version": "1.0.0",
   "type": "module",
-  "description": "Official Model Context Protocol server for Presearch Search API - Production Ready",
-  "main": "src/server/server_enhanced.js",
+  "description": "Official Model Context Protocol server for Brave Search API - Production Ready",
+  "main": "src/server/server.js",
   "scripts": {
-    "start": "node src/server/server_enhanced.js",
+    "start": "node src/server/server.js",
     "test": "node tests/test.js",
-    "dev": "node src/server/server_enhanced.js"
+    "dev": "node src/server/server.js"
   },
   "keywords": [
     "mcp",
-    "presearch",
+    "brave-search",
     "search",
     "model-context-protocol",
     "ai-tools",
-    "decentralized-search",
     "privacy-focused",
     "web-scraping",
     "ai-assistant"
   ],
-  "author": "Presearch Community",
+  "author": "Brave Search Community",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/NosytLabs/presearch-search-api-mcp.git"
+    "url": "https://github.com/NosytLabs/brave-search-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/NosytLabs/presearch-search-api-mcp/issues"
+    "url": "https://github.com/NosytLabs/brave-search-mcp/issues"
   },
-  "homepage": "https://presearch.io",
+  "homepage": "https://search.brave.com",
   "files": [
-    "src/server/server_enhanced.js",
+    "src/server/server.js",
     "config/config.js",
     "src/logger.js",
     "tests/test.js",

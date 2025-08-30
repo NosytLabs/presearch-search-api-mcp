@@ -1,18 +1,18 @@
-# Presearch MCP Server
+# Brave Search MCP Server
 
-**Production-Ready Model Context Protocol Server for Presearch Decentralized Search API**
+**Production-Ready Model Context Protocol Server for Brave Search API**
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/NosytLabs/presearch-search-api-mcp)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/NosytLabs/brave-search-mcp)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![API](https://img.shields.io/badge/API-Presearch%20v1-orange.svg)](https://presearch-search-api.readme.io/reference/get_v1-search)
+[![API](https://img.shields.io/badge/API-Brave%20Search%20v1-orange.svg)](https://api.search.brave.com)
 [![MCP](https://img.shields.io/badge/MCP-Compliant-brightgreen.svg)](https://modelcontextprotocol.io)
 [![Smithery](https://img.shields.io/badge/Smithery-Ready-purple.svg)](https://smithery.ai)
 
-> **⚠️ Community Project Notice**: This is an independent, community-developed MCP server and is not officially affiliated with, endorsed by, or connected to Presearch. It provides access to Presearch's public API through the Model Context Protocol.
+> **⚠️ Community Project Notice**: This is an independent, community-developed MCP server and is not officially affiliated with, endorsed by, or connected to Brave. It provides access to Brave Search's public API through the Model Context Protocol.
 
 ## 📋 Project Overview
 
-The Presearch MCP Server is a fully optimized, production-ready implementation that bridges the Model Context Protocol (MCP) with Presearch's decentralized search engine. This server enables seamless integration of Presearch's powerful search capabilities into MCP-compatible applications, providing developers and users with access to privacy-focused, decentralized search results.
+The Brave Search MCP Server is a fully optimized, production-ready implementation that bridges the Model Context Protocol (MCP) with Brave Search's powerful search engine. This server enables seamless integration of Brave Search's capabilities into MCP-compatible applications, providing developers and users with access to high-quality, privacy-focused search results.
 
 **Key Highlights:**
 - **Production Ready**: Fully tested and optimized for production deployments
@@ -25,10 +25,10 @@ The Presearch MCP Server is a fully optimized, production-ready implementation t
 ## ✨ Features
 
 ### 🔍 Core Search Functionality
-- **Advanced Search API Integration**: Direct connection to Presearch's official API endpoint
-- **Comprehensive Parameter Support**: Query, pagination, language filters, time ranges, safe search, and geolocation
-- **Real-time Results**: Access to Presearch's decentralized search index with up-to-date information
-- **Multi-format Export**: JSON, CSV, Markdown, and HTML export capabilities
+- **Advanced Search API Integration**: Direct connection to Brave Search's official API endpoint
+- **Comprehensive Parameter Support**: Query, pagination, country/language filters, time ranges, safe search, and freshness controls
+- **Real-time Results**: Access to Brave Search's high-quality search index with up-to-date information
+- **Multi-format Export**: JSON, CSV, Markdown export capabilities
 
 ### 🛠️ MCP Protocol Implementation
 - **Full MCP Compliance**: Implements all required MCP tools and protocols
@@ -61,7 +61,7 @@ The Presearch MCP Server is a fully optimized, production-ready implementation t
 ### Prerequisites
 - **Node.js**: Version 18.0 or higher
 - **NPM**: Latest version recommended
-- **Presearch API Key**: Valid JWT token from [Presearch Search API](https://presearch.io/searchapi)
+- **Brave Search API Key**: Valid API key from [Brave Search API](https://api.search.brave.com)
 - **Network**: HTTPS connectivity for API calls
 
 ### Quick Install
@@ -92,8 +92,8 @@ npm install https://github.com/NosytLabs/presearch-search-api-mcp.git
 Create a `.env` file in your project root with the following variables:
 
 ```env
-# Required: Your Presearch API key (JWT token)
-PRESEARCH_API_KEY=your_jwt_token_here
+# Required: Your Brave Search API key
+BRAVE_API_KEY=your_api_key_here
 
 # Optional: Application configuration
 NODE_ENV=production
@@ -111,7 +111,7 @@ HEALTH_CHECK_INTERVAL=30000
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PRESEARCH_API_KEY` | - | Your Presearch API JWT token (required) |
+| `BRAVE_API_KEY` | - | Your Brave Search API key (required) |
 | `NODE_ENV` | `development` | Environment mode |
 | `LOG_LEVEL` | `info` | Logging verbosity (error, warn, info, debug) |
 | `CACHE_TTL` | `3600000` | Cache time-to-live in milliseconds |
@@ -126,7 +126,7 @@ The Presearch MCP Server is fully optimized for deployment on Smithery.ai, provi
 
 ### Prerequisites
 - Smithery.ai account
-- Valid Presearch API key
+- Valid Brave Search API key
 - Smithery configuration file (included)
 
 ### Deployment Steps
@@ -174,11 +174,11 @@ Add to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "presearch": {
+    "brave-search": {
       "command": "npx",
-      "args": ["presearch-mcp-server"],
+      "args": ["brave-search-mcp-server"],
       "env": {
-        "PRESEARCH_API_KEY": "your_api_key_here"
+        "BRAVE_API_KEY": "your_api_key_here"
       }
     }
   }
@@ -188,12 +188,12 @@ Add to your `claude_desktop_config.json`:
 ### VS Code Extension
 ```json
 {
-  "mcp.server.presearch": {
+  "mcp.server.brave-search": {
     "command": "npm",
     "args": ["run", "dev"],
-    "cwd": "${workspaceFolder}/presearch-mcp-server",
+    "cwd": "${workspaceFolder}/brave-search-mcp-server",
     "env": {
-      "PRESEARCH_API_KEY": "${env:PRESEARCH_API_KEY}"
+      "BRAVE_API_KEY": "${env:BRAVE_API_KEY}"
     }
   }
 }
@@ -207,20 +207,20 @@ The server is compatible with any MCP-compliant client. Refer to your client's d
 ### Basic Search
 ```javascript
 // Simple search query
-const result = await presearch_search({
+const result = await search({
   query: "artificial intelligence",
-  page: "1",
-  lang: "en-US"
+  count: 10,
+  country: "US"
 });
 ```
 
 ### Advanced Search with Filters
 ```javascript
 // Research query with time and safety filters
-const research = await presearch_search({
+const research = await search({
   query: "quantum computing breakthroughs 2024",
-  time: "year",
-  safe: "1",
+  freshness: "py",
+  safesearch: "moderate",
   useCache: true
 });
 ```
@@ -228,17 +228,17 @@ const research = await presearch_search({
 ### Export Results
 ```javascript
 // Export search results to CSV
-const exportData = await presearch_export_results({
+const exportData = await export_results({
   query: "renewable energy trends",
   format: "csv",
-  maxResults: 50
+  count: 50
 });
 ```
 
 ### Content Scraping
 ```javascript
 // Extract content from a web page
-const content = await presearch_scrape_content({
+const content = await scrape_content({
   url: "https://example.com/article",
   extractText: true,
   extractLinks: true,
@@ -250,27 +250,30 @@ const content = await presearch_scrape_content({
 
 ### Available Tools
 
-#### `presearch_search`
+#### `search`
 Perform web searches with advanced filtering options.
 
 **Parameters:**
 - `query` (string, required): Search query
-- `page` (string, optional): Page number for pagination
-- `lang` (string, optional): Language code (e.g., "en-US")
-- `time` (string, optional): Time filter ("week", "month", "year")
-- `safe` (string, optional): Safe search ("0" or "1")
-- `ip` (string, optional): Client IP address
+- `count` (number, optional): Number of results (1-20, default 10)
+- `offset` (number, optional): Pagination offset (default 0)
+- `country` (string, optional): Country code (e.g., "US", "GB")
+- `search_lang` (string, optional): Search language (e.g., "en", "es")
+- `ui_lang` (string, optional): UI language (e.g., "en-US")
+- `safesearch` (string, optional): Safe search level ("off", "moderate", "strict")
+- `freshness` (string, optional): Time filter ("pd", "pw", "pm", "py")
 - `useCache` (boolean, optional): Enable caching
 
-#### `presearch_export_results`
+#### `export_results`
 Export search results in multiple formats.
 
 **Parameters:**
 - `query` (string, required): Search query
-- `format` (string, optional): Export format ("json", "csv", "markdown", "html")
-- `maxResults` (number, optional): Maximum results to export
+- `format` (string, optional): Export format ("json", "csv", "markdown")
+- `count` (number, optional): Number of results to export
+- `country` (string, optional): Country code for search
 
-#### `presearch_scrape_content`
+#### `scrape_content`
 Extract content from web pages.
 
 **Parameters:**
@@ -280,13 +283,13 @@ Extract content from web pages.
 - `extractImages` (boolean, optional): Extract images
 - `includeMetadata` (boolean, optional): Include page metadata
 
-#### `presearch_cache_stats`
+#### `cache_stats`
 View cache statistics and performance metrics.
 
-#### `presearch_cache_clear`
+#### `cache_clear`
 Clear all cached search results.
 
-#### `presearch_health_check`
+#### `health_check`
 Perform system health and connectivity checks.
 
 ### Response Formats
@@ -294,23 +297,17 @@ Perform system health and connectivity checks.
 #### Search Response
 ```json
 {
-  "data": {
-    "standardResults": [
+  "query": "search query",
+  "type": "search",
+  "web": {
+    "results": [
       {
         "title": "Result Title",
-        "link": "https://example.com",
+        "url": "https://example.com",
         "description": "Result description",
-        "rank": 1,
-        "domain": "example.com"
+        "rank": 1
       }
-    ],
-    "infoSection": {
-      "title": "Featured Information",
-      "content": "Additional context"
-    }
-  },
-  "links": {
-    "next": "https://api.presearch.com/search?page=2"
+    ]
   }
 }
 ```
@@ -338,8 +335,8 @@ Error: 401 Unauthorized
 ```
 **Solutions:**
 - Verify API key in `.env` file
-- Ensure valid JWT token from Presearch
-- Check account credits
+- Ensure valid API key from Brave Search
+- Check account credits and subscription
 - Confirm API key hasn't expired
 
 #### Connection Issues
@@ -368,8 +365,8 @@ Error: 429 Too Many Requests
 DEBUG=* npm start
 
 # Test API connectivity
-curl -H "Authorization: Bearer YOUR_API_KEY" \
-     "https://na-us-1.presearch.com/v1/search?q=test"
+curl -H "X-Subscription-Token: YOUR_API_KEY" \
+     "https://api.search.brave.com/res/v1/web/search?q=test"
 
 # Check server health
 npm run health-check
@@ -480,4 +477,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Version**: 1.0.0 | **Status**: Production Ready | **API**: Presearch v1 | **MCP**: Compliant | **Platform**: Smithery.ai Ready
+**Version**: 1.0.0 | **Status**: Production Ready | **API**: Brave Search v1 | **MCP**: Compliant | **Platform**: Smithery.ai Ready
