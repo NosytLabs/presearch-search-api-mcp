@@ -39,12 +39,6 @@ COPY --chown=mcpuser:nodejs config/ ./config/
 # Copy environment template (actual .env should be mounted at runtime)
 COPY --chown=mcpuser:nodejs .env.example ./.env.example
 
-# Copy health check script
-COPY --chown=mcpuser:nodejs healthcheck.js ./healthcheck.js
-
-# Make health check script executable
-RUN chmod +x healthcheck.js
-
 # Create logs directory with proper permissions
 RUN mkdir -p logs && chown -R mcpuser:nodejs logs
 
