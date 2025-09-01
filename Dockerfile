@@ -17,7 +17,7 @@ RUN npm ci --only=production && npm cache clean --force
 FROM node:18-alpine AS runtime
 
 # Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+RUN apk add --no-cache dumb-init curl
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
