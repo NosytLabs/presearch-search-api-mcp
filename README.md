@@ -120,53 +120,6 @@ HEALTH_CHECK_INTERVAL=30000
 | `METRICS_ENABLED` | `false` | Enable metrics collection |
 | `HEALTH_CHECK_INTERVAL` | `30000` | Health check interval in milliseconds |
 
-## 🚀 Smithery.ai Deployment
-
-The Presearch MCP Server is fully optimized for deployment on Smithery.ai, providing a seamless, managed hosting experience.
-
-### Prerequisites
-- Smithery.ai account
-- Valid Presearch API key
-- Smithery configuration file (included)
-
-### Deployment Steps
-
-1. **Prepare Configuration**
-   ```bash
-   # Ensure smithery.yaml is present in your project root
-   ls smithery.yaml
-   ```
-
-2. **Set Environment Variables**
-   ```bash
-   # Configure your API key in Smithery.ai dashboard or via CLI
-   smithery config set PRESEARCH_API_KEY=your_jwt_token_here
-   ```
-
-3. **Deploy to Smithery.ai**
-   ```bash
-   # Deploy using Smithery CLI
-   smithery deploy
-
-   # Or deploy via web interface at smithery.ai
-   ```
-
-4. **Verify Deployment**
-   ```bash
-   # Check deployment status
-   smithery status
-
-   # Test the deployed server's health endpoint
-   curl https://your-deployment-id.smithery.ai/health
-   ```
-
-### Smithery.ai Benefits
-- **Managed Hosting**: No server management required
-- **Auto-scaling**: Automatic scaling based on demand
-- **Monitoring**: Built-in monitoring and logging
-- **Security**: Enterprise-grade security features
-- **Global CDN**: Fast, reliable access worldwide
-
 ## 🛠️ MCP Integration
 
 ### Claude Desktop
