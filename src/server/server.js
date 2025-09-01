@@ -8,8 +8,11 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import axios from 'axios';
+import express from "express";
+import cors from "cors";
 import { createConfigFromEnv } from '../../config/config.js';
 import { logger, performanceLogger, requestLogger, ErrorHandler } from '../logger.js';
 
@@ -18,6 +21,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const MAX_SCRAPE_TEXT_LENGTH = 2000;
 const MAX_SCRAPE_LINKS = 20;
 const MAX_SCRAPE_IMAGES = 10;
+const PORT = process.env.PORT || 8081;
 
 // URL validation utility
 function isValidUrl(url) {
@@ -207,416 +211,418 @@ presearchApi.interceptors.response.use(
     }
 );
 
-// Create MCP server
-const server = new McpServer({
-    name: "presearch-mcp-server",
-    version: "1.0.0"
-});
+function createServer() {
+    const server = new McpServer({
+        name: "presearch-mcp-server",
+        version: "1.0.0"
+    });
 
-// Enhanced search tool with comprehensive error handling and logging
-server.tool(
-    "search",
-    {
-        query: z.string().describe("Search query"),
-        count: z.number().optional().describe("Number of results (1-20, default 10)"),
-        offset: z.number().optional().describe("Pagination offset (default 0)"),
-        country: z.string().optional().describe("Country code (e.g., US, GB)"),
-        search_lang: z.string().optional().describe("Search language (e.g., en, es)"),
-        ui_lang: z.string().optional().describe("UI language (e.g., en-US)"),
-        safesearch: z.string().optional().describe("Safe search level (off, moderate, strict)"),
-        freshness: z.string().optional().describe("Time filter (pd, pw, pm, py)"),
-        useCache: z.boolean().optional().describe("Whether to use cached results")
-    },
-    async ({ query, count = 10, offset = 0, country, search_lang, ui_lang, safesearch, freshness, useCache = true }) => {
-        const operationId = performanceLogger.start('search', { query, count, offset });
+    // Enhanced search tool with comprehensive error handling and logging
+    server.tool(
+        "search",
+        {
+            query: z.string().describe("Search query"),
+            count: z.number().optional().describe("Number of results (1-20, default 10)"),
+            offset: z.number().optional().describe("Pagination offset (default 0)"),
+            country: z.string().optional().describe("Country code (e.g., US, GB)"),
+            search_lang: z.string().optional().describe("Search language (e.g., en, es)"),
+            ui_lang: z.string().optional().describe("UI language (e.g., en-US)"),
+            safesearch: z.string().optional().describe("Safe search level (off, moderate, strict)"),
+            freshness: z.string().optional().describe("Time filter (pd, pw, pm, py)"),
+            useCache: z.boolean().optional().describe("Whether to use cached results")
+        },
+        async ({ query, count = 10, offset = 0, country, search_lang, ui_lang, safesearch, freshness, useCache = true }) => {
+            const operationId = performanceLogger.start('search', { query, count, offset });
 
-        try {
-            // Check circuit breaker
-            if (isCircuitBreakerOpen(config)) {
-                throw ErrorHandler.createError(
-                    ErrorHandler.ERROR_CODES.API_REQUEST_FAILED,
-                    'Circuit breaker is OPEN - service temporarily unavailable',
-                    null,
-                    { query, circuitBreakerState }
-                );
-            }
-
-            const params = {
-                q: query,
-                count: Math.min(Math.max(count, 1), 20), // Ensure count is between 1-20
-                offset
-            };
-
-            if (country) params.country = country;
-            if (search_lang) params.search_lang = search_lang;
-            if (ui_lang) params.ui_lang = ui_lang;
-            if (safesearch) params.safesearch = safesearch;
-            if (freshness) params.freshness = freshness;
-
-            const cacheKey = getCacheKey(params);
-
-            // Check cache first
-            if (useCache && config.performance.enableMetrics) {
-                const cachedResult = getCachedResult(cacheKey);
-                if (cachedResult) {
-                    performanceLogger.end(operationId, { source: 'cache' });
-                    logger.info('Search result served from cache', { query, cacheKey });
-
-                    return {
-                        content: [
-                            {
-                                type: "text",
-                                text: `📋 Cached Result\n${JSON.stringify(cachedResult, null, 2)}`
-                            }
-                        ]
-                    };
+            try {
+                // Check circuit breaker
+                if (isCircuitBreakerOpen(config)) {
+                    throw ErrorHandler.createError(
+                        ErrorHandler.ERROR_CODES.API_REQUEST_FAILED,
+                        'Circuit breaker is OPEN - service temporarily unavailable',
+                        null,
+                        { query, circuitBreakerState }
+                    );
                 }
-            }
 
-            // Make API request with retry logic
-            let lastError;
-            for (let attempt = 1; attempt <= config.errorHandling.maxRetries; attempt++) {
-                try {
-                    const response = await presearchApi.get('/v1/search', { params });
-
-                    // Cache the result
-                    if (useCache && config.performance.enableMetrics) {
-                        setCachedResult(cacheKey, response.data);
-                    }
-
-                    const duration = performanceLogger.end(operationId, {
-                        attempt,
-                        status: 'success',
-                        resultCount: response.data?.web?.results?.length || 0
-                    });
-
-                    // Log slow queries
-                    if (config.performance.enableMetrics && duration > config.performance.slowQueryThreshold) {
-                        logger.warn('Slow query detected', {
-                            query,
-                            duration: `${duration}ms`,
-                            threshold: `${config.performance.slowQueryThreshold}ms`
-                        });
-                    }
-
-                    return {
-                        content: [
-                            {
-                                type: "text",
-                                text: JSON.stringify(response.data, null, 2)
-                            }
-                        ]
-                    };
-                } catch (error) {
-                    lastError = error;
-
-                    if (attempt < config.errorHandling.maxRetries && ErrorHandler.isRetryableError(error)) {
-                        logger.warn(`Search attempt ${attempt} failed, retrying in ${config.errorHandling.retryDelay}ms`, {
-                            query,
-                            attempt,
-                            error: error.message
-                        });
-                        await new Promise(resolve => setTimeout(resolve, config.errorHandling.retryDelay));
-                    } else {
-                        break;
-                    }
-                }
-            }
-
-            // All retries exhausted
-            const errorInfo = ErrorHandler.handleError(lastError, 'Presearch API', { query, attempts: config.errorHandling.maxRetries });
-            performanceLogger.end(operationId, { status: 'error', attempts: config.errorHandling.maxRetries });
-
-            throw new Error(`Search failed: ${errorInfo.message}`);
-
-        } catch (error) {
-            const errorInfo = ErrorHandler.handleError(error, 'Search Tool Execution', { query });
-            performanceLogger.end(operationId, { status: 'error' });
-
-            throw new Error(`Search tool error: ${errorInfo.message}`);
-        }
-    }
-);
-
-// Export results tool with enhanced error handling
-server.tool(
-    "export_results",
-    {
-        query: z.string().describe("Search query to export"),
-        format: z.enum(["json", "csv", "markdown"]).describe("Export format"),
-        count: z.number().optional().describe("Number of results to export"),
-        country: z.string().optional().describe("Country code for search")
-    },
-    async ({ query, format, count = 10, country }) => {
-        const operationId = performanceLogger.start('export_results', { query, format, count });
-
-        try {
-            const params = {
-                q: query,
-                count: Math.min(Math.max(count, 1), 20)
-            };
-            if (country) params.country = country;
-
-            const response = await presearchApi.get('/v1/search', { params });
-
-            const data = response.data;
-            let exportData = data.web?.results?.slice(0, count) || [];
-
-            let exportedContent = "";
-
-            switch (format) {
-                case "json":
-                    exportedContent = JSON.stringify({
-                        query,
-                        timestamp: new Date().toISOString(),
-                        results: exportData
-                    }, null, 2);
-                    break;
-
-                case "csv":
-                    if (exportData.length > 0) {
-                        const headers = Object.keys(exportData[0]).join(",");
-                        const rows = exportData.map(row =>
-                            Object.values(row).map(val =>
-                                typeof val === 'string' ? `"${val.replace(/"/g, '""')}"` : val
-                            ).join(",")
-                        ).join("\n");
-                        exportedContent = `${headers}\n${rows}`;
-                    }
-                    break;
-
-                case "markdown":
-                    exportedContent = `# Search Results for "${query}"\n\n`;
-                    exportedContent += `Generated: ${new Date().toISOString()}\n\n`;
-                    exportData.forEach((result, index) => {
-                        exportedContent += `## ${index + 1}. ${result.title}\n`;
-                        exportedContent += `**Link:** ${result.url}\n`;
-                        exportedContent += `**Description:** ${result.description}\n\n`;
-                    });
-                    break;
-            }
-
-            performanceLogger.end(operationId, {
-                status: 'success',
-                format,
-                resultCount: exportData.length
-            });
-
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: `📤 Exported ${exportData.length} results in ${format.toUpperCase()} format:\n\n${exportedContent}`
-                    }
-                ]
-            };
-        } catch (error) {
-            const errorInfo = ErrorHandler.handleError(error, 'Export Results', { query, format });
-            performanceLogger.end(operationId, { status: 'error' });
-
-            throw new Error(`Export failed: ${errorInfo.message}`);
-        }
-    }
-);
-
-// Content scraping tool with enhanced error handling
-server.tool(
-    "scrape_content",
-    {
-        url: z.string().describe("URL to scrape content from"),
-        extractText: z.boolean().optional().describe("Extract text content"),
-        extractLinks: z.boolean().optional().describe("Extract links"),
-        extractImages: z.boolean().optional().describe("Extract images"),
-        includeMetadata: z.boolean().optional().describe("Include page metadata")
-    },
-    async ({ url, extractText = true, extractLinks = false, extractImages = false, includeMetadata = true }) => {
-        const operationId = performanceLogger.start('scrape_content', { url });
-
-        try {
-            // Validate URL for security
-            if (!isValidUrl(url)) {
-                throw ErrorHandler.createError(
-                    ErrorHandler.ERROR_CODES.VALIDATION_ERROR,
-                    'Invalid URL provided for scraping',
-                    null,
-                    { url }
-                );
-            }
-
-            // For now, we'll use a simple approach with axios
-            // In a production system, you'd want a proper scraping library
-            const response = await axios.get(url, {
-                headers: {
-                    'User-Agent': 'PresearchMCP/1.0.0'
-                },
-                timeout: config.timeout
-            });
-
-            const html = response.data;
-            const results = {};
-
-            if (includeMetadata) {
-                // Extract basic metadata
-                const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-                const descriptionMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["'][^>]*>/i);
-
-                results.metadata = {
-                    title: titleMatch ? titleMatch[1] : 'No title found',
-                    description: descriptionMatch ? descriptionMatch[1] : 'No description found',
-                    url: url,
-                    statusCode: response.status
+                const params = {
+                    q: query,
+                    count: Math.min(Math.max(count, 1), 20), // Ensure count is between 1-20
+                    offset
                 };
+
+                if (country) params.country = country;
+                if (search_lang) params.search_lang = search_lang;
+                if (ui_lang) params.ui_lang = ui_lang;
+                if (safesearch) params.safesearch = safesearch;
+                if (freshness) params.freshness = freshness;
+
+                const cacheKey = getCacheKey(params);
+
+                // Check cache first
+                if (useCache && config.performance.enableMetrics) {
+                    const cachedResult = getCachedResult(cacheKey);
+                    if (cachedResult) {
+                        performanceLogger.end(operationId, { source: 'cache' });
+                        logger.info('Search result served from cache', { query, cacheKey });
+
+                        return {
+                            content: [
+                                {
+                                    type: "text",
+                                    text: `📋 Cached Result\n${JSON.stringify(cachedResult, null, 2)}`
+                                }
+                            ]
+                        };
+                    }
+                }
+
+                // Make API request with retry logic
+                let lastError;
+                for (let attempt = 1; attempt <= config.errorHandling.maxRetries; attempt++) {
+                    try {
+                        const response = await presearchApi.get('/v1/search', { params });
+
+                        // Cache the result
+                        if (useCache && config.performance.enableMetrics) {
+                            setCachedResult(cacheKey, response.data);
+                        }
+
+                        const duration = performanceLogger.end(operationId, {
+                            attempt,
+                            status: 'success',
+                            resultCount: response.data?.web?.results?.length || 0
+                        });
+
+                        // Log slow queries
+                        if (config.performance.enableMetrics && duration > config.performance.slowQueryThreshold) {
+                            logger.warn('Slow query detected', {
+                                query,
+                                duration: `${duration}ms`,
+                                threshold: `${config.performance.slowQueryThreshold}ms`
+                            });
+                        }
+
+                        return {
+                            content: [
+                                {
+                                    type: "text",
+                                    text: JSON.stringify(response.data, null, 2)
+                                }
+                            ]
+                        };
+                    } catch (error) {
+                        lastError = error;
+
+                        if (attempt < config.errorHandling.maxRetries && ErrorHandler.isRetryableError(error)) {
+                            logger.warn(`Search attempt ${attempt} failed, retrying in ${config.errorHandling.retryDelay}ms`, {
+                                query,
+                                attempt,
+                                error: error.message
+                            });
+                            await new Promise(resolve => setTimeout(resolve, config.errorHandling.retryDelay));
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
+                // All retries exhausted
+                const errorInfo = ErrorHandler.handleError(lastError, 'Presearch API', { query, attempts: config.errorHandling.maxRetries });
+                performanceLogger.end(operationId, { status: 'error', attempts: config.errorHandling.maxRetries });
+
+                throw new Error(`Search failed: ${errorInfo.message}`);
+
+            } catch (error) {
+                const errorInfo = ErrorHandler.handleError(error, 'Search Tool Execution', { query });
+                performanceLogger.end(operationId, { status: 'error' });
+
+                throw new Error(`Search tool error: ${errorInfo.message}`);
             }
+        }
+    );
 
-            if (extractText) {
-                // Simple text extraction (remove HTML tags)
-                const textContent = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-                    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-                    .replace(/<[^>]+>/g, ' ')
-                    .replace(/\s+/g, ' ')
-                    .trim();
+    // Export results tool with enhanced error handling
+    server.tool(
+        "export_results",
+        {
+            query: z.string().describe("Search query to export"),
+            format: z.enum(["json", "csv", "markdown"]).describe("Export format"),
+            count: z.number().optional().describe("Number of results to export"),
+            country: z.string().optional().describe("Country code for search")
+        },
+        async ({ query, format, count = 10, country }) => {
+            const operationId = performanceLogger.start('export_results', { query, format, count });
 
-                results.textContent = textContent.substring(0, MAX_SCRAPE_TEXT_LENGTH) + (textContent.length > MAX_SCRAPE_TEXT_LENGTH ? '...' : '');
-            }
+            try {
+                const params = {
+                    q: query,
+                    count: Math.min(Math.max(count, 1), 20)
+                };
+                if (country) params.country = country;
 
-            if (extractLinks) {
-                // Extract links
-                const linkMatches = html.match(/<a[^>]*href=["']([^"']+)["'][^>]*>([^<]*)<\/a>/gi) || [];
-                results.links = linkMatches.slice(0, MAX_SCRAPE_LINKS).map(match => {
-                    const hrefMatch = match.match(/href=["']([^"']+)["']/);
-                    const textMatch = match.match(/>([^<]*)</);
-                    return {
-                        url: hrefMatch ? hrefMatch[1] : '',
-                        text: textMatch ? textMatch[1] : ''
-                    };
+                const response = await presearchApi.get('/v1/search', { params });
+
+                const data = response.data;
+                let exportData = data.web?.results?.slice(0, count) || [];
+
+                let exportedContent = "";
+
+                switch (format) {
+                    case "json":
+                        exportedContent = JSON.stringify({
+                            query,
+                            timestamp: new Date().toISOString(),
+                            results: exportData
+                        }, null, 2);
+                        break;
+
+                    case "csv":
+                        if (exportData.length > 0) {
+                            const headers = Object.keys(exportData[0]).join(",");
+                            const rows = exportData.map(row =>
+                                Object.values(row).map(val =>
+                                    typeof val === 'string' ? `"${val.replace(/"/g, '""')}"` : val
+                                ).join(",")
+                            ).join("\n");
+                            exportedContent = `${headers}\n${rows}`;
+                        }
+                        break;
+
+                    case "markdown":
+                        exportedContent = `# Search Results for "${query}"\n\n`;
+                        exportedContent += `Generated: ${new Date().toISOString()}\n\n`;
+                        exportData.forEach((result, index) => {
+                            exportedContent += `## ${index + 1}. ${result.title}\n`;
+                            exportedContent += `**Link:** ${result.url}\n`;
+                            exportedContent += `**Description:** ${result.description}\n\n`;
+                        });
+                        break;
+                }
+
+                performanceLogger.end(operationId, {
+                    status: 'success',
+                    format,
+                    resultCount: exportData.length
                 });
-            }
 
-            if (extractImages) {
-                // Extract images
-                const imageMatches = html.match(/<img[^>]*src=["']([^"']+)["'][^>]*>/gi) || [];
-                results.images = imageMatches.slice(0, MAX_SCRAPE_IMAGES).map(match => {
-                    const srcMatch = match.match(/src=["']([^"']+)["']/);
-                    const altMatch = match.match(/alt=["']([^"']+)["']/);
-                    return {
-                        src: srcMatch ? srcMatch[1] : '',
-                        alt: altMatch ? altMatch[1] : ''
-                    };
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `📤 Exported ${exportData.length} results in ${format.toUpperCase()} format:\n\n${exportedContent}`
+                        }
+                    ]
+                };
+            } catch (error) {
+                const errorInfo = ErrorHandler.handleError(error, 'Export Results', { query, format });
+                performanceLogger.end(operationId, { status: 'error' });
+
+                throw new Error(`Export failed: ${errorInfo.message}`);
+            }
+        }
+    );
+
+    // Content scraping tool with enhanced error handling
+    server.tool(
+        "scrape_content",
+        {
+            url: z.string().describe("URL to scrape content from"),
+            extractText: z.boolean().optional().describe("Extract text content"),
+            extractLinks: z.boolean().optional().describe("Extract links"),
+            extractImages: z.boolean().optional().describe("Extract images"),
+            includeMetadata: z.boolean().optional().describe("Include page metadata")
+        },
+        async ({ url, extractText = true, extractLinks = false, extractImages = false, includeMetadata = true }) => {
+            const operationId = performanceLogger.start('scrape_content', { url });
+
+            try {
+                // Validate URL for security
+                if (!isValidUrl(url)) {
+                    throw ErrorHandler.createError(
+                        ErrorHandler.ERROR_CODES.VALIDATION_ERROR,
+                        'Invalid URL provided for scraping',
+                        null,
+                        { url }
+                    );
+                }
+
+                // For now, we'll use a simple approach with axios
+                // In a production system, you'd want a proper scraping library
+                const response = await axios.get(url, {
+                    headers: {
+                        'User-Agent': 'PresearchMCP/1.0.0'
+                    },
+                    timeout: config.timeout
                 });
-            }
 
-            performanceLogger.end(operationId, {
-                status: 'success',
-                extractedText: extractText,
-                extractedLinks: extractLinks,
-                extractedImages: extractImages
-            });
+                const html = response.data;
+                const results = {};
+
+                if (includeMetadata) {
+                    // Extract basic metadata
+                    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+                    const descriptionMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["'][^>]*>/i);
+
+                    results.metadata = {
+                        title: titleMatch ? titleMatch[1] : 'No title found',
+                        description: descriptionMatch ? descriptionMatch[1] : 'No description found',
+                        url: url,
+                        statusCode: response.status
+                    };
+                }
+
+                if (extractText) {
+                    // Simple text extraction (remove HTML tags)
+                    const textContent = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                        .replace(/<[^>]+>/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+
+                    results.textContent = textContent.substring(0, MAX_SCRAPE_TEXT_LENGTH) + (textContent.length > MAX_SCRAPE_TEXT_LENGTH ? '...' : '');
+                }
+
+                if (extractLinks) {
+                    // Extract links
+                    const linkMatches = html.match(/<a[^>]*href=["']([^"']+)["'][^>]*>([^<]*)<\/a>/gi) || [];
+                    results.links = linkMatches.slice(0, MAX_SCRAPE_LINKS).map(match => {
+                        const hrefMatch = match.match(/href=["']([^"']+)["']/);
+                        const textMatch = match.match(/>([^<]*)</);
+                        return {
+                            url: hrefMatch ? hrefMatch[1] : '',
+                            text: textMatch ? textMatch[1] : ''
+                        };
+                    });
+                }
+
+                if (extractImages) {
+                    // Extract images
+                    const imageMatches = html.match(/<img[^>]*src=["']([^"']+)["'][^>]*>/gi) || [];
+                    results.images = imageMatches.slice(0, MAX_SCRAPE_IMAGES).map(match => {
+                        const srcMatch = match.match(/src=["']([^"']+)["']/);
+                        const altMatch = match.match(/alt=["']([^"']+)["']/);
+                        return {
+                            src: srcMatch ? srcMatch[1] : '',
+                            alt: altMatch ? altMatch[1] : ''
+                        };
+                    });
+                }
+
+                performanceLogger.end(operationId, {
+                    status: 'success',
+                    extractedText: extractText,
+                    extractedLinks: extractLinks,
+                    extractedImages: extractImages
+                });
+
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `🔍 Scraped content from ${url}:\n\n${JSON.stringify(results, null, 2)}`
+                        }
+                    ]
+                };
+            } catch (error) {
+                const errorInfo = ErrorHandler.handleError(error, 'Content Scraping', { url });
+                performanceLogger.end(operationId, { status: 'error' });
+
+                throw new Error(`Scraping failed for ${url}: ${errorInfo.message}`);
+            }
+        }
+    );
+
+    // Cache management tools
+    server.tool(
+        "cache_stats",
+        {},
+        async () => {
+            const stats = getCacheStats();
+            logger.info('Cache stats requested', stats);
 
             return {
                 content: [
                     {
                         type: "text",
-                        text: `🔍 Scraped content from ${url}:\n\n${JSON.stringify(results, null, 2)}`
+                        text: `📊 Cache Statistics:\n${JSON.stringify(stats, null, 2)}`
                     }
                 ]
             };
-        } catch (error) {
-            const errorInfo = ErrorHandler.handleError(error, 'Content Scraping', { url });
-            performanceLogger.end(operationId, { status: 'error' });
-
-            throw new Error(`Scraping failed for ${url}: ${errorInfo.message}`);
         }
-    }
-);
+    );
 
-// Cache management tools
-server.tool(
-    "cache_stats",
-    {},
-    async () => {
-        const stats = getCacheStats();
-        logger.info('Cache stats requested', stats);
-
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: `📊 Cache Statistics:\n${JSON.stringify(stats, null, 2)}`
-                }
-            ]
-        };
-    }
-);
-
-server.tool(
-    "cache_clear",
-    {},
-    async () => {
-        const result = clearCache();
-        logger.info('Cache cleared', result);
-
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: `🗑️ Cache cleared: ${result.clearedEntries} entries removed`
-                }
-            ]
-        };
-    }
-);
-
-// Enhanced health check tool with comprehensive monitoring
-server.tool(
-    "health_check",
-    {},
-    async () => {
-        const operationId = performanceLogger.start('health_check');
-
-        try {
-            const startTime = Date.now();
-            const response = await presearchApi.get('/v1/search', {
-                params: { q: 'test', count: 1 }
-            });
-            const responseTime = Date.now() - startTime;
-
-            const cacheStats = getCacheStats();
-
-            const healthData = {
-                status: 'healthy',
-                responseTime: `${responseTime}ms`,
-                apiKeyValid: true,
-                cacheEntries: cacheStats.totalEntries,
-                serverVersion: '1.0.0',
-                circuitBreakerState,
-                circuitBreakerFailureCount,
-                timestamp: new Date().toISOString(),
-                memoryUsage: config.performance.enableMemoryMonitoring ? process.memoryUsage() : null
-            };
-
-            performanceLogger.end(operationId, { status: 'healthy', responseTime });
-
-            logger.info('Health check completed successfully', {
-                responseTime: `${responseTime}ms`,
-                cacheEntries: cacheStats.totalEntries
-            });
+    server.tool(
+        "cache_clear",
+        {},
+        async () => {
+            const result = clearCache();
+            logger.info('Cache cleared', result);
 
             return {
                 content: [
                     {
                         type: "text",
-                        text: `✅ Health Check Passed:\n${JSON.stringify(healthData, null, 2)}`
+                        text: `🗑️ Cache cleared: ${result.clearedEntries} entries removed`
                     }
                 ]
             };
-        } catch (error) {
-            const errorInfo = ErrorHandler.handleError(error, 'Health Check');
-            performanceLogger.end(operationId, { status: 'unhealthy' });
-
-            throw new Error(`Health Check Failed: ${errorInfo.message}`);
         }
-    }
-);
+    );
+
+    // Enhanced health check tool with comprehensive monitoring
+    server.tool(
+        "health_check",
+        {},
+        async () => {
+            const operationId = performanceLogger.start('health_check');
+
+            try {
+                const startTime = Date.now();
+                const response = await presearchApi.get('/v1/search', {
+                    params: { q: 'test', count: 1 }
+                });
+                const responseTime = Date.now() - startTime;
+
+                const cacheStats = getCacheStats();
+
+                const healthData = {
+                    status: 'healthy',
+                    responseTime: `${responseTime}ms`,
+                    apiKeyValid: true,
+                    cacheEntries: cacheStats.totalEntries,
+                    serverVersion: '1.0.0',
+                    circuitBreakerState,
+                    circuitBreakerFailureCount,
+                    timestamp: new Date().toISOString(),
+                    memoryUsage: config.performance.enableMemoryMonitoring ? process.memoryUsage() : null
+                };
+
+                performanceLogger.end(operationId, { status: 'healthy', responseTime });
+
+                logger.info('Health check completed successfully', {
+                    responseTime: `${responseTime}ms`,
+                    cacheEntries: cacheStats.totalEntries
+                });
+
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `✅ Health Check Passed:\n${JSON.stringify(healthData, null, 2)}`
+                        }
+                    ]
+                };
+            } catch (error) {
+                const errorInfo = ErrorHandler.handleError(error, 'Health Check');
+                performanceLogger.end(operationId, { status: 'unhealthy' });
+
+                throw new Error(`Health Check Failed: ${errorInfo.message}`);
+            }
+        }
+    );
+    return server;
+}
 
 // Performance monitoring - log metrics periodically if enabled
 if (config.performance.enableMetrics) {
@@ -638,19 +644,73 @@ if (config.performance.enableMetrics) {
     }, config.performance.metricsInterval);
 }
 
-// Start the server
-const transport = new StdioServerTransport();
+async function main() {
+    const transport = process.env.TRANSPORT || 'stdio';
 
-// Log server startup
-logger.info('Presearch MCP server starting', {
-    version: '1.0.0',
-    nodeVersion: process.version,
-    platform: process.platform,
-    config: config.toObject()
-});
+    if (transport === 'http') {
+        const app = express();
 
-await server.connect(transport);
-logger.info('Presearch MCP server running on stdio', {
-    transport: 'stdio',
-    pid: process.pid
+        app.use(cors({
+            origin: '*', // Configure appropriately for production
+            exposedHeaders: ['Mcp-Session-Id', 'mcp-protocol-version'],
+            allowedHeaders: ['Content-Type', 'mcp-session-id'],
+        }));
+
+        app.use(express.json());
+
+        app.get('/health', (req, res) => {
+            res.status(200).send('OK');
+        });
+
+        app.all('/mcp', async (req, res) => {
+            try {
+                const server = createServer();
+                const transport = new StreamableHTTPServerTransport({
+                    sessionIdGenerator: undefined,
+                });
+
+                res.on('close', () => {
+                    transport.close();
+                    server.close();
+                });
+
+                await server.connect(transport);
+                await transport.handleRequest(req, res, req.body);
+            } catch (error) {
+                logger.error('Error handling MCP request:', error);
+                if (!res.headersSent) {
+                    res.status(500).json({
+                        jsonrpc: '2.0',
+                        error: { code: -32603, message: 'Internal server error' },
+                        id: null,
+                    });
+                }
+            }
+        });
+
+        app.listen(PORT, () => {
+            logger.info(`MCP HTTP Server listening on port ${PORT}`);
+        });
+    } else {
+        const server = createServer();
+        const transport = new StdioServerTransport();
+
+        logger.info('Presearch MCP server starting', {
+            version: '1.0.0',
+            nodeVersion: process.version,
+            platform: process.platform,
+            config: config.toObject()
+        });
+
+        await server.connect(transport);
+        logger.info('Presearch MCP server running on stdio', {
+            transport: 'stdio',
+            pid: process.pid
+        });
+    }
+}
+
+main().catch((error) => {
+    logger.error("Server error:", error);
+    process.exit(1);
 });

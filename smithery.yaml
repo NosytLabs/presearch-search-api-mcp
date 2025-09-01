@@ -5,17 +5,16 @@ author: "Presearch Community"
 license: "MIT"
 
 # Runtime specification
-runtime: nodejs
+runtime: "container"
 
 # Build configuration
 build:
-  command: npm install
-  workingDirectory: "."
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
 
 # Start configuration
 startCommand:
-  command: node src/server/server.js
-  workingDirectory: "."
+  type: "http"
 
 # Environment variables
 env:
@@ -157,11 +156,6 @@ security:
 
 # MCP-specific configuration
 mcp:
-  # Transport specification
-  transport:
-    type: "stdio"
-    protocolVersion: "2024-11-05"
-
   # Tool definitions
   tools:
     - name: "search"
@@ -219,7 +213,7 @@ mcp:
 dependencies:
   - "@modelcontextprotocol/sdk@^1.15.1"
   - "axios@^1.7.2"
-  - "dotenv@^17.2.0"
+  - "dotenv@^16.4.5"
   - "zod@^3.22.4"
   - "winston@^3.13.0"
 

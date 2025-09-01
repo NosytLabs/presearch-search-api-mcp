@@ -51,13 +51,17 @@ RUN mkdir -p logs && chown -R mcpuser:nodejs logs
 # Set environment variables
 ENV NODE_ENV=production
 ENV LOG_DIRECTORY=/app/logs
+ENV TRANSPORT=http
+
+# Expose the port the app runs on
+EXPOSE 8081
 
 # Switch to non-root user
 USER mcpuser
 
-# Health check for MCP server (tests MCP protocol via stdio)
-HEALTHCHECK --interval=30s --timeout=15s --start-period=10s --retries=3 \
-    CMD node healthcheck.js || exit 1
+# Health check for MCP server
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl --fail http://localhost:8081/health || exit 1
 
 # Set entrypoint with dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
