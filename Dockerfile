@@ -10,8 +10,8 @@ WORKDIR /app
 # Copy package files for dependency installation
 COPY package*.json ./
 
-# Install dependencies using npm ci for production (faster, more reliable)
-RUN npm ci --only=production && npm cache clean --force
+# Install dependencies
+RUN npm install --only=production && npm cache clean --force
 
 # Stage 2: Runtime
 FROM node:18-alpine AS runtime
