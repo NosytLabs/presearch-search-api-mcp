@@ -1,7 +1,5 @@
-#!/usr/bin/env node
-
 /**
- * Structured Logging System for Brave Search MCP Server
+ * Structured Logging System for Presearch MCP Server
  * Provides comprehensive logging with different levels, structured format, and performance metrics
  */
 
