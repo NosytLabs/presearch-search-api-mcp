@@ -99,7 +99,7 @@ PRESEARCH_API_KEY=your_api_key_here
 NODE_ENV=production
 LOG_LEVEL=info
 CACHE_TTL=3600000
-PORT=3000
+PORT=8081
 HOST=0.0.0.0
 
 # Optional: Monitoring and metrics
@@ -115,57 +115,10 @@ HEALTH_CHECK_INTERVAL=30000
 | `NODE_ENV` | `development` | Environment mode |
 | `LOG_LEVEL` | `info` | Logging verbosity (error, warn, info, debug) |
 | `CACHE_TTL` | `3600000` | Cache time-to-live in milliseconds |
-| `PORT` | `3000` | Server port |
+| `PORT` | `8081` | Server port (must be 8081 for Smithery deployment) |
 | `HOST` | `localhost` | Server host |
 | `METRICS_ENABLED` | `false` | Enable metrics collection |
 | `HEALTH_CHECK_INTERVAL` | `30000` | Health check interval in milliseconds |
-
-## 🚀 Smithery.ai Deployment
-
-The Presearch MCP Server is fully optimized for deployment on Smithery.ai, providing a seamless, managed hosting experience.
-
-### Prerequisites
-- Smithery.ai account
-- Valid Presearch API key
-- Smithery configuration file (included)
-
-### Deployment Steps
-
-1. **Prepare Configuration**
-   ```bash
-   # Ensure smithery.yaml is present in your project root
-   ls smithery.yaml
-   ```
-
-2. **Set Environment Variables**
-   ```bash
-   # Configure your API key in Smithery.ai dashboard or via CLI
-   smithery config set PRESEARCH_API_KEY=your_jwt_token_here
-   ```
-
-3. **Deploy to Smithery.ai**
-   ```bash
-   # Deploy using Smithery CLI
-   smithery deploy
-
-   # Or deploy via web interface at smithery.ai
-   ```
-
-4. **Verify Deployment**
-   ```bash
-   # Check deployment status
-   smithery status
-
-   # Test the deployed server
-   curl https://your-deployment.smithery.ai/health
-   ```
-
-### Smithery.ai Benefits
-- **Managed Hosting**: No server management required
-- **Auto-scaling**: Automatic scaling based on demand
-- **Monitoring**: Built-in monitoring and logging
-- **Security**: Enterprise-grade security features
-- **Global CDN**: Fast, reliable access worldwide
 
 ## 🛠️ MCP Integration
 
@@ -200,7 +153,7 @@ Add to your `claude_desktop_config.json`:
 ```
 
 ### Other MCP Clients
-The server is compatible with any MCP-compliant client. Refer to your client's documentation for integration instructions.
+The server is compatible with any MCP-compliant client. Refer to your client's documentation for integration instructions. For clients that support HTTP transport, you will need to provide the server's URL.
 
 ## 📖 Usage Examples
 
@@ -368,8 +321,8 @@ DEBUG=* npm start
 curl -H "Authorization: Bearer YOUR_API_KEY" \
      "https://na-us-1.presearch.com/v1/search?q=test"
 
-# Check server health
-npm run health-check
+# Check server health (if running locally in HTTP mode)
+curl http://localhost:8081/health
 ```
 
 ## 🤝 Contribution Guidelines

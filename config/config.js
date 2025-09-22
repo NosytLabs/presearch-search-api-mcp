@@ -10,9 +10,6 @@ import { config as dotenvConfig } from 'dotenv';
 // Load environment variables
 dotenvConfig();
 
-// Default configuration values
-const DEFAULT_BASE_URL = 'https://na-us-1.presearch.com';
-
 /**
  * Logging configuration class
  */
@@ -25,8 +22,8 @@ export class LoggingConfig {
         this.enableConsole = process.env.LOG_ENABLE_CONSOLE !== 'false';
         this.enableFile = process.env.LOG_ENABLE_FILE !== 'false';
         this.logDirectory = process.env.LOG_DIRECTORY || './logs';
-        this.maxFileSize = parseInt(process.env.LOG_MAX_FILE_SIZE) || 10485760; // 10MB
-        this.maxFiles = parseInt(process.env.LOG_MAX_FILES) || 5;
+        this.maxFileSize = parseInt(process.env.LOG_MAX_FILE_SIZE, 10) || 10485760; // 10MB
+        this.maxFiles = parseInt(process.env.LOG_MAX_FILES, 10) || 5;
         this.enablePerformanceLogging = process.env.LOG_ENABLE_PERFORMANCE === 'true';
         this.enableRequestLogging = process.env.LOG_ENABLE_REQUEST === 'true';
     }
@@ -53,11 +50,11 @@ export class ErrorHandlingConfig {
      */
     constructor() {
         this.enableDetailedErrors = process.env.ERROR_ENABLE_DETAILED === 'true';
-        this.maxRetries = parseInt(process.env.ERROR_MAX_RETRIES) || 3;
-        this.retryDelay = parseInt(process.env.ERROR_RETRY_DELAY) || 1000;
+        this.maxRetries = parseInt(process.env.ERROR_MAX_RETRIES, 10) || 3;
+        this.retryDelay = parseInt(process.env.ERROR_RETRY_DELAY, 10) || 1000;
         this.circuitBreakerEnabled = process.env.ERROR_CIRCUIT_BREAKER_ENABLED !== 'false';
-        this.circuitBreakerThreshold = parseInt(process.env.ERROR_CIRCUIT_BREAKER_THRESHOLD) || 5;
-        this.circuitBreakerResetTimeout = parseInt(process.env.ERROR_CIRCUIT_BREAKER_RESET_TIMEOUT) || 30000;
+        this.circuitBreakerThreshold = parseInt(process.env.ERROR_CIRCUIT_BREAKER_THRESHOLD, 10) || 5;
+        this.circuitBreakerResetTimeout = parseInt(process.env.ERROR_CIRCUIT_BREAKER_RESET_TIMEOUT, 10) || 30000;
     }
 }
 
@@ -70,9 +67,9 @@ export class PerformanceConfig {
      */
     constructor() {
         this.enableMetrics = process.env.PERF_ENABLE_METRICS !== 'false';
-        this.slowQueryThreshold = parseInt(process.env.PERF_SLOW_QUERY_THRESHOLD) || 5000; // 5 seconds
+        this.slowQueryThreshold = parseInt(process.env.PERF_SLOW_QUERY_THRESHOLD, 10) || 5000; // 5 seconds
         this.enableMemoryMonitoring = process.env.PERF_ENABLE_MEMORY_MONITORING === 'true';
-        this.metricsInterval = parseInt(process.env.PERF_METRICS_INTERVAL) || 60000; // 1 minute
+        this.metricsInterval = parseInt(process.env.PERF_METRICS_INTERVAL, 10) || 60000; // 1 minute
     }
 }
 
@@ -85,10 +82,10 @@ export class PresearchConfig {
        */
     constructor() {
         this.apiKey = process.env.PRESEARCH_API_KEY;
-        this.baseURL = process.env.PRESEARCH_BASE_URL || DEFAULT_BASE_URL;
-        this.timeout = parseInt(process.env.PRESEARCH_TIMEOUT) || 30000;
-        this.maxRetries = parseInt(process.env.PRESEARCH_MAX_RETRIES) || 3;
-        this.retryDelay = parseInt(process.env.PRESEARCH_RETRY_DELAY) || 1000;
+        this.baseURL = process.env.PRESEARCH_BASE_URL || 'https://na-us-1.presearch.com';
+        this.timeout = parseInt(process.env.PRESEARCH_TIMEOUT, 10) || 30000;
+        this.maxRetries = parseInt(process.env.PRESEARCH_MAX_RETRIES, 10) || 3;
+        this.retryDelay = parseInt(process.env.PRESEARCH_RETRY_DELAY, 10) || 1000;
         this.userAgent = process.env.PRESEARCH_USER_AGENT || 'PresearchMCP/1.0.0';
 
         // Initialize sub-configurations
