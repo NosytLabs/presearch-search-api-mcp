@@ -55,15 +55,16 @@ class PresearchAPITester {
     async testBasicSearch() {
         const response = await this.makeAPICall({
             q: 'javascript programming',
-            count: 10
+            count: 10,
+            ip: '127.0.0.1'
         });
 
         this.validateResponse(response);
 
         return {
             query: response.data.query || 'javascript programming',
-            resultsCount: response.data.web?.results?.length || 0,
-            hasResults: (response.data.web?.results?.length || 0) > 0,
+            resultsCount: response.data.data?.standardResults?.length || 0,
+            hasResults: (response.data.data?.standardResults?.length || 0) > 0,
             responseTime: response.responseTime
         };
     }
@@ -72,14 +73,15 @@ class PresearchAPITester {
         const response = await this.makeAPICall({
             q: 'web development',
             offset: 10,
-            count: 10
+            count: 10,
+            ip: '127.0.0.1'
         });
 
         this.validateResponse(response);
 
         return {
             offset: 10,
-            hasResults: (response.data.web?.results?.length || 0) > 0,
+            hasResults: (response.data.data?.standardResults?.length || 0) > 0,
             hasPagination: true
         };
     }
@@ -88,7 +90,8 @@ class PresearchAPITester {
         const response = await this.makeAPICall({
             q: 'programming',
             search_lang: 'en',
-            ui_lang: 'en-US'
+            ui_lang: 'en-US',
+            ip: '127.0.0.1'
         });
 
         this.validateResponse(response);
@@ -96,35 +99,37 @@ class PresearchAPITester {
         return {
             search_lang: 'en',
             ui_lang: 'en-US',
-            hasResults: (response.data.web?.results?.length || 0) > 0
+            hasResults: (response.data.data?.standardResults?.length || 0) > 0
         };
     }
 
     async testTimeFilter() {
         const response = await this.makeAPICall({
             q: 'technology news',
-            freshness: 'pw'
+            freshness: 'pw',
+            ip: '127.0.0.1'
         });
 
         this.validateResponse(response);
 
         return {
             freshness: 'pw',
-            hasResults: (response.data.web?.results?.length || 0) > 0
+            hasResults: (response.data.data?.standardResults?.length || 0) > 0
         };
     }
 
     async testSafeMode() {
         const response = await this.makeAPICall({
             q: 'family content',
-            safesearch: 'moderate'
+            safesearch: 'moderate',
+            ip: '127.0.0.1'
         });
 
         this.validateResponse(response);
 
         return {
             safesearch: 'moderate',
-            hasResults: (response.data.web?.results?.length || 0) > 0
+            hasResults: (response.data.data?.standardResults?.length || 0) > 0
         };
     }
 
@@ -132,7 +137,7 @@ class PresearchAPITester {
         try {
             // Test with invalid API key
             const invalidResponse = await axios.get(`${this.baseURL}/v1/search`, {
-                params: { q: 'test', count: 1 },
+                params: { q: 'test', count: 1, ip: '127.0.0.1' },
                 headers: { 'Authorization': 'Bearer invalid_key' },
                 timeout: 10000
             });
@@ -149,25 +154,26 @@ class PresearchAPITester {
     async testResponseStructure() {
         const response = await this.makeAPICall({
             q: 'test query',
-            count: 5
+            count: 5,
+            ip: '127.0.0.1'
         });
 
         const data = response.data;
 
         // Validate required structure
-        if (!data.web) throw new Error('Missing web object');
-        if (!Array.isArray(data.web.results)) throw new Error('results is not an array');
+        if (!data.data) throw new Error('Missing data object');
+        if (!Array.isArray(data.data.standardResults)) throw new Error('standardResults is not an array');
 
-        const hasQuery = !!data.query;
-        const hasType = !!data.type;
-        const hasResults = data.web.results.length > 0;
+        const hasLinks = !!data.links;
+        const hasMeta = !!data.meta;
+        const hasResults = data.data.standardResults.length > 0;
 
         return {
-            hasWebResults: true,
-            hasQuery,
-            hasType,
+            hasStandardResults: true,
+            hasLinks,
+            hasMeta,
             hasResults,
-            resultCount: data.web.results.length
+            resultCount: data.data.standardResults.length
         };
     }
 

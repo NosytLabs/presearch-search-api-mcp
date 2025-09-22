@@ -4,6 +4,9 @@
   "type": "module",
   "description": "Official Model Context Protocol server for Presearch API - Production Ready",
   "main": "src/server/server.js",
+  "bin": {
+    "presearch-mcp-server": "./src/server/server.js"
+  },
   "scripts": {
     "start": "node src/server/server.js",
     "test": "node tests/test.js",
@@ -41,6 +44,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.15.1",
     "axios": "^1.7.2",
+    "cheerio": "^1.0.0-rc.12",
     "dotenv": "^16.4.5",
     "zod": "^3.22.4",
     "winston": "^3.13.0",

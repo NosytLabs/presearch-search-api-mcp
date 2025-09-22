@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * Configuration module for Presearch MCP Server
  * Handles environment variables and API configuration

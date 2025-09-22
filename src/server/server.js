@@ -11,6 +11,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import axios from 'axios';
+import cheerio from 'cheerio';
 import express from "express";
 import cors from "cors";
 import { createConfigFromEnv } from '../../config/config.js';
@@ -158,7 +159,7 @@ try {
 
 // Create axios instance for Presearch API with enhanced configuration
 const presearchApi = axios.create({
-    baseURL: 'https://na-us-1.presearch.com',
+    baseURL: config.baseURL,
     timeout: config.timeout,
     headers: {
         'Accept': 'application/json',
@@ -222,6 +223,7 @@ function createServer() {
         "search",
         {
             query: z.string().describe("Search query"),
+            ip: z.string().describe("IP address of the user"),
             count: z.number().optional().describe("Number of results (1-20, default 10)"),
             offset: z.number().optional().describe("Pagination offset (default 0)"),
             country: z.string().optional().describe("Country code (e.g., US, GB)"),
@@ -231,7 +233,7 @@ function createServer() {
             freshness: z.string().optional().describe("Time filter (pd, pw, pm, py)"),
             useCache: z.boolean().optional().describe("Whether to use cached results")
         },
-        async ({ query, count = 10, offset = 0, country, search_lang, ui_lang, safesearch, freshness, useCache = true }) => {
+        async ({ query, ip, count = 10, offset = 0, country, search_lang, ui_lang, safesearch, freshness, useCache = true }) => {
             const operationId = performanceLogger.start('search', { query, count, offset });
 
             try {
@@ -248,7 +250,8 @@ function createServer() {
                 const params = {
                     q: query,
                     count: Math.min(Math.max(count, 1), 20), // Ensure count is between 1-20
-                    offset
+                    offset,
+                    ip
                 };
 
                 if (country) params.country = country;
@@ -291,7 +294,7 @@ function createServer() {
                         const duration = performanceLogger.end(operationId, {
                             attempt,
                             status: 'success',
-                            resultCount: response.data?.web?.results?.length || 0
+                            resultCount: response.data?.data?.standardResults?.length || 0
                         });
 
                         // Log slow queries
@@ -347,24 +350,26 @@ function createServer() {
         "export_results",
         {
             query: z.string().describe("Search query to export"),
+            ip: z.string().describe("IP address of the user"),
             format: z.enum(["json", "csv", "markdown"]).describe("Export format"),
             count: z.number().optional().describe("Number of results to export"),
             country: z.string().optional().describe("Country code for search")
         },
-        async ({ query, format, count = 10, country }) => {
+        async ({ query, ip, format, count = 10, country }) => {
             const operationId = performanceLogger.start('export_results', { query, format, count });
 
             try {
                 const params = {
                     q: query,
-                    count: Math.min(Math.max(count, 1), 20)
+                    count: Math.min(Math.max(count, 1), 20),
+                    ip
                 };
                 if (country) params.country = country;
 
                 const response = await presearchApi.get('/v1/search', { params });
 
                 const data = response.data;
-                let exportData = data.web?.results?.slice(0, count) || [];
+                let exportData = data.data?.standardResults?.slice(0, count) || [];
 
                 let exportedContent = "";
 
@@ -457,55 +462,41 @@ function createServer() {
                 });
 
                 const html = response.data;
+                const $ = cheerio.load(html);
                 const results = {};
 
                 if (includeMetadata) {
-                    // Extract basic metadata
-                    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-                    const descriptionMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["'][^>]*>/i);
-
                     results.metadata = {
-                        title: titleMatch ? titleMatch[1] : 'No title found',
-                        description: descriptionMatch ? descriptionMatch[1] : 'No description found',
+                        title: $('title').text() || 'No title found',
+                        description: $('meta[name="description"]').attr('content') || 'No description found',
                         url: url,
                         statusCode: response.status
                     };
                 }
 
                 if (extractText) {
-                    // Simple text extraction (remove HTML tags)
-                    const textContent = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-                        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-                        .replace(/<[^>]+>/g, ' ')
-                        .replace(/\s+/g, ' ')
-                        .trim();
-
+                    $('script, style').remove();
+                    const textContent = $('body').text().replace(/\s+/g, ' ').trim();
                     results.textContent = textContent.substring(0, MAX_SCRAPE_TEXT_LENGTH) + (textContent.length > MAX_SCRAPE_TEXT_LENGTH ? '...' : '');
                 }
 
                 if (extractLinks) {
-                    // Extract links
-                    const linkMatches = html.match(/<a[^>]*href=["']([^"']+)["'][^>]*>([^<]*)<\/a>/gi) || [];
-                    results.links = linkMatches.slice(0, MAX_SCRAPE_LINKS).map(match => {
-                        const hrefMatch = match.match(/href=["']([^"']+)["']/);
-                        const textMatch = match.match(/>([^<]*)</);
-                        return {
-                            url: hrefMatch ? hrefMatch[1] : '',
-                            text: textMatch ? textMatch[1] : ''
-                        };
+                    results.links = [];
+                    $('a').slice(0, MAX_SCRAPE_LINKS).each((i, el) => {
+                        results.links.push({
+                            url: $(el).attr('href') || '',
+                            text: $(el).text() || ''
+                        });
                     });
                 }
 
                 if (extractImages) {
-                    // Extract images
-                    const imageMatches = html.match(/<img[^>]*src=["']([^"']+)["'][^>]*>/gi) || [];
-                    results.images = imageMatches.slice(0, MAX_SCRAPE_IMAGES).map(match => {
-                        const srcMatch = match.match(/src=["']([^"']+)["']/);
-                        const altMatch = match.match(/alt=["']([^"']+)["']/);
-                        return {
-                            src: srcMatch ? srcMatch[1] : '',
-                            alt: altMatch ? altMatch[1] : ''
-                        };
+                    results.images = [];
+                    $('img').slice(0, MAX_SCRAPE_IMAGES).each((i, el) => {
+                        results.images.push({
+                            src: $(el).attr('src') || '',
+                            alt: $(el).attr('alt') || ''
+                        });
                     });
                 }
 
@@ -580,7 +571,7 @@ function createServer() {
             try {
                 const startTime = Date.now();
                 const response = await presearchApi.get('/v1/search', {
-                    params: { q: 'test', count: 1 }
+                    params: { q: 'test', count: 1, ip: '127.0.0.1' }
                 });
                 const responseTime = Date.now() - startTime;
 

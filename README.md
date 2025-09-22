@@ -208,6 +208,7 @@ Perform web searches with advanced filtering options.
 
 **Parameters:**
 - `query` (string, required): Search query
+- `ip` (string, required): IP address of the user
 - `count` (number, optional): Number of results (1-20, default 10)
 - `offset` (number, optional): Pagination offset (default 0)
 - `country` (string, optional): Country code (e.g., "US", "GB")
@@ -222,6 +223,7 @@ Export search results in multiple formats.
 
 **Parameters:**
 - `query` (string, required): Search query
+- `ip` (string, required): IP address of the user
 - `format` (string, optional): Export format ("json", "csv", "markdown")
 - `count` (number, optional): Number of results to export
 - `country` (string, optional): Country code for search
@@ -250,17 +252,27 @@ Perform system health and connectivity checks.
 #### Search Response
 ```json
 {
-  "query": "search query",
-  "type": "search",
-  "web": {
-    "results": [
+  "data": {
+    "standardResults": [
       {
         "title": "Result Title",
-        "url": "https://example.com",
-        "description": "Result description",
-        "rank": 1
+        "link": "https://example.com",
+        "description": "Result description"
       }
     ]
+  },
+  "links": {
+    "first": "http://na-us-1.presearch.com/search?q=search%20query&page=1",
+    "last": "http://na-us-1.presearch.com/search?q=search%20query&page=10",
+    "prev": null,
+    "next": "http://na-us-1.presearch.com/search?q=search%20query&page=2"
+  },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 10,
+    "path": "http://na-us-1.presearch.com/search?q=search%20query",
+    "pages": 10
   }
 }
 ```
