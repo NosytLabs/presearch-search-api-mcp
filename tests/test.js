@@ -14,7 +14,7 @@ import axios from 'axios';
 class PresearchAPITester {
     constructor() {
         this.config = createConfigFromEnv();
-        this.apiKey = this.config.getApiKey();
+        this.apiKey = this.config.apiKey;
         this.baseURL = process.env.PRESEARCH_BASE_URL || 'https://na-us-1.presearch.com';
         this.testResults = [];
         this.passedTests = 0;

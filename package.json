@@ -10,6 +10,7 @@
   "scripts": {
     "start": "node src/server/server.js",
     "test": "node tests/test.js",
+    "test:unit": "c8 mocha tests/unit.test.js",
     "dev": "node src/server/server.js"
   },
   "keywords": [
@@ -42,13 +43,19 @@
     ".env.example"
   ],
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.15.1",
+    "@modelcontextprotocol/sdk": "^1.20.0",
     "axios": "^1.7.2",
     "cheerio": "^1.0.0-rc.12",
-    "dotenv": "^16.4.5",
-    "zod": "^3.22.4",
-    "winston": "^3.13.0",
-    "express": "^4.18.0",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "winston": "^3.18.3",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "c8": "^10.1.3",
+    "chai": "^6.2.0",
+    "mocha": "^11.7.4",
+    "sinon": "^21.0.0"
   }
 }
