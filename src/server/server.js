@@ -659,7 +659,7 @@ async function main() {
 
         app.use(cors({
             origin: '*', // Configure appropriately for production
-            methods: ['GET', 'POST', 'OPTIONS'],
+            methods: ['GET', 'POST', 'OPTIONS', 'HEAD'],
             exposedHeaders: ['mcp-session-id', 'mcp-protocol-version'],
             allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'mcp-session-id'],
             preflightContinue: false,
