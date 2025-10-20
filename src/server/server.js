@@ -757,3 +757,6 @@ main().catch((error) => {
     logger.error("Server error:", error);
     process.exit(1);
 });
+
+// Export createServer function for Smithery TypeScript deployment compatibility
+export { createServer };

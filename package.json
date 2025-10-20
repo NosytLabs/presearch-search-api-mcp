@@ -4,6 +4,7 @@
   "type": "module",
   "description": "Model Context Protocol server for Presearch API integration",
   "main": "src/server/server.js",
+  "module": "src/server/server.js",
   "bin": {
     "presearch-mcp-server": "./src/server/server.js"
   },
