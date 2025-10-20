@@ -22,4 +22,4 @@ ENV LOG_LEVEL=info
 # Expose the port
 EXPOSE 8081
 
-CMD ["node", "dist/index.js"]
+CMD ["node", "src/server/server.js"]
