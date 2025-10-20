@@ -1,0 +1,53 @@
+{
+  "name": "presearch-mcp-server",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Model Context Protocol server for Presearch API integration",
+  "main": "src/server/server.js",
+  "bin": {
+    "presearch-mcp-server": "./src/server/server.js"
+  },
+  "scripts": {
+    "start": "node src/server/server.js",
+    "test": "node tests/test.js"
+  },
+  "keywords": [
+    "mcp",
+    "presearch",
+    "search",
+    "model-context-protocol",
+    "ai-tools",
+    "privacy-focused",
+    "web-scraping",
+    "ai-assistant"
+  ],
+  "author": "Community",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NosytLabs/presearch-search-api-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NosytLabs/presearch-search-api-mcp/issues"
+  },
+  "homepage": "https://presearch.com",
+  "files": [
+    "src/server/server.js",
+    "config/config.js",
+    "src/logger.js",
+    "tests/test.js",
+    "README.md",
+    "LICENSE",
+    ".env.example"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.15.1",
+    "axios": "^1.7.2",
+    "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^16.4.5",
+    "zod": "^3.22.4",
+    "winston": "^3.13.0",
+    "express": "^4.18.0",
+    "cors": "^2.8.5"
+  }
+}
