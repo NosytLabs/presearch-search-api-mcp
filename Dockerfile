@@ -5,8 +5,8 @@ WORKDIR /app
 # Copy package files first (better layer caching)
 COPY package*.json ./
 
-# Faster, deterministic installs
-RUN npm ci --omit=dev
+# Install dependencies (Smithery builder compatible)
+RUN npm install
 
 # Copy application code
 COPY . .
