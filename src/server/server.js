@@ -659,9 +659,14 @@ async function main() {
 
         app.use(cors({
             origin: '*', // Configure appropriately for production
-            exposedHeaders: ['Mcp-Session-Id', 'mcp-protocol-version'],
-            allowedHeaders: ['Content-Type', 'mcp-session-id'],
+            methods: ['GET', 'POST', 'OPTIONS'],
+            exposedHeaders: ['mcp-session-id', 'mcp-protocol-version'],
+            allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'mcp-session-id'],
+            preflightContinue: false,
+            optionsSuccessStatus: 204,
         }));
+        // Explicitly handle preflight for all routes
+        app.options('*', cors());
 
         app.use(express.json());
 

@@ -17,6 +17,7 @@ RUN npm run build
 # ENV PRESEARCH_API_KEY
 ENV PORT=8081
 ENV LOG_LEVEL=info
+ENV NODE_ENV=production
 
 # Expose the port
 EXPOSE 8081

@@ -335,6 +335,12 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
 
 # Check server health (if running locally in HTTP mode)
 curl http://localhost:8081/health
+
+# Test MCP tools list (requires correct Accept and Content-Type headers)
+curl -s -X POST http://localhost:8081/mcp \
+  -H 'Accept: application/json, text/event-stream' \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":"1","method":"tools/list","params":{}}'
 ```
 
 ## 🤝 Contribution Guidelines
