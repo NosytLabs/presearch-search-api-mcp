@@ -12,6 +12,9 @@ RUN npm install
 # Copy application code
 COPY . .
 
+# Build the application
+RUN npm run build
+
 # Create logs directory
 RUN mkdir -p logs
 
@@ -23,4 +26,4 @@ ENV NODE_ENV=production
 EXPOSE 8081
 
 # Start the MCP server
-CMD ["node", "src/server/server.js"]
+CMD ["node", "dist/server/server.js"]
