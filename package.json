@@ -10,7 +10,7 @@
   },
   "scripts": {
     "start": "node src/server/server.js",
-    "build": "node --input-type=module -e \"import fs from 'fs';import path from 'path';if(!fs.existsSync('dist'))fs.mkdirSync('dist',{recursive:true});const copyDir=(src,dest)=>{if(!fs.existsSync(dest))fs.mkdirSync(dest,{recursive:true});fs.readdirSync(src).forEach(item=>{const srcPath=path.join(src,item);const destPath=path.join(dest,item);if(fs.statSync(srcPath).isDirectory()){copyDir(srcPath,destPath)}else{fs.copyFileSync(srcPath,destPath)}})};copyDir('src','dist');copyDir('config','dist');fs.writeFileSync('dist/index.js','import(\\'./server/server.js\\');');\"",
+    "build": "mkdir -p dist && cp -r src/* dist/ && cp -r config/* dist/ && echo \"import('./server/server.js');\" > dist/index.js",
     "test": "node tests/test.js"
   },
   "keywords": [
