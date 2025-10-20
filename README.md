@@ -1,4 +1,6 @@
-# Presearch MCP Server
+# 🔍 Presearch MCP Server
+
+[![Smithery](https://smithery.ai/badge/@nosytlabs/presearch-search-api-mcp)](https://smithery.ai/server/@nosytlabs/presearch-search-api-mcp)
 
 **Production-Ready Model Context Protocol Server for Presearch API**
 
@@ -449,3 +451,27 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Version**: 1.0.0 | **Status**: Production Ready | **API**: Presearch v1 | **MCP**: Compliant | **Platform**: Smithery.ai Ready
+
+## 🚀 Quick Deploy on Smithery.ai
+
+Deploy this MCP server instantly on [Smithery.ai](https://smithery.ai/server/@nosytlabs/presearch-search-api-mcp):
+
+1. **Visit**: [Smithery.ai Presearch MCP Server](https://smithery.ai/server/@nosytlabs/presearch-search-api-mcp)
+2. **Deploy**: Click "Deploy" and provide your `PRESEARCH_API_KEY`
+3. **Connect**: Use the provided server URL in your MCP client
+
+### Environment Variables Required:
+- `PRESEARCH_API_KEY`: Your Presearch API key from [presearch.io/searchapi](https://presearch.io/searchapi)
+
+### Configuration Options
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PRESEARCH_API_KEY` | - | Your Presearch API key (required) |
+| `NODE_ENV` | `development` | Environment mode |
+| `LOG_LEVEL` | `info` | Logging verbosity (error, warn, info, debug) |
+| `CACHE_TTL` | `3600000` | Cache time-to-live in milliseconds |
+| `PORT` | `8081` | Server port (must be 8081 for Smithery deployment) |
+| `HOST` | `localhost` | Server host |
+| `METRICS_ENABLED` | `false` | Enable metrics collection |
+| `HEALTH_CHECK_INTERVAL` | `30000` | Health check interval in milliseconds |
