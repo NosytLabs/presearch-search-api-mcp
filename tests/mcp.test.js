@@ -3,7 +3,7 @@
  *
  * This test suite verifies:
  * - tools/list returns expected tool registrations
- * - tools/call health_check succeeds (JWT configured on the server)
+ * - tools/call health_check succeeds (API key configured on the server)
  * - tools/call export_results returns data for query "smithery"
  * - tools/call cache_stats returns statistics (non-auth-dependent)
  *

@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![API](https://img.shields.io/badge/API-Presearch%20v1-orange.svg)](https://presearch.com)
 [![MCP](https://img.shields.io/badge/MCP-Compliant-brightgreen.svg)](https://modelcontextprotocol.io)
-[![Smithery](https://img.shields.io/badge/Smithery-Ready-purple.svg)](https://smithery.ai)
+[![Smithery](https://smithery.ai/badge/@NosytLabs/presearch-search-api-mcp)](https://smithery.ai/server/@NosytLabs/presearch-search-api-mcp)
 
 > **⚠️ Community Project Notice**: This is an independent, community-developed MCP server and is not officially affiliated with, endorsed by, or connected to Presearch. It provides access to Presearch's public API through the Model Context Protocol.
 
@@ -17,7 +17,7 @@ The Presearch MCP Server is a fully optimized, production-ready implementation t
 **Key Highlights:**
 - **Production Ready**: Fully tested and optimized for production deployments
 - **MCP Compliant**: Complete adherence to Model Context Protocol specifications
-- **Enhanced Security**: Advanced security features including JWT authentication and HTTPS enforcement
+- **Security-Conscious Defaults**: No credentials baked in, users must provide their own `PRESEARCH_API_KEY`, sensitive fields redacted in logs, optional file logging disabled by default
 - **Performance Optimized**: In-memory caching, request optimization, and efficient resource management
 - **Smithery.ai Integration**: Ready for deployment on the Smithery.ai platform
 - **Comprehensive Testing**: 100% test coverage with real API validation
@@ -37,11 +37,11 @@ The Presearch MCP Server is a fully optimized, production-ready implementation t
 - **Protocol Version**: Supports latest MCP specifications
 
 ### 🔒 Enterprise-Grade Security
-- **JWT Authentication**: Secure API key management with Bearer token validation
-- **HTTPS Enforcement**: All communications encrypted and secure
+- **API Key Management**: Secure handling of user-provided Presearch API keys with environment variable configuration
+- **Secure Communication**: All API communications use HTTPS with proper certificate validation
 - **Input Validation**: Comprehensive parameter validation using Zod schemas
 - **Error Handling**: Secure error responses without sensitive data exposure
-- **Rate Limiting**: Built-in protection against abuse
+- **Presearch API Limits**: Respects Presearch API rate limits and quotas
 
 ### ⚡ Performance & Reliability
 - **Intelligent Caching**: 5-minute TTL in-memory caching for improved response times
