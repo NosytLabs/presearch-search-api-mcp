@@ -1,4 +1,3 @@
-# Use Node.js 18 Alpine - Smithery compatible
 FROM node:18-alpine
 
 WORKDIR /app
@@ -15,15 +14,4 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Create logs directory
-RUN mkdir -p logs
-
-# Set environment variables
-ENV TRANSPORT=http
-ENV NODE_ENV=production
-
-# Expose port
-EXPOSE 8081
-
-# Start the MCP server
 CMD ["node", "dist/index.js"]
