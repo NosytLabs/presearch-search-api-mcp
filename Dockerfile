@@ -12,6 +12,9 @@ RUN npm install
 # Copy application code
 COPY . .
 
+# Create logs directory for Winston logger
+RUN mkdir -p logs
+
 # Set environment variables for Smithery deployment
 ENV TRANSPORT=http
 ENV NODE_ENV=production
