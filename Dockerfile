@@ -6,12 +6,11 @@ WORKDIR /app
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --only=production
+# Install all dependencies (including dev dependencies for potential build)
+RUN npm install
 
 # Copy application code
-COPY src/ ./src/
-COPY config/ ./config/
+COPY . .
 
 # Set environment variables for Smithery deployment
 ENV TRANSPORT=http
