@@ -6,13 +6,11 @@ WORKDIR /app
 COPY package*.json ./
 
 # Faster, deterministic installs
-RUN npm ci --omit=dev --no-audit --no-fund
+RUN npm install
 
 # Copy application code
 COPY . .
-
-# Removed curl installation to speed up remote builds
-# RUN apk add --no-cache curl
+RUN npm run build
 
 # Default environment variables (replace with secure values in Smithery later)
 # PRESEARCH_API_KEY should be provided via environment/secrets at runtime
@@ -27,4 +25,4 @@ EXPOSE 8081
 HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD node -e "require('http').get('http://localhost:8081/health', r => { process.exit(r.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
 
 # Start the Streamable HTTP server
-CMD ["node", "src/server/server.js"]
+CMD ["node", "dist/index.js"]
