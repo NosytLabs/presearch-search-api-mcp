@@ -2,19 +2,19 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files first (better layer caching)
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Faster, deterministic installs
+RUN npm ci --omit=dev --no-audit --no-fund
 
 # Copy application code
 COPY . .
 
-# Build the application
-RUN npm run build
+# Install curl for container healthcheck
+RUN apk add --no-cache curl
 
-# Set default environment variables
+# Default environment variables (replace with secure values in Smithery later)
 ENV PRESEARCH_API_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiI5YTJmZTIyYS05NDgxLTRjYjctYmU3My05ZDA3NGE5N2QxNmYiLCJqdGkiOiIwYjdiM2MzZjgwYjY3YjBiYjVkYzdlMDhkNDUxYzg4NzE1NWQ4NTQ2OTcyZTI2ZDgzMzc2YjFiOTA5MTQwMjYwZTkxYThhNTk0ZjAwOWJlYiIsImlhdCI6MTc0NTIzMjIwMS42MjAwODUsIm5iZiI6MTc0NTIzMjIwMS42MjAwODksImV4cCI6MTc3Njc2ODIwMS41ODI4MjUsInN1YiI6IjQ4Mzc1NDAiLCJzY29wZXMiOlsic2VhcmNoLWFwaSJdfQ.XWMXx2uP6XmnTMpFtE3QQ85aeDUY0Ik0lWfkiuh7DY5qdtpoRcB8ytTX0WcPHpcma3hdInao1oATqTiz9VjncGhO2F6GLFiOZhjMzKK1DiTjr9RtxVMgcD7nb6KMCtXRDBvJUpypzTxWsPX7d-qNUzlXoJmXnCXJdCf6-huNvNUB3XmxbFfJc_Enip9kR1PVvMtd9bt7tDTBKEPl8wFLkFCKQruiodf3B4CecfnTS3nJv6FTjXO1_Ty_ECloN91uKyDNEov0jNxe6QHEWZPy0V6CV6P6-G9GBaZMsCOCMUxzVwWIsyqyOnahHYkrzderoYw14_SfWrR2B1puBCz2gFdDfXkHKZ5yZ4ojcueOJ0kiuG1B0MOB51r7Ul2buYF-LeDiviPEySwXphx1L5pWO1YSuZqwADVgKIqXewiTApzpzGXykVrPUYseY2j3-vcBG_5QmVVFKHzEAnH4vQflGrKc3dt1nUeVnmCpIUnOTNiXnPwTLQs9miNPubgYbxwbZ251xdzrWNlO_pgfpWtpcBhYtCtgHdp3rJIPZvas4tP_MQHCxh8pB2ZsJRy6IkY2dIh0B8jH_51SMl5D3OigqyGs4upnxGNAKI7dQWw-8VPwY3MaI9sEXxytRNu8yfscZ8oUvt0A0RMiBie72FCPAxvv4LbBXxgpQqW5TCpueF0
 ENV PORT=8081
 ENV LOG_LEVEL=info
@@ -22,4 +22,8 @@ ENV LOG_LEVEL=info
 # Expose the port
 EXPOSE 8081
 
+# Healthcheck to help Smithery detect readiness
+HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD curl -fs http://localhost:8081/health || exit 1
+
+# Start the Streamable HTTP server
 CMD ["node", "src/server/server.js"]
