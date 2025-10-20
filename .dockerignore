@@ -79,3 +79,4 @@ docs/
 !config/
 !Dockerfile
 !smithery.yaml
+!build.js
