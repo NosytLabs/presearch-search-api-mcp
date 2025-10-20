@@ -1,26 +1,26 @@
-# Use Node.js 20 Alpine for better compatibility with undici/File API
+# Use Node.js 20 Alpine - Smithery compatible Linux distro
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files first for better caching
+# Copy package files
 COPY package*.json ./
 
-# Install only production dependencies for faster builds
-RUN npm ci --only=production
+# Install dependencies
+RUN npm install
 
 # Copy application code
 COPY . .
 
-# Create logs directory for Winston logger
+# Create logs directory
 RUN mkdir -p logs
 
-# Set environment variables for Smithery deployment
+# Set environment variables
 ENV TRANSPORT=http
 ENV NODE_ENV=production
 
-# Expose port 8081 (Smithery requirement)
+# Expose port
 EXPOSE 8081
 
-# Start the MCP server in HTTP mode
+# Start the MCP server
 CMD ["node", "src/server/server.js"]
