@@ -11,9 +11,6 @@ RUN npm install
 # Copy application code
 COPY . .
 
-# Build the application (if build script exists)
-RUN npm run build || echo "No build script found, skipping build step"
-
 # Set environment variables for Smithery deployment
 ENV TRANSPORT=http
 ENV NODE_ENV=production
