@@ -1,5 +1,5 @@
-# Use Node.js 18 Alpine - Smithery required version
-FROM node:18-alpine
+# Use Node.js 20 Alpine - Required for undici compatibility
+FROM node:20-alpine
 
 WORKDIR /app
 
