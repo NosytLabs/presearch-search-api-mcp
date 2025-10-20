@@ -6,6 +6,7 @@
 import winston from 'winston';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -76,31 +77,47 @@ const consoleFormat = winston.format.combine(
 );
 
 // Create winston logger instance
+const transports = [
+    // Console transport for development
+    new winston.transports.Console({
+        format: consoleFormat,
+        level: process.env.LOG_LEVEL || 'info'
+    })
+];
+
+if (process.env.LOG_ENABLE_FILE !== 'false') {
+    const logsDir = path.join(__dirname, '../logs');
+    try {
+        fs.mkdirSync(logsDir, { recursive: true });
+    } catch (e) {
+        // If log directory cannot be created, continue with console-only logging
+        console.warn('Logger: failed to create logs directory, falling back to console-only logging.', e?.message || e);
+    }
+
+    // File transport for all logs
+    transports.push(
+        new winston.transports.File({
+            filename: path.join(logsDir, 'combined.log'),
+            format: structuredFormat,
+            level: 'debug'
+        })
+    );
+
+    // Separate file for errors
+    transports.push(
+        new winston.transports.File({
+            filename: path.join(logsDir, 'error.log'),
+            format: structuredFormat,
+            level: 'error'
+        })
+    );
+}
+
 const logger = winston.createLogger({
     level: process.env.LOG_LEVEL || 'info',
     levels: logLevels,
     format: structuredFormat,
-    transports: [
-        // Console transport for development
-        new winston.transports.Console({
-            format: consoleFormat,
-            level: process.env.LOG_LEVEL || 'info'
-        }),
-
-        // File transport for all logs
-        new winston.transports.File({
-            filename: path.join(__dirname, '../logs/combined.log'),
-            format: structuredFormat,
-            level: 'debug'
-        }),
-
-        // Separate file for errors
-        new winston.transports.File({
-            filename: path.join(__dirname, '../logs/error.log'),
-            format: structuredFormat,
-            level: 'error'
-        })
-    ]
+    transports
 });
 
 // Performance logging utility

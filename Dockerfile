@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Faster, deterministic installs
-RUN npm install
+RUN npm ci --omit=dev
 
 # Copy application code
 COPY . .
@@ -17,6 +17,7 @@ RUN npm run build
 # ENV PRESEARCH_API_KEY
 ENV PORT=8081
 ENV LOG_LEVEL=info
+ENV LOG_ENABLE_FILE=false
 ENV NODE_ENV=production
 
 # Expose the port
