@@ -68,6 +68,15 @@ Thumbs.db
 docs/
 
 # Test files
-tests/
+# tests/
 *.test.js
 *.spec.js
+
+# Ensure these files are included in build context
+!package.json
+!package-lock.json
+!src/
+!config/
+!Dockerfile
+!smithery.yaml
+!build.js

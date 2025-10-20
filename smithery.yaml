@@ -13,18 +13,9 @@ startCommand:
       port:
         type: "number"
         description: "Port to run the MCP server on"
-        default: 3000
+        default: 8081
       logLevel:
         type: "string"
         description: "Logging level (error, warn, info, debug)"
         default: "info"
-      enableSearch:
-        type: "boolean"
-        description: "Enable Presearch functionality"
-        default: true
-      maxResults:
-        type: "number"
-        description: "Maximum number of search results to return"
-        default: 10
-    required:
-      - apiKey
+    required: ["apiKey"]

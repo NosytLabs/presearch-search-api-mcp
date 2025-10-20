@@ -22,7 +22,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const MAX_SCRAPE_TEXT_LENGTH = 2000;
 const MAX_SCRAPE_LINKS = 20;
 const MAX_SCRAPE_IMAGES = 10;
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8081;
 
 // URL validation utility
 function isValidUrl(url) {
@@ -158,14 +158,17 @@ try {
 }
 
 // Create axios instance for Presearch API with enhanced configuration
+const headers = {
+    'Accept': 'application/json',
+    'Accept-Encoding': 'gzip'
+};
+if (config.hasValidApiKey()) {
+    headers['Authorization'] = `Bearer ${config.apiKey}`;
+}
 const presearchApi = axios.create({
     baseURL: config.baseURL,
     timeout: config.timeout,
-    headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${config.apiKey}`,
-        'Accept-Encoding': 'gzip'
-    }
+    headers
 });
 
 // Add axios interceptors for request/response logging
@@ -569,13 +572,41 @@ function createServer() {
             const operationId = performanceLogger.start('health_check');
 
             try {
+                const cacheStats = getCacheStats();
+
+                // If API key is not configured, perform a local-only health check
+                if (!config.hasValidApiKey()) {
+                    const healthData = {
+                        status: 'ok',
+                        apiKeyValid: false,
+                        message: 'PRESEARCH_API_KEY not configured; skipping Presearch API connectivity test.',
+                        cacheEntries: cacheStats.totalEntries,
+                        serverVersion: '1.0.0',
+                        circuitBreakerState,
+                        circuitBreakerFailureCount,
+                        timestamp: new Date().toISOString(),
+                        memoryUsage: config.performance.enableMemoryMonitoring ? process.memoryUsage() : null
+                    };
+
+                    performanceLogger.end(operationId, { status: 'ok', note: 'no_api_key' });
+                    logger.warn('Health check completed without API key (connectivity test skipped)');
+
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `✅ Health Check (No API Key):\n${JSON.stringify(healthData, null, 2)}`
+                            }
+                        ]
+                    };
+                }
+
+                // With API key configured, perform a simple connectivity test
                 const startTime = Date.now();
                 const response = await presearchApi.get('/v1/search', {
                     params: { q: 'test', count: 1, ip: '127.0.0.1' }
                 });
                 const responseTime = Date.now() - startTime;
-
-                const cacheStats = getCacheStats();
 
                 const healthData = {
                     status: 'healthy',
@@ -659,9 +690,14 @@ async function main() {
 
         app.use(cors({
             origin: '*', // Configure appropriately for production
-            exposedHeaders: ['Mcp-Session-Id', 'mcp-protocol-version'],
-            allowedHeaders: ['Content-Type', 'mcp-session-id'],
+            methods: ['GET', 'POST', 'OPTIONS', 'HEAD'],
+            exposedHeaders: ['mcp-session-id', 'mcp-protocol-version'],
+            allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'mcp-session-id'],
+            preflightContinue: false,
+            optionsSuccessStatus: 204,
         }));
+        // Explicitly handle preflight for all routes
+        app.options('*', cors());
 
         app.use(express.json());
 
@@ -757,3 +793,6 @@ main().catch((error) => {
     logger.error("Server error:", error);
     process.exit(1);
 });
+
+// Export createServer function for Smithery TypeScript deployment compatibility
+export { createServer };
