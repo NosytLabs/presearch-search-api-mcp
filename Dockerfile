@@ -11,13 +11,16 @@ RUN npm install
 # Copy application code
 COPY . .
 
+# Build the application (if build script exists)
+RUN npm run build || echo "No build script found, skipping build step"
+
 # Set environment variables for Smithery deployment
 ENV TRANSPORT=http
-ENV PORT=3000
 ENV NODE_ENV=production
 
-# Expose the port
-EXPOSE 3000
+# Smithery will set PORT=8081, don't hardcode it
+# EXPOSE will be dynamic based on PORT env var
+EXPOSE 8081
 
 # Start the MCP server in HTTP mode
 CMD ["node", "src/server/server.js"]
