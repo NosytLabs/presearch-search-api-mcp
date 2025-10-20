@@ -1,4 +1,5 @@
-FROM node:18-alpine
+# Use Node.js 20 Alpine for better compatibility with undici/File API
+FROM node:20-alpine
 
 WORKDIR /app
 
