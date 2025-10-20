@@ -1,4 +1,4 @@
-# Use Node.js 20 Alpine - Smithery compatible Linux distro
+# Use Node.js 18 Alpine - Smithery required version
 FROM node:20-alpine
 
 WORKDIR /app
@@ -26,4 +26,4 @@ ENV NODE_ENV=production
 EXPOSE 8081
 
 # Start the MCP server
-CMD ["node", "dist/server/server.js"]
+CMD ["node", "dist/index.js"]
