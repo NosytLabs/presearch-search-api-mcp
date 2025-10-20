@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install all dependencies (including dev dependencies for potential build)
-RUN npm install
+# Install only production dependencies for faster builds
+RUN npm ci --only=production
 
 # Copy application code
 COPY . .
@@ -19,7 +19,7 @@ RUN mkdir -p logs
 ENV TRANSPORT=http
 ENV NODE_ENV=production
 
-# Expose port (Smithery will override with PORT env var)
+# Expose port 8081 (Smithery requirement)
 EXPOSE 8081
 
 # Start the MCP server in HTTP mode

@@ -22,7 +22,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const MAX_SCRAPE_TEXT_LENGTH = 2000;
 const MAX_SCRAPE_LINKS = 20;
 const MAX_SCRAPE_IMAGES = 10;
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8081;
 
 // URL validation utility
 function isValidUrl(url) {
