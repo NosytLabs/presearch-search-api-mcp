@@ -26,4 +26,4 @@ ENV NODE_ENV=production
 EXPOSE 8081
 
 # Start the MCP server
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/server/server.js"]
