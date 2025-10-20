@@ -68,6 +68,6 @@ Thumbs.db
 docs/
 
 # Test files
-tests/
+# tests/
 *.test.js
 *.spec.js

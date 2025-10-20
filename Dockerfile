@@ -2,21 +2,21 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better caching
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm install --only=production
 
 # Copy application code
-COPY . .
+COPY src/ ./src/
+COPY config/ ./config/
 
 # Set environment variables for Smithery deployment
 ENV TRANSPORT=http
 ENV NODE_ENV=production
 
-# Smithery will set PORT=8081, don't hardcode it
-# EXPOSE will be dynamic based on PORT env var
+# Expose port (Smithery will override with PORT env var)
 EXPOSE 8081
 
 # Start the MCP server in HTTP mode
