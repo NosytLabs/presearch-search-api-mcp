@@ -174,6 +174,17 @@ The server can be configured using environment variables or a configuration file
 - `CACHE_TTL`: Cache time-to-live in seconds (default: 3600)
 - `LOG_LEVEL`: Logging level (error, warn, info, debug)
 
+### Installing via Smithery
+
+To install Presearch Search automatically via [Smithery](https://smithery.ai/server/@NosytLabs/presearch-search-api-mcp):
+
+```bash
+npx -y @smithery/cli install @NosytLabs/presearch-search-api-mcp
+```
+
+### Smithery.ai
+One-click deploy: [Smithery.ai](https://smithery.ai/server/@nosytlabs/presearch-search-api-mcp)
+
 ### Configuration File
 
 Create a `config/config.json` file with the following structure:
