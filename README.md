@@ -1,6 +1,21 @@
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.0-green.svg)
+![Community](https://img.shields.io/badge/community--made-brightgreen.svg)
+
 # Presearch MCP Server
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen)](https://nodejs.org/)
+[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io)
+[![Presearch](https://img.shields.io/badge/Powered%20by-Presearch-blue)](https://presearch.io)
+
 A Model Context Protocol (MCP) server for interacting with the Presearch search API, enabling AI assistants to perform web searches, export results, and scrape web content.
+
+> **Community Project**: This is a community-made implementation that connects the Model Context Protocol with Presearch's search capabilities. It is not officially maintained by the Presearch team but is built with ❤️ by the community.
+
+🌐 **Join Presearch**: [Sign up with our referral link](https://presearch.com/signup?rid=3118964) and earn rewards while searching!
+
+📚 **Documentation**: [Presearch API Documentation](https://docs.presearch.org/)
 
 ## Overview
 
@@ -11,6 +26,14 @@ The Presearch MCP Server provides a powerful interface to the Presearch search e
 - Export search data in multiple formats for analysis
 - Extract structured content from web pages
 - Maintain efficient performance through intelligent caching
+
+## Support Presearch
+
+If you find this MCP server useful, consider supporting Presearch by signing up with our referral link:
+
+[🔗 Sign up for Presearch](https://presearch.io/signup?rid=3136133)
+
+Presearch is a decentralized search engine that rewards users for searching and supporting the network.
 
 ## Features
 
@@ -108,7 +131,48 @@ docker run -e PRESEARCH_API_KEY=your_key -p 8081:8081 presearch-mcp
 
 Restart your MCP client to load the new server. The Presearch tools will now be available in your client's tool palette.
 
-## Usage Examples
+## Community
+
+> **Note**: This is a community-driven project, not officially maintained by the Presearch team. It was created by developers who love both Presearch and the Model Context Protocol ecosystem. Contributions, bug reports, and feature requests are welcome!
+
+### Contributing
+
+We welcome contributions from the community! Please feel free to:
+- Submit pull requests
+- Open issues for bugs or feature requests
+- Improve documentation
+- Share your use cases
+
+## Get Presearch
+
+New to Presearch? Join using our referral link:
+
+[![Join Presearch](https://img.shields.io/badge/Join-Presearch-blue?style=for-the-badge&logo=search)](https://presearch.org/signup?rid=3136429)
+
+By using our referral code, you support the development of this MCP server while getting access to Presearch's decentralized search platform.
+
+## Documentation
+
+For more information about Presearch and its features, please refer to the official documentation:
+
+[![Presearch Documentation](https://img.shields.io/badge/Documentation-Presearch-green?style=for-the-badge&logo=book)](https://docs.presearch.org/)
+
+## Community Made
+
+This MCP server is a community-driven project that leverages the Presearch API to provide search capabilities. It's maintained by volunteers and contributors who believe in the power of decentralized search.
+
+### Contributing
+
+We welcome contributions from the community! Whether you're fixing bugs, adding features, or improving documentation, your help is appreciated.
+
+[![GitHub Issues](https://img.shields.io/github/issues/tyson-kaufmann/presearch-mcp-server?style=for-the-badge&logo=github)](https://github.com/tyson-kaufmann/presearch-mcp-server/issues)
+[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/tyson-kaufmann/presearch-mcp-server?style=for-the-badge&logo=github)](https://github.com/tyson-kaufmann/presearch-mcp-server/pulls)
+  
+  ## License
+  
+  This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+  
+  ## Usage Examples
 
 ### 1. Basic Search
 
@@ -306,6 +370,7 @@ Fine-tune your searches with advanced parameters:
 
 - Check the [Presearch API Documentation](https://docs.presearch.com)
 - Review the [MCP Specification](https://modelcontextprotocol.io)
+- Visit [Presearch Docs](https://docs.presearch.io/) for comprehensive documentation
 - Open an issue on the project repository for bug reports or feature requests
 
 ## Development
