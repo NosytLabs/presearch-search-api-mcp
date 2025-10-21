@@ -77,6 +77,33 @@ If you prefer to install globally:
 }
 ```
 
+## Configuration
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PRESEARCH_API_KEY` | ✅ | - | Your Presearch API key |
+| `PORT` | ❌ | 8081 | Server port |
+| `LOG_LEVEL` | ❌ | info | Logging level |
+
+## Deployment
+
+### Installing via Smithery
+
+To install Presearch Search automatically via [Smithery](https://smithery.ai/server/@NosytLabs/presearch-search-api-mcp):
+
+```bash
+npx -y @smithery/cli install @NosytLabs/presearch-search-api-mcp
+```
+
+### Smithery.ai
+One-click deploy: [Smithery.ai](https://smithery.ai/server/@nosytlabs/presearch-search-api-mcp)
+
+### Docker
+```bash
+docker build -t presearch-mcp .
+docker run -e PRESEARCH_API_KEY=your_key -p 8081:8081 presearch-mcp
+```
+
 ### Step 3: Restart Your MCP Client
 
 Restart your MCP client to load the new server. The Presearch tools will now be available in your client's tool palette.
