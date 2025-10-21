@@ -65,6 +65,14 @@ This server enables AI assistants to:
 
 ## Deployment
 
+### Installing via Smithery
+
+To install Presearch Search automatically via [Smithery](https://smithery.ai/server/@NosytLabs/presearch-search-api-mcp):
+
+```bash
+npx -y @smithery/cli install @NosytLabs/presearch-search-api-mcp
+```
+
 ### Smithery.ai
 One-click deploy: [Smithery.ai](https://smithery.ai/server/@nosytlabs/presearch-search-api-mcp)
 
