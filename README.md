@@ -1,13 +1,9 @@
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-1.0.0-green.svg)
-![Community](https://img.shields.io/badge/community--made-brightgreen.svg)
-
 # Presearch MCP Server
 
+[![npm version](https://badge.fury.io/js/presearch-mcp-server.svg)](https://badge.fury.io/js/presearch-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen)](https://nodejs.org/)
-[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io)
-[![Presearch](https://img.shields.io/badge/Powered%20by-Presearch-blue)](https://presearch.io)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
+[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io/)
 
 A Model Context Protocol (MCP) server that provides seamless integration with the Presearch API, enabling privacy-focused search capabilities and web scraping functionality for AI assistants.
 
@@ -234,15 +230,11 @@ For detailed API documentation, see the [API Reference](./docs/api-reference.md)
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+We welcome contributions! Please see our [Contributing Guide](./docs/contributing.md) for details.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
 
 ## Support
 
