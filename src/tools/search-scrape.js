@@ -4,67 +4,102 @@ import logger from "../core/logger.js";
 import presearchService from "../services/presearchService.js";
 import contentFetcher from "../services/contentFetcher.js";
 import { withErrorHandling } from "../utils/errors.js";
+import {
+  robustBoolean,
+  robustNumber,
+  robustInt,
+} from "../utils/schemas.js";
 
 const schema = z.object({
-  query: z.string().min(1),
-  count: z.number().int().min(1).max(50).default(10),
-  scrape_count: z.number().int().min(1).max(20).default(5),
+  query: z
+    .string()
+    .min(1)
+    .describe(
+      "The search query to execute. Can be a simple keyword or a complex question.",
+    ),
+  count: robustInt()
+    .min(1)
+    .max(50)
+    .default(10)
+    .describe(
+      "Number of search results to retrieve (1-50). Default is 10. Accepts number or string.",
+    ),
+  scrape_count: robustInt()
+    .min(1)
+    .max(20)
+    .default(5)
+    .describe(
+      "Number of top search results to scrape full content from (1-20). Default is 5. Accepts number or string.",
+    ),
   language: z
     .string()
     .regex(/^[a-z]{2}(-[A-Z]{2})?$/)
-    .optional(),
+    .optional()
+    .describe(
+      "Language filtering using BCP 47 codes (e.g., 'en', 'en-US'). Optional.",
+    ),
   country: z
     .string()
     .regex(/^[A-Z]{2}$/)
-    .optional(),
-  safesearch: z.enum(["off", "moderate", "strict"]).default("moderate"),
+    .optional()
+    .describe(
+      "Country filtering using ISO 3166-1 alpha-2 codes (e.g., 'US', 'CA'). Optional.",
+    ),
+  safesearch: z
+    .enum(["off", "moderate", "strict"])
+    .default("moderate")
+    .describe(
+      "Safe search setting: 'off', 'moderate', or 'strict'. Default is 'moderate'.",
+    ),
   freshness: z
     .enum(["hour", "day", "week", "month", "year", "all"])
-    .default("all"),
-  ip: z.string().optional(),
-  location: z.object({ lat: z.number(), long: z.number() }).optional(),
-  include_text: z.boolean().default(true),
-  timeout_ms: z.number().int().min(1000).max(60000).default(15000),
+    .default("all")
+    .describe(
+      "Time filter for search results: 'hour', 'day', 'week', 'month', 'year', 'all'. Default is 'all'.",
+    ),
+  ip: z
+    .string()
+    .optional()
+    .describe(
+      "IP address to simulate the search from (for localization). Optional.",
+    ),
+  location: z
+    .union([
+      z.object({
+        lat: robustNumber().describe("Latitude coordinate (e.g., 40.7128)."),
+        long: robustNumber().describe("Longitude coordinate (e.g., -74.0060)."),
+      }),
+      z.string().transform((val) => {
+        try {
+          return JSON.parse(val);
+        } catch {
+          return undefined;
+        }
+      }),
+    ])
+    .optional()
+    .describe(
+      "Geolocation coordinates (latitude, longitude) for location-based search. Can be an object {lat, long} or a JSON string.",
+    ),
+  include_text: robustBoolean()
+    .default(true)
+    .describe(
+      "Whether to include the full text content of scraped pages. Default is true. Accepts boolean or string 'true'/'false'.",
+    ),
+  timeout_ms: robustInt()
+    .min(1000)
+    .max(60000)
+    .default(15000)
+    .describe(
+      "Timeout in milliseconds for the search and scrape operation. Default is 15000ms. Accepts number or string.",
+    ),
 });
-
-const inputSchema = {
-  type: "object",
-  properties: {
-    query: { type: "string", minLength: 1 },
-    count: { type: "number", minimum: 1, maximum: 50, default: 10 },
-    scrape_count: { type: "number", minimum: 1, maximum: 20, default: 5 },
-    language: { type: "string", pattern: "^[a-z]{2}(-[A-Z]{2})?$" },
-    safesearch: {
-      type: "string",
-      enum: ["off", "moderate", "strict"],
-      default: "moderate",
-    },
-    freshness: {
-      type: "string",
-      enum: ["hour", "day", "week", "month", "year", "all"],
-      default: "all",
-    },
-    ip: { type: "string" },
-    location: {
-      type: "object",
-      properties: { lat: { type: "number" }, long: { type: "number" } },
-    },
-    include_text: { type: "boolean", default: true },
-    timeout_ms: {
-      type: "number",
-      minimum: 1000,
-      maximum: 60000,
-      default: 15000,
-    },
-  },
-  required: ["query"],
-};
 
 const tool = {
   name: "presearch_search_and_scrape",
   description:
-    "Runs a Presearch query and scrapes the top result URLs for metadata and text.",
-  inputSchema,
+    "Performs a search using the Presearch API and immediately scrapes the content of the top result URLs. Returns combined search results and scraped content (metadata + text) in a single response. Efficient for 'search and summarize' workflows.",
+  inputSchema: schema,
   execute: withErrorHandling(
     "presearch_search_and_scrape",
     async (args, context) => {

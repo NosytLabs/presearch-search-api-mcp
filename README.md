@@ -6,8 +6,10 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![npm version](https://badge.fury.io/js/presearch-mcp-server.svg)](https://badge.fury.io/js/presearch-mcp-server)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
-[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io)
-[![Powered by Presearch](https://img.shields.io/badge/Powered%20by-Presearch-blue)](https://presearch.io)
+
+<a href="https://presearch.com/signup?rid=4779685" target="_blank">
+  <img src="https://assets.presearch.com/referral/ban-4.jpg" title="Presearch" alt="presearch" />
+</a>
 
 > **The Ultimate Privacy-First Search Integration for AI Agents**
 > Empower your AI with decentralized, uncensored web search capabilities through the Model Context Protocol (MCP).
@@ -20,59 +22,42 @@
 
 The **Presearch MCP Server** is a professional-grade integration bridge that connects AI assistants (like Claude, Cursor, and Trae) to the **Presearch decentralized search engine**.
 
-Designed for privacy-conscious developers and enterprises, this server enables AI agents to perform real-time web searches, scrape content, and conduct deep research without compromising user data or relying on centralized tech giants.
-
-### Why Choose Presearch MCP?
-
-*   **🚫 Zero Tracking**: Search queries are anonymized. No IP logging. No search history tracking.
-*   **🌐 Decentralized**: Results sourced from a community-powered network, ensuring unbiased information access.
-*   **🤖 AI-Optimized**: Output formats (JSON, Markdown) specifically structured for LLM consumption.
-*   **⚡ High Performance**: Built-in intelligent caching (Redis-compatible) and rate limiting for enterprise reliability.
-
-### 🔗 Quick Links
-- **Repository**: [GitHub](https://github.com/NosytLabs/presearch-search-api-mcp)
-- **Smithery**: [Smithery.ai](https://smithery.ai/server/@NosytLabs/presearch-search-api-mcp)
-- **Presearch API**: [Developer Portal](https://presearch.io/searchapi)
-- **Issues**: [Support](https://github.com/NosytLabs/presearch-search-api-mcp/issues)
+Unlike traditional search APIs that track user behavior, Presearch offers a decentralized, privacy-centric alternative. This server enables your AI to:
+- **Search anonymously**: No IP tracking or search history logging.
+- **Scrape intelligently**: Extract clean content from modern, dynamic websites.
+- **Research deeply**: Perform multi-step investigations autonomously.
+- **Monitor Nodes**: Track the status and earnings of Presearch nodes.
 
 ---
 
-## 💡 Use Cases
+## 🛡️ What is Presearch?
 
-### 1. Market Intelligence & Competitor Analysis
-*   **Scenario**: An AI agent needs to track competitor pricing and product launches without triggering anti-bot protections or revealing intent.
-*   **Solution**: Use `presearch_search_and_scrape` to anonymously gather data from multiple sources and compile a comprehensive report.
+Presearch is a decentralized search engine built on blockchain technology that rewards community members with Presearch tokens (PRE) for their usage, contribution to, and promotion of the platform.
 
-### 2. Academic & Technical Research
-*   **Scenario**: A researcher needs to find specific whitepapers and technical documentation across the web.
-*   **Solution**: Use `presearch_deep_research` to perform a multi-step investigation, gathering sources, summarizing findings, and citing references automatically.
-
-### 3. News Aggregation & Sentiment Analysis
-*   **Scenario**: A financial analyst bot needs the latest news on crypto regulations.
-*   **Solution**: Use `presearch_ai_search` with `freshness="day"` to pull the most recent articles and feed them into a sentiment analysis pipeline.
-
-### 4. Content Verification & Fact-Checking
-*   **Scenario**: An AI writing assistant needs to verify claims made in an article.
-*   **Solution**: Use `presearch_ai_search` to find primary sources and `scrape_url_content` to extract text for cross-referencing.
+### Why it matters for AI:
+1.  **Uncensored Access**: Results are not filtered by a central authority, giving your AI a more complete view of the web.
+2.  **Privacy**: Your AI's queries (and by extension, your proprietary data) are not profiled by ad-tech giants.
+3.  **Community Nodes**: The search index is powered by independent nodes run by community members, ensuring resilience and distributed control.
 
 ---
 
-## ✨ Key Features
+## 💡 Key Features
 
 ### 🛡️ Privacy & Security
 - **Decentralized Infrastructure**: Leverages Presearch's distributed node network.
 - **Bearer Token Auth**: Secure, standard authentication for API access.
 - **No Data Persistence**: The server is stateless; no user queries are stored on disk.
 
-### 🔧 Powerful Tools
+### 🔧 Robust Tooling
 - **Deep Research Mode**: Recursive search and analysis capabilities.
 - **Smart Scraping**: Headless browser integration to scrape dynamic JS-heavy websites.
+- **Flexible Input Handling**: Tools accept JSON strings and loose types for maximum compatibility with LLMs.
 - **Multi-Format Export**: Export results to JSON, CSV, Markdown, HTML, or PDF.
 
 ### 🚀 Enterprise Ready
-- **Intelligent Caching**: Configurable TTL and memory limits to save API credits and speed up repeated queries.
+- **Intelligent Caching**: Configurable TTL and memory limits.
 - **Rate Limiting & Retries**: Robust error handling with exponential backoff.
-- **Health Monitoring**: Real-time status checks for API connectivity and node health.
+- **Health Monitoring**: Real-time status checks for API connectivity.
 
 ---
 
@@ -80,129 +65,93 @@ Designed for privacy-conscious developers and enterprises, this server enables A
 
 | Tool Name | Description | Key Parameters |
 |-----------|-------------|----------------|
-| **`presearch_ai_search`** | Standard web search optimized for AI. | `query`, `count`, `safesearch`, `freshness` |
-| **`presearch_deep_research`** | **NEW!** Autonomous multi-step research agent. | `query`, `depth`, `breadth`, `focus` |
-| **`presearch_search_and_scrape`** | Search and immediately scrape top results. | `query`, `scrape_count`, `export_format` |
-| **`scrape_url_content`** | Extract full text/HTML from specific URLs. | `urls`, `include_metadata`, `format` |
-| **`content_analysis`** | Analyze text for quality, sentiment, and key topics. | `content`, `focus_areas` |
-| **`export_search_results`** | Save search data to local files. | `query`, `export_format`, `file_path` |
-| **`presearch_node_status`** | Check the status of Presearch nodes. | `node_api_key`, `stats` |
+| **`presearch_ai_search`** | Standard web search optimized for AI. | `query`, `count`, `safesearch`, `freshness`, `content_categories` |
+| **`presearch_deep_research`** | Autonomous multi-step research agent. | `query`, `depth`, `breadth`, `focus`, `location` |
+| **`presearch_search_and_scrape`** | Search and immediately scrape top results. | `query`, `scrape_count`, `include_text`, `location` |
+| **`presearch_scrape`** | Scrape content from specific URLs. | `urls`, `include_text`, `timeout_ms` |
+| **`presearch_content_analysis`** | Analyze content quality and relevance. | `content`, `include_quality_assessment`, `custom_keywords` |
+| **`presearch_export`** | Export search results to files. | `count`, `format` (json/csv/md/html/pdf), `file_output` |
+| **`presearch_node_status`** | Monitor Presearch node health. | `node_api_key`, `stats`, `connected`, `include_inactive` |
+| **`presearch_cache_stats`** | View internal cache metrics. | (None) |
+
+> **Note**: All tools support robust input parsing. Parameters can be passed as native types (numbers, booleans, arrays) or as strings/JSON strings (e.g., `"true"`, `"10"`, `"['url1', 'url2']"`).
+
+---
+
+## ⚙️ Configuration
+
+The server can be configured via environment variables or MCP settings.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PRESEARCH_API_KEY` | Your Presearch API Key (Required). | - |
+| `PRESEARCH_BASE_URL` | API Endpoint URL. | `https://na-us-1.presearch.com` |
+| `PRESEARCH_TIMEOUT` | Request timeout in ms. | `10000` |
+| `LOG_LEVEL` | Logging verbosity (`info`, `debug`, `error`). | `info` |
+
+### JSON Configuration Schema
+When using Smithery or an MCP client, the configuration object supports:
+```json
+{
+  "apiKey": "YOUR_KEY",
+  "rateLimit": {
+    "maxRequests": 100,
+    "windowMs": 60000
+  },
+  "cache": {
+    "enabled": true,
+    "ttl": 300
+  },
+  "search": {
+    "defaultSafeSearch": "moderate",
+    "defaultLanguage": "en-US"
+  }
+}
+```
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- **Node.js**: Version 20.0.0 or higher
-- **Presearch API Key**: [Get it here](https://presearch.io/searchapi)
+### 1. Get an API Key
+Sign up at [Presearch.io](https://presearch.io) to obtain your API key.
 
-### Installation
-
+### 2. Run with npx
 ```bash
-# Clone the repository
-git clone https://github.com/NosytLabs/presearch-search-api-mcp.git
-cd presearch-search-api-mcp
-
-# Install dependencies
-npm install
-
-# Configure environment
-cp .env.example .env
+npx presearch-mcp-server
 ```
 
-### Configuration
-Edit `.env` file with your settings:
-
-```env
-PRESEARCH_API_KEY=your_key_here
-PRESEARCH_BASE_URL=https://na-us-1.presearch.com
-LOG_LEVEL=info
-```
-
-### Running the Server
-
-#### 1. STDIO Mode (Recommended for AI Editors)
-Best for Cursor, Trae, VS Code, and desktop agents.
-
+### 3. Deploy via Smithery
+Use the button above or run:
 ```bash
-npm run start:stdio
-```
-
-Add to your MCP config (e.g., `claude_desktop_config.json`):
-```json
-{
-  "mcpServers": {
-    "presearch": {
-      "command": "node",
-      "args": ["/absolute/path/to/presearch-mcp/src/index.js", "--stdio"],
-      "env": {
-        "PRESEARCH_API_KEY": "your-key"
-      }
-    }
-  }
-}
-```
-
-#### 2. HTTP Mode (For Remote/Docker)
-Best for distributed systems or containerized deployments.
-
-```bash
-npm start
-```
-
-#### 3. Docker Deployment
-```bash
-docker build -t presearch-mcp .
-docker run -p 3000:3000 -e PRESEARCH_API_KEY=your_key presearch-mcp
+npx -y @smithery/cli@latest install @NosytLabs/presearch-search-api-mcp --client claude
 ```
 
 ---
 
-## 🧪 Testing
+## 🧪 Development
 
-We provide a comprehensive test suite to ensure reliability.
-
+### Install Dependencies
 ```bash
-# 1. Standard Unit Tests (Mocked)
-npm test
+npm install
+```
 
-# 2. Real API Integration Tests
-# WARNING: Consumes API credits. Requires valid .env file.
+### Run Tests
+```bash
+# Run real API tests (requires .env with API key)
 npm run test:real
 
-# 3. Tool-Specific Functional Tests
-# Verifies Scraper, Analyzer, and Health checks
+# Run mock tool tests
 npm run test:tools
+```
 
-# 4. Coverage Report
-npm run test:coverage
+### Build & Lint
+```bash
+npm run lint
+npm run format
 ```
 
 ---
 
-## ❓ Troubleshooting
-
-**Q: I get "Unauthorized" errors.**
-A: Check that your `PRESEARCH_API_KEY` in `.env` is correct and has not expired.
-
-**Q: Search results are empty.**
-A: Verify your internet connection and try a broader query. Ensure `PRESEARCH_BASE_URL` is reachable.
-
-**Q: Scraping fails on some sites.**
-A: Some websites block automated scrapers. The tool uses a headless browser to mitigate this, but extremely strict sites may still block access.
-
----
-
-## 📝 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
----
-
-<div align="center">
-  <sub>Built with ❤️ for the decentralized web.</sub>
-</div>
+## 📜 License
+MIT © [Presearch MCP Team](https://github.com/NosytLabs)

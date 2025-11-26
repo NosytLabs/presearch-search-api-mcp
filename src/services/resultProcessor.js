@@ -629,7 +629,7 @@ export class ResultProcessor {
           )
             score -= 10;
         }
-      } catch (error) {
+      } catch {
         // Invalid URL
         score += 0;
       }
@@ -652,7 +652,7 @@ export class ResultProcessor {
           score += 5; // Moderately recent
         else if (daysDiff < 365) score += 2; // Within a year
         // Older content gets no bonus but no penalty either
-      } catch (error) {
+      } catch {
         // Invalid date format
       }
     }
@@ -912,7 +912,7 @@ export class ResultProcessor {
       const daysDiff = (now - contentDate) / (1000 * 60 * 60 * 24);
 
       return daysDiff < 30; // Consider content recent if published within 30 days
-    } catch (error) {
+    } catch {
       return false;
     }
   }

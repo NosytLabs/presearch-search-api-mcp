@@ -124,8 +124,82 @@ const main = async () => {
       });
 
       // Extract configuration from query parameters (Smithery.ai style)
+      // Helper to safely parse numbers and booleans from query strings
+      const parseBool = (val) => {
+        if (typeof val === "string") return val.toLowerCase() === "true";
+        return !!val;
+      };
+      const parseIntSafe = (val) => {
+        if (!val) return undefined;
+        const num = parseInt(val);
+        return isNaN(num) ? undefined : num;
+      };
+
+      const queryConfig = {
+        apiKey: req.query.PRESEARCH_API_KEY,
+        timeout: parseIntSafe(req.query.PRESEARCH_TIMEOUT),
+        search: {
+          maxResults: parseIntSafe(req.query.SEARCH_MAX_RESULTS),
+          defaultSafeSearch: req.query.PRESEARCH_SAFE_SEARCH,
+          defaultLanguage: req.query.PRESEARCH_DEFAULT_LANGUAGE,
+        },
+        cache: {
+          enabled:
+            req.query.CACHE_ENABLED !== undefined
+              ? parseBool(req.query.CACHE_ENABLED)
+              : undefined,
+          ttl: parseIntSafe(req.query.CACHE_TTL),
+          maxKeys: parseIntSafe(req.query.CACHE_MAX_KEYS),
+        },
+        logging: {
+          level: req.query.LOG_LEVEL,
+          pretty:
+            req.query.LOG_PRETTY !== undefined
+              ? parseBool(req.query.LOG_PRETTY)
+              : undefined,
+        },
+      };
+
+      // Merge with global config defaults (basic implementation)
+      // We filter out undefined values to avoid overwriting defaults with undefined
+      const cleanQueryConfig = {};
+
+      if (queryConfig.apiKey) cleanQueryConfig.apiKey = queryConfig.apiKey;
+      if (queryConfig.timeout) cleanQueryConfig.timeout = queryConfig.timeout;
+
+      const searchConfig = {};
+      if (queryConfig.search.maxResults)
+        searchConfig.maxResults = queryConfig.search.maxResults;
+      if (queryConfig.search.defaultSafeSearch)
+        searchConfig.defaultSafeSearch = queryConfig.search.defaultSafeSearch;
+      if (queryConfig.search.defaultLanguage)
+        searchConfig.defaultLanguage = queryConfig.search.defaultLanguage;
+      if (Object.keys(searchConfig).length > 0)
+        cleanQueryConfig.search = { ...config.search, ...searchConfig };
+
+      const cacheConfig = {};
+      if (queryConfig.cache.enabled !== undefined)
+        cacheConfig.enabled = queryConfig.cache.enabled;
+      if (queryConfig.cache.ttl) cacheConfig.ttl = queryConfig.cache.ttl;
+      if (queryConfig.cache.maxKeys)
+        cacheConfig.maxKeys = queryConfig.cache.maxKeys;
+      if (Object.keys(cacheConfig).length > 0)
+        cleanQueryConfig.cache = { ...config.cache, ...cacheConfig };
+
+      const loggingConfig = {};
+      if (queryConfig.logging.level)
+        loggingConfig.level = queryConfig.logging.level;
+      if (queryConfig.logging.pretty !== undefined)
+        loggingConfig.pretty = queryConfig.logging.pretty;
+      if (Object.keys(loggingConfig).length > 0)
+        cleanQueryConfig.logging = { ...config.logging, ...loggingConfig };
+
       const context = {
-        apiKey: req.query.PRESEARCH_API_KEY || config.apiKey,
+        apiKey: cleanQueryConfig.apiKey || config.apiKey,
+        config: {
+          ...config,
+          ...cleanQueryConfig,
+        },
       };
 
       // Create a fresh server instance for this request/session

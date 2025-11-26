@@ -1,92 +1,93 @@
 import { z } from "zod";
-import { apiClient } from "../core/apiClient.js";
 import logger from "../core/logger.js";
 import presearchService from "../services/presearchService.js";
 import contentFetcher from "../services/contentFetcher.js";
 import contentAnalysisService from "../services/contentAnalysisService.js";
 import { withErrorHandling } from "../utils/errors.js";
+import { robustInt, robustNumber } from "../utils/schemas.js";
 
-const DeepResearchSchema = {
-  name: "presearch_deep_research",
-  description:
-    "Performs a deep research session: searches, scrapes multiple sources, and analyzes content quality and relevance to generate a comprehensive report.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      query: {
-        type: "string",
-        description: "The research topic or question.",
-      },
-      depth: {
-        type: "number",
-        description: "Number of source pages to scrape and analyze (1-10).",
-        default: 3,
-        minimum: 1,
-        maximum: 10,
-      },
-      breadth: {
-        type: "number",
-        description:
-          "Number of search results to consider for selection (5-20).",
-        default: 10,
-        minimum: 5,
-        maximum: 20,
-      },
-      research_focus: {
-        type: "string",
-        description: "The context of the research to guide relevance scoring.",
-        enum: ["general", "academic", "market", "technical", "news"],
-        default: "general",
-      },
-      country: {
-        type: "string",
-        description:
-          "Country filtering using ISO 3166-1 alpha-2 codes (e.g., US, CA, UK).",
-        pattern: "^[A-Z]{2}$",
-      },
-      language: {
-        type: "string",
-        description: "Language filtering using BCP 47 codes (e.g., en-US).",
-        pattern: "^[a-z]{2}(-[A-Z]{2})?$",
-      },
-      freshness: {
-        type: "string",
-        description: "Temporal filtering for recency.",
-        enum: ["hour", "day", "week", "month", "year", "all"],
-        default: "all",
-      },
-      safesearch: {
-        type: "string",
-        description: "Content safety filtering level.",
-        enum: ["off", "moderate", "strict"],
-        default: "moderate",
-      },
-      ip: {
-        type: "string",
-        description: "User IP for localization.",
-      },
-      location: {
-        type: "object",
-        description: "Geolocation override.",
-        properties: {
-          lat: { type: "number" },
-          long: { type: "number" },
-        },
-      },
-      timeout_ms: {
-        type: "number",
-        default: 60000,
-      },
-    },
-    required: ["query"],
-  },
-};
+const DeepResearchSchema = z.object({
+  query: z.string().describe("The research topic or question."),
+  depth: robustInt()
+    .min(1)
+    .max(10)
+    .default(3)
+    .describe(
+      "Number of source pages to scrape and analyze (1-10). Accepts number or string.",
+    ),
+  breadth: robustInt()
+    .min(5)
+    .max(20)
+    .default(10)
+    .describe(
+      "Number of search results to consider for selection (5-20). Accepts number or string.",
+    ),
+  research_focus: z
+    .enum(["general", "academic", "market", "technical", "news"])
+    .default("general")
+    .describe("The context of the research to guide relevance scoring."),
+  country: z
+    .string()
+    .regex(/^[A-Z]{2}$/)
+    .optional()
+    .describe(
+      "Country filtering using ISO 3166-1 alpha-2 codes (e.g., US, CA, UK).",
+    ),
+  language: z
+    .string()
+    .regex(/^[a-z]{2}(-[A-Z]{2})?$/)
+    .optional()
+    .describe("Language filtering using BCP 47 codes (e.g., en-US)."),
+  freshness: z
+    .enum(["hour", "day", "week", "month", "year", "all"])
+    .default("all")
+    .describe("Temporal filtering for recency."),
+  safesearch: z
+    .enum(["off", "moderate", "strict"])
+    .default("moderate")
+    .describe("Content safety filtering level."),
+  ip: z.string().optional().describe("User IP for localization."),
+  location: z
+    .union([
+      z.object({
+        lat: robustNumber().describe(
+          "Latitude coordinate. Accepts number or string.",
+        ),
+        long: robustNumber().describe(
+          "Longitude coordinate. Accepts number or string.",
+        ),
+      }),
+      z.string().transform((val) => {
+        try {
+          return JSON.parse(val);
+        } catch {
+          return undefined;
+        }
+      }),
+    ])
+    .optional()
+    .describe(
+      "Geolocation override. Can be {lat, long} object or JSON string.",
+    ),
+  timeout_ms: robustInt()
+    .default(60000)
+    .describe(
+      "Timeout in milliseconds for the research session. Default: 60000ms (1 min). Accepts number or string.",
+    ),
+});
 
 const tool = {
-  ...DeepResearchSchema,
+  name: "presearch_deep_research",
+  description:
+    "Performs a deep research session: searches multiple queries (if needed), scrapes authoritative sources, analyzes content quality/relevance, and synthesizes a comprehensive report with citations. Ideal for complex topics requiring fact-checking or broad overview.",
+  inputSchema: DeepResearchSchema,
   execute: withErrorHandling(
     "presearch_deep_research",
     async (args, context) => {
+      const parsed = DeepResearchSchema.safeParse(args);
+      if (!parsed.success)
+        return { success: false, error: parsed.error.message };
+
       const {
         query,
         depth,
@@ -99,7 +100,7 @@ const tool = {
         safesearch,
         ip,
         location,
-      } = args;
+      } = parsed.data;
 
       logger.info("Starting Deep Research", {
         query,
@@ -145,7 +146,6 @@ const tool = {
       const candidates = searchResults.slice(0, depth);
 
       // Step 3: Scrape Content
-      const scrapedContent = [];
       const errors = [];
 
       // Run scrapes in parallel (with limit handled by contentFetcher or simple loop)
