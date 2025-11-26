@@ -4,13 +4,14 @@ import logger from "../core/logger.js";
 import presearchService from "../services/presearchService.js";
 import { resultProcessor } from "../services/resultProcessor.js";
 import contentAnalysisService from "../services/contentAnalysisService.js";
+import {
+  robustBoolean,
+  robustNumber,
+  robustInt,
+  robustArray,
+} from "../utils/schemas.js";
 
 import {
-  createErrorResponse,
-  ValidationError,
-  NetworkError,
-  TimeoutError,
-  RateLimitError,
   withErrorHandling,
 } from "../utils/errors.js";
 
@@ -130,159 +131,140 @@ const ClaudeSearchSchema = {
   name: "presearch_ai_search",
   description:
     "Performs web searches and returns results with metadata and analysis. Supports filtering by language, freshness, and safe search.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      query: {
-        type: "string",
-        description:
-          "Intelligent search query optimized for AI processing. Use specific, well-formed queries for best results. Supports natural language and technical queries.",
-        minLength: 1,
-        maxLength: 1000,
-        examples: [
-          "machine learning algorithms 2024",
-          "React component best practices",
-          "climate change latest research",
-        ],
-      },
-      page: {
-        type: "number",
-        description:
-          "The page number for paginating search results. Direct mapping to API page parameter.",
-        minimum: 1,
-        default: 1,
-      },
-      count: {
-        type: "number",
-        description:
-          "Number of results to return (1-50). Used for client-side filtering as API returns fixed page size.",
-        minimum: 1,
-        maximum: 50,
-        default: 15,
-      },
-      offset: {
-        type: "number",
-        description:
-          "Pagination offset. Used to calculate page number if page is not provided (page = floor(offset/count) + 1).",
-        minimum: 0,
-        default: 0,
-        maximum: 1000,
-      },
-      language: {
-        type: "string",
-        description: "Language filtering using BCP 47 codes, e.g. en or en-US.",
-        pattern: "^[a-z]{2}(-[A-Z]{2})?$",
-        examples: ["en", "en-US", "es", "fr"],
-      },
-      country: {
-        type: "string",
-        description:
-          "Country filtering using ISO 3166-1 alpha-2 codes (e.g., US, CA, UK). Restricts results to a specific country.",
-        pattern: "^[A-Z]{2}$",
-        examples: ["US", "CA", "GB", "DE"],
-      },
-      ip: {
-        type: "string",
-        description:
-          "User IP for localization and compliance. If omitted, a safe default is used.",
-      },
-      location: {
-        type: "object",
-        description:
-          "Geolocation override with coordinates for localized results.",
-        properties: {
-          lat: { type: "number" },
-          long: { type: "number" },
-        },
-      },
-      safesearch: {
-        type: "string",
-        description:
-          "Content safety filtering level. Maps to API safe parameter (off->0, moderate->1, strict->1).",
-        enum: ["off", "moderate", "strict"],
-        default: "moderate",
-      },
-      freshness: {
-        type: "string",
-        description:
-          "Temporal filtering for recency. Maps to API time parameter (hour->day, all->any).",
-        enum: ["hour", "day", "week", "month", "year", "all"],
-        default: "all",
-      },
-
-      // Advanced Claude AI Optimization Parameters
-      include_metadata: {
-        type: "boolean",
-        description:
-          "Enable comprehensive metadata extraction for enhanced AI processing. Includes quality scores, domain analysis, content categorization, and technical metrics.",
-        default: true,
-      },
-      min_quality_score: {
-        type: "number",
-        description:
-          "Quality threshold filtering (0-100). Higher values return more authoritative sources. Recommended: 60+ for research, 80+ for critical applications.",
-        minimum: 0,
-        maximum: 100,
-        default: 0,
-      },
-      content_categories: {
-        type: "array",
-        description:
-          "Content type filtering for targeted results. Improves relevance by matching content to query intent.",
-        items: {
-          type: "string",
-          enum: [
-            "news",
-            "article",
-            "tutorial",
-            "documentation",
-            "discussion",
-            "video",
-            "academic",
-            "blog",
-            "commerce",
-            "reference",
-            "general",
-          ],
-        },
-        minItems: 0,
-        maxItems: 5,
-      },
-      exclude_domains: {
-        type: "array",
-        description:
-          "Domain exclusion list for filtering unwanted sources. Useful for removing low-quality or biased sources.",
-        items: {
-          type: "string",
-          pattern: "^[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
-        },
-        maxItems: 20,
-      },
-      include_analysis: {
-        type: "boolean",
-        description:
-          "Enable AI-powered result analysis with insights, confidence scoring, and usage recommendations. Essential for complex research tasks.",
-        default: true,
-      },
-      deduplicate: {
-        type: "boolean",
-        description:
-          "Intelligent duplicate removal using content similarity analysis. Ensures unique, high-value results.",
-        default: true,
-      },
-
-      // Performance and Reliability Parameters
-      timeout_ms: {
-        type: "number",
-        description:
-          "Operation timeout in milliseconds. Prevents hanging on slow queries. Recommended: 5000-15000ms.",
-        minimum: 2000,
-        maximum: 60000,
-        default: 10000,
-      },
-    },
-    required: ["query"],
-  },
+  inputSchema: z.object({
+    query: z
+      .string()
+      .min(1)
+      .max(1000)
+      .describe(
+        "Intelligent search query optimized for AI processing. Use specific, well-formed queries for best results. Supports natural language and technical queries.",
+      ),
+    page: robustInt()
+      .min(1)
+      .default(1)
+      .describe(
+        "The page number for paginating search results. Direct mapping to API page parameter. Accepts number or string.",
+      ),
+    count: robustInt()
+      .min(1)
+      .max(50)
+      .default(15)
+      .describe(
+        "Number of results to return (1-50). Used for client-side filtering as API returns fixed page size. Accepts number or string.",
+      ),
+    offset: robustInt()
+      .min(0)
+      .max(1000)
+      .default(0)
+      .describe(
+        "Pagination offset. Used to calculate page number if page is not provided (page = floor(offset/count) + 1). Accepts number or string.",
+      ),
+    language: z
+      .string()
+      .regex(/^[a-z]{2}(-[A-Z]{2})?$/)
+      .optional()
+      .describe("Language filtering using BCP 47 codes, e.g. en or en-US."),
+    country: z
+      .string()
+      .regex(/^[A-Z]{2}$/)
+      .optional()
+      .describe(
+        "Country filtering using ISO 3166-1 alpha-2 codes (e.g., US, CA, UK). Restricts results to a specific country.",
+      ),
+    ip: z
+      .string()
+      .optional()
+      .describe(
+        "User IP for localization and compliance. If omitted, a safe default is used.",
+      ),
+    location: z
+      .union([
+        z.object({
+          lat: z.number().describe("Latitude coordinate."),
+          long: z.number().describe("Longitude coordinate."),
+        }),
+        z.string().transform((val) => {
+          try {
+            return JSON.parse(val);
+          } catch {
+            return undefined;
+          }
+        }),
+      ])
+      .optional()
+      .describe(
+        "Geolocation override with coordinates for localized results. Can be {lat, long} object or JSON string.",
+      ),
+    safesearch: z
+      .enum(["off", "moderate", "strict"])
+      .default("moderate")
+      .describe(
+        "Content safety filtering level. Maps to API safe parameter (off->0, moderate->1, strict->1).",
+      ),
+    freshness: z
+      .enum(["hour", "day", "week", "month", "year", "all"])
+      .default("all")
+      .describe(
+        "Temporal filtering for recency. Maps to API time parameter (hour->day, all->any).",
+      ),
+    include_metadata: robustBoolean()
+      .default(true)
+      .describe(
+        "Enable comprehensive metadata extraction for enhanced AI processing. Includes quality scores, domain analysis, content categorization, and technical metrics. Accepts boolean or string 'true'/'false'.",
+      ),
+    min_quality_score: robustNumber()
+      .min(0)
+      .max(100)
+      .default(0)
+      .describe(
+        "Quality threshold filtering (0-100). Higher values return more authoritative sources. Recommended: 60+ for research, 80+ for critical applications. Accepts number or string.",
+      ),
+    content_categories: robustArray(
+      z.enum([
+        "news",
+        "article",
+        "tutorial",
+        "documentation",
+        "discussion",
+        "video",
+        "academic",
+        "blog",
+        "commerce",
+        "reference",
+        "general",
+      ]),
+      { max: 5 },
+    )
+      .optional()
+      .describe(
+        "Content type filtering for targeted results. Improves relevance by matching content to query intent. Accepts JSON string or comma-separated list.",
+      ),
+    exclude_domains: robustArray(
+      z.string().regex(/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/),
+      { max: 20 },
+    )
+      .optional()
+      .describe(
+        "Domain exclusion list for filtering unwanted sources. Useful for removing low-quality or biased sources. Accepts JSON string or comma-separated list.",
+      ),
+    include_analysis: robustBoolean()
+      .default(true)
+      .describe(
+        "Enable AI-powered result analysis with insights, confidence scoring, and usage recommendations. Essential for complex research tasks. Accepts boolean or string 'true'/'false'.",
+      ),
+    deduplicate: robustBoolean()
+      .default(true)
+      .describe(
+        "Intelligent duplicate removal using content similarity analysis. Ensures unique, high-value results. Accepts boolean or string 'true'/'false'.",
+      ),
+    timeout_ms: robustInt()
+      .min(2000)
+      .max(60000)
+      .default(10000)
+      .describe(
+        "Operation timeout in milliseconds. Prevents hanging on slow queries. Recommended: 5000-15000ms. Accepts number or string.",
+      ),
+  }),
 };
 
 const search = {
@@ -300,7 +282,6 @@ const search = {
           country,
           safesearch,
           freshness,
-          timeout_ms,
           ip,
           location,
         } = args;
@@ -343,8 +324,10 @@ const search = {
 
         // Extract metadata from response
         const {
-          results: _,
-          standardResults: __,
+          // eslint-disable-next-line no-unused-vars
+          results: _results,
+          // eslint-disable-next-line no-unused-vars
+          standardResults: _standardResults,
           infoSection = {},
           specialSections = {},
           links = {},

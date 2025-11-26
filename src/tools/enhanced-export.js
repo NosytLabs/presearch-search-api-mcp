@@ -1,20 +1,21 @@
 import { z } from "zod";
 import fs from "fs/promises";
 import path from "path";
-import { fileURLToPath } from "url";
 import logger from "../core/logger.js";
-import apiClient from "../core/apiClient.js";
 import contentFetcher from "../services/contentFetcher.js";
 import { withErrorHandling, ValidationError } from "../utils/errors.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import {
+  robustBoolean,
+  robustNumber,
+  robustInt,
+  robustArray,
+} from "../utils/schemas.js";
 
 async function getPuppeteer() {
   try {
     const mod = await import("puppeteer");
     return mod.default || mod;
-  } catch (e) {
+  } catch {
     throw new ValidationError("PDF export requires puppeteer to be installed", {
       dependency: "puppeteer",
       install: "npm i puppeteer",
@@ -22,121 +23,107 @@ async function getPuppeteer() {
   }
 }
 
-const inputSchema = {
-  type: "object",
-  properties: {
-    urls: {
-      type: "array",
-      items: { type: "string", format: "uri" },
-      minItems: 1,
-      description: "List of URLs to export",
-    },
-    format: {
-      type: "string",
-      enum: ["html", "json", "markdown", "pdf"],
-      default: "json",
-      description: "Export format",
-    },
-    include_html: {
-      type: "boolean",
-      default: true,
-      description: "Include raw HTML in results (non-PDF formats)",
-    },
-    include_text: {
-      type: "boolean",
-      default: true,
-      description: "Include extracted readable text (non-PDF formats)",
-    },
-    include_meta: {
-      type: "boolean",
-      default: true,
-      description: "Include parsed meta tags (non-PDF formats)",
-    },
-    timeout_ms: {
-      type: "number",
-      minimum: 1000,
-      maximum: 60000,
-      default: 15000,
-    },
-    max_bytes: {
-      type: "number",
-      minimum: 10000,
-      maximum: 5000000,
-      default: 1000000,
-    },
-    file_output: { type: "boolean", default: false },
-    filename: { type: "string", maxLength: 100 },
-    pdf_mode: {
-      type: "string",
-      enum: ["dom", "screenshot"],
-      default: "dom",
-      description: "PDF capture mode using headless browser",
-    },
-    pdf_paper: {
-      type: "string",
-      enum: ["letter", "legal", "tabloid", "ledger", "a4", "a3"],
-      default: "a4",
-    },
-    pdf_margin_mm: { type: "number", minimum: 0, maximum: 50, default: 10 },
-    wait_until: {
-      type: "string",
-      enum: ["load", "domcontentloaded", "networkidle0", "networkidle2"],
-      default: "networkidle2",
-    },
-    render_timeout_ms: {
-      type: "number",
-      minimum: 1000,
-      maximum: 60000,
-      default: 15000,
-    },
-    viewport: {
-      type: "object",
-      properties: {
-        width: { type: "number" },
-        height: { type: "number" },
-        deviceScaleFactor: { type: "number" },
-      },
-      default: { width: 1280, height: 800, deviceScaleFactor: 1 },
-    },
-    country: {
-      type: "string",
-      pattern: "^[A-Z]{2}$",
-      description: "Country code for locale emulation (e.g. US, GB)",
-    },
-  },
-  required: ["urls"],
-};
-
 const zodSchema = z.object({
-  urls: z.array(z.string().url()).min(1),
-  format: z.enum(["html", "json", "markdown", "pdf"]).default("json"),
-  include_html: z.boolean().default(true),
-  include_text: z.boolean().default(true),
-  include_meta: z.boolean().default(true),
-  timeout_ms: z.number().int().min(1000).max(60000).default(15000),
-  max_bytes: z.number().int().min(10000).max(5000000).default(1000000),
-  file_output: z.boolean().default(false),
-  filename: z.string().max(100).optional(),
-  pdf_mode: z.enum(["dom", "screenshot"]).default("dom"),
+  urls: robustArray(z.string().url(), { min: 1 }).describe(
+    "List of URLs to export. Can be a single URL string or an array of URL strings. Accepts JSON string or comma-separated list.",
+  ),
+  format: z
+    .enum(["html", "json", "markdown", "pdf"])
+    .default("json")
+    .describe(
+      "Export format: 'json' (structured data), 'markdown' (readable text), 'html' (web archive), or 'pdf' (visual capture).",
+    ),
+  include_html: robustBoolean()
+    .default(true)
+    .describe(
+      "Include raw HTML content in the result (for non-PDF formats). Useful for debugging or custom parsing. Accepts boolean or string 'true'/'false'.",
+    ),
+  include_text: robustBoolean()
+    .default(true)
+    .describe(
+      "Include extracted readable text content (for non-PDF formats). Ideal for LLM context. Accepts boolean or string 'true'/'false'.",
+    ),
+  include_meta: robustBoolean()
+    .default(true)
+    .describe(
+      "Include parsed metadata (title, description, author) in the result. Accepts boolean or string 'true'/'false'.",
+    ),
+  timeout_ms: robustInt()
+    .min(1000)
+    .max(60000)
+    .default(15000)
+    .describe(
+      "Timeout in milliseconds for the request. Accepts number or string.",
+    ),
+  max_bytes: robustInt()
+    .min(10000)
+    .max(5000000)
+    .default(1000000)
+    .describe(
+      "Maximum size in bytes to download per URL. Accepts number or string.",
+    ),
+  file_output: robustBoolean()
+    .default(false)
+    .describe(
+      "If true, saves the result to a file on the server instead of returning full content. Returns the file path. Accepts boolean or string 'true'/'false'.",
+    ),
+  filename: z
+    .string()
+    .max(100)
+    .optional()
+    .describe(
+      "Optional filename prefix for saved files (used with file_output).",
+    ),
+  pdf_mode: z
+    .enum(["dom", "screenshot"])
+    .default("dom")
+    .describe(
+      "PDF capture mode: 'dom' (standard print) or 'screenshot' (image-based PDF). 'screenshot' is better for complex layouts.",
+    ),
   pdf_paper: z
     .enum(["letter", "legal", "tabloid", "ledger", "a4", "a3"])
-    .default("a4"),
-  pdf_margin_mm: z.number().min(0).max(50).default(10),
+    .default("a4")
+    .describe("Paper size for PDF export (e.g., 'a4', 'letter')."),
+  pdf_margin_mm: robustNumber()
+    .min(0)
+    .max(50)
+    .default(10)
+    .describe("PDF margin in millimeters. Accepts number or string."),
   wait_until: z
     .enum(["load", "domcontentloaded", "networkidle0", "networkidle2"])
-    .default("networkidle2"),
-  render_timeout_ms: z.number().int().min(1000).max(60000).default(15000),
+    .default("networkidle2")
+    .describe(
+      "Puppeteer wait condition: 'networkidle2' (recommended), 'load', 'domcontentloaded', or 'networkidle0'.",
+    ),
+  render_timeout_ms: robustInt()
+    .min(1000)
+    .max(60000)
+    .default(15000)
+    .describe("Timeout for PDF rendering/screenshot generation."),
   viewport: z
-    .object({
-      width: z.number().default(1280),
-      height: z.number().default(800),
-      deviceScaleFactor: z.number().default(1),
-    })
-    .default({ width: 1280, height: 800, deviceScaleFactor: 1 }),
+    .union([
+      z.object({
+        width: z.number().default(1280),
+        height: z.number().default(800),
+        deviceScaleFactor: z.number().default(1),
+      }),
+      z.string().transform((val) => {
+        try {
+          return JSON.parse(val);
+        } catch {
+          return { width: 1280, height: 800, deviceScaleFactor: 1 };
+        }
+      }),
+    ])
+    .default({ width: 1280, height: 800, deviceScaleFactor: 1 })
+    .describe(
+      "Viewport settings for headless browser {width, height, deviceScaleFactor}. Can be an object or JSON string.",
+    ),
   country: z
     .string()
     .regex(/^[A-Z]{2}$/)
-    .optional(),
+    .optional()
+    .describe("Country code for locale emulation (e.g. US, GB)."),
 });
 
 function toJson(items) {
@@ -286,8 +273,8 @@ export const enhancedExportTool = {
   name: "export_site_content",
   description:
     "Exports site content for given URLs as JSON, Markdown, HTML, or PDF (headless capture).",
-  inputSchema,
-  execute: withErrorHandling("export_site_content", async (args, context) => {
+  inputSchema: zodSchema,
+  execute: withErrorHandling("export_site_content", async (args) => {
     const parsed = zodSchema.safeParse(args);
     if (!parsed.success)
       throw new ValidationError("Invalid arguments", {
@@ -299,82 +286,68 @@ export const enhancedExportTool = {
       const pdfFiles = await exportPdf(a.urls, a);
       return {
         success: true,
+        format: "pdf",
         count: pdfFiles.length,
-        pdf_files: pdfFiles,
-        file_output: a.file_output,
-        metadata: {
-          generated_at: new Date().toISOString(),
-          rateLimit: apiClient.getRateLimitStats(),
-        },
+        items: pdfFiles,
       };
     }
 
-    logger.info("Enhanced export starting", {
-      count: a.urls.length,
-      format: a.format,
-    });
-
+    logger.info("Enhanced export", { count: a.urls.length, format: a.format });
     const items = [];
     for (const url of a.urls) {
       try {
         const res = await contentFetcher.fetch(url, {
           timeout: a.timeout_ms,
           maxBytes: a.max_bytes,
-          includeText: a.include_text,
-          includeHtml: a.include_html,
+          includeText: a.include_text || a.format === "markdown",
         });
         items.push({
           url,
           status: res.status,
           meta: a.include_meta ? res.meta : undefined,
           text: a.include_text ? res.text : undefined,
-          textLength: res.textLength,
           html: a.include_html ? res.html : undefined,
+          textLength: res.textLength,
         });
       } catch (e) {
         items.push({ url, error: e.message });
       }
     }
 
-    let export_data;
-    switch (a.format) {
-      case "markdown":
-        export_data = toMarkdown(items);
-        break;
-      case "html":
-        export_data = toHtml(items);
-        break;
-      case "json":
-      default:
-        export_data = toJson(items);
-        break;
-    }
-
-    let file_path = null;
     if (a.file_output) {
       const exportsDir = path.join(process.cwd(), "exports");
       await fs.mkdir(exportsDir, { recursive: true });
       const ts = new Date().toISOString().replace(/[:.]/g, "-");
-      const base = a.filename || `sites_${ts}`;
-      const ext = a.format;
-      file_path = path.join(exportsDir, `${base}.${ext}`);
-      await fs.writeFile(file_path, export_data, "utf8");
-      logger.info("Enhanced export file saved", { file_path });
+      const base = a.filename || `export_${ts}`;
+      let content = "";
+      let ext = a.format;
+      if (a.format === "json") content = toJson(items);
+      else if (a.format === "markdown") {
+        content = toMarkdown(items);
+        ext = "md";
+      } else if (a.format === "html") content = toHtml(items);
+
+      const filePath = path.join(exportsDir, `${base}.${ext}`);
+      await fs.writeFile(filePath, content, "utf8");
+      return {
+        success: true,
+        format: a.format,
+        count: items.length,
+        file_path: filePath,
+        items: items.map((i) => ({ url: i.url, status: i.status || "error" })),
+      };
     }
+
+    let resultData = items;
+    if (a.format === "markdown") resultData = toMarkdown(items);
+    else if (a.format === "html") resultData = toHtml(items);
+    else if (a.format === "json") resultData = toJson(items);
 
     return {
       success: true,
+      format: a.format,
       count: items.length,
-      items,
-      export_data,
-      file_path,
-      metadata: {
-        generated_at: new Date().toISOString(),
-        rateLimit: apiClient.getRateLimitStats(),
-      },
+      data: resultData,
     };
   }),
 };
-
-export default enhancedExportTool;
-export { enhancedExportTool as enhancedExport };

@@ -15,168 +15,36 @@ import { z } from "zod";
 import logger from "../core/logger.js";
 import contentAnalysisService from "../services/contentAnalysisService.js";
 import { ValidationError, withErrorHandling } from "../utils/errors.js";
-
-// Claude AI-optimized schema for content analysis
-const ClaudeContentAnalysisSchema = {
-  name: "analyze_content",
-  description:
-    "Analyze search results or scraped content for quality, relevance, patterns, and research insights. Provides AI-optimized analysis for Claude AI and other LLM clients.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      // Input Content
-      content: {
-        type: "array",
-        description:
-          "Content to analyze - search results, scraped content, or text data",
-        items: {
-          type: "object",
-          properties: {
-            title: { type: "string" },
-            url: { type: "string" },
-            description: { type: "string" },
-            content: { type: "string" },
-            source: { type: "string" },
-            publishedDate: { type: "string" },
-            domain: { type: "string" },
-            qualityScore: { type: "number" },
-          },
-          required: ["title", "url"],
-        },
-      },
-
-      // Analysis Configuration
-      analysis_type: {
-        type: "string",
-        description: "Type of analysis to perform",
-        enum: ["quality", "relevance", "patterns", "research", "comprehensive"],
-        default: "comprehensive",
-      },
-
-      research_focus: {
-        type: "string",
-        description: "Research focus area for targeted analysis",
-        enum: [
-          "general",
-          "academic",
-          "market",
-          "technical",
-          "competitive",
-          "news",
-        ],
-        default: "general",
-      },
-
-      // Analysis Options
-      include_quality_assessment: {
-        type: "boolean",
-        description: "Include detailed quality assessment of content",
-        default: true,
-      },
-
-      include_relevance_scoring: {
-        type: "boolean",
-        description: "Score content relevance to research focus",
-        default: true,
-      },
-
-      include_pattern_analysis: {
-        type: "boolean",
-        description: "Analyze patterns in content (topics, themes, sources)",
-        default: true,
-      },
-
-      include_source_analysis: {
-        type: "boolean",
-        description: "Analyze source diversity and credibility",
-        default: true,
-      },
-
-      include_temporal_analysis: {
-        type: "boolean",
-        description: "Analyze temporal patterns and recency",
-        default: true,
-      },
-
-      // Filtering Options
-      country: {
-        type: "string",
-        description:
-          "Country context for analysis (ISO 3166-1 alpha-2 code). Affects quality scoring and relevance.",
-        pattern: "^[A-Z]{2}$",
-      },
-
-      min_quality_score: {
-        type: "number",
-        description: "Minimum quality score (0-100) for analysis inclusion",
-        minimum: 0,
-        maximum: 100,
-        default: 0,
-      },
-
-      max_items: {
-        type: "number",
-        description: "Maximum number of items to analyze (1-200)",
-        minimum: 1,
-        maximum: 200,
-        default: 50,
-      },
-
-      // Custom Analysis
-      custom_keywords: {
-        type: "array",
-        description: "Custom keywords for relevance scoring",
-        items: { type: "string" },
-        default: [],
-      },
-
-      exclude_domains: {
-        type: "array",
-        description: "Domains to exclude from analysis",
-        items: { type: "string" },
-        default: [],
-      },
-    },
-    required: ["content"],
-    additionalProperties: false,
-  },
-  outputSchema: {
-    type: "object",
-    properties: {
-      success: { type: "boolean" },
-      analysis_type: { type: "string" },
-      research_focus: { type: "string" },
-      items_analyzed: { type: "number" },
-      analysis_summary: { type: "object" },
-      detailed_analysis: { type: "object" },
-      recommendations: { type: "array" },
-      metadata: { type: "object" },
-    },
-    required: [
-      "success",
-      "analysis_type",
-      "items_analyzed",
-      "analysis_summary",
-    ],
-  },
-};
+import {
+  robustBoolean,
+  robustNumber,
+  robustInt,
+  robustArray,
+} from "../utils/schemas.js";
 
 // Enhanced schema with AI/LLM optimization
 const contentAnalysisSchema = z.object({
-  content: z
-    .array(
-      z.object({
-        title: z.string(),
-        url: z.string(),
-        description: z.string().optional(),
-        content: z.string().optional(),
-        source: z.string().optional(),
-        publishedDate: z.string().optional(),
-        domain: z.string().optional(),
-        qualityScore: z.number().optional(),
-      }),
-    )
-    .min(1, "Content array cannot be empty"),
+  content: robustArray(
+    z.object({
+      title: z.string().describe("Title of the content item"),
+      url: z.string().describe("URL of the content item"),
+      description: z
+        .string()
+        .optional()
+        .describe("Description or snippet of the content"),
+      content: z.string().optional().describe("Full text content to analyze"),
+      source: z.string().optional().describe("Source name or publisher"),
+      publishedDate: z
+        .string()
+        .optional()
+        .describe("Publication date (ISO format preferred)"),
+      domain: z.string().optional().describe("Domain name of the source"),
+      qualityScore: z.number().optional().describe("Initial quality score"),
+    }),
+    { min: 1 },
+  ).describe(
+    "Content to analyze - search results, scraped content, or text data. Accepts JSON string.",
+  ),
 
   analysis_type: z
     .enum(["quality", "relevance", "patterns", "research", "comprehensive"])
@@ -188,61 +56,71 @@ const contentAnalysisSchema = z.object({
     .default("general")
     .describe("Research focus area for targeted analysis"),
 
-  include_quality_assessment: z
-    .boolean()
+  include_quality_assessment: robustBoolean()
     .default(true)
-    .describe("Include detailed quality assessment of content"),
+    .describe(
+      "Include detailed quality assessment of content. Accepts boolean or string 'true'/'false'.",
+    ),
 
-  include_relevance_scoring: z
-    .boolean()
+  include_relevance_scoring: robustBoolean()
     .default(true)
-    .describe("Score content relevance to research focus"),
+    .describe(
+      "Score content relevance to research focus. Accepts boolean or string 'true'/'false'.",
+    ),
 
-  include_pattern_analysis: z
-    .boolean()
+  include_pattern_analysis: robustBoolean()
     .default(true)
-    .describe("Analyze patterns in content (topics, themes, sources)"),
+    .describe(
+      "Analyze patterns in content (topics, themes, sources). Accepts boolean or string 'true'/'false'.",
+    ),
 
-  include_source_analysis: z
-    .boolean()
+  include_source_analysis: robustBoolean()
     .default(true)
-    .describe("Analyze source diversity and credibility"),
+    .describe(
+      "Analyze source diversity and credibility. Accepts boolean or string 'true'/'false'.",
+    ),
 
-  include_temporal_analysis: z
-    .boolean()
+  include_temporal_analysis: robustBoolean()
     .default(true)
-    .describe("Analyze temporal patterns and recency"),
+    .describe(
+      "Analyze temporal patterns and recency. Accepts boolean or string 'true'/'false'.",
+    ),
 
   country: z
     .string()
     .regex(/^[A-Z]{2}$/)
     .optional()
-    .describe("Country context for analysis"),
+    .describe(
+      "Country context for analysis (ISO 3166-1 alpha-2 code). Affects quality scoring and relevance.",
+    ),
 
-  min_quality_score: z
-    .number()
+  min_quality_score: robustNumber()
     .min(0)
     .max(100)
     .default(0)
-    .describe("Minimum quality score (0-100) for analysis inclusion"),
+    .describe(
+      "Minimum quality score (0-100) for analysis inclusion. Accepts number or string.",
+    ),
 
-  max_items: z
-    .number()
-    .int()
+  max_items: robustInt()
     .min(1)
     .max(200)
     .default(50)
-    .describe("Maximum number of items to analyze (1-200)"),
+    .describe(
+      "Maximum number of items to analyze (1-200). Accepts number or string.",
+    ),
 
-  custom_keywords: z
-    .array(z.string())
-    .optional()
-    .describe("Custom keywords for relevance scoring"),
+  custom_keywords: robustArray(z.string())
+    .default([])
+    .describe(
+      "Custom keywords for relevance scoring. Accepts JSON string or comma-separated list.",
+    ),
 
-  exclude_domains: z
-    .array(z.string())
-    .optional()
-    .describe("Domains to exclude from analysis"),
+  exclude_domains: robustArray(z.string())
+    .default([])
+    .describe(
+      "Domains to exclude from analysis. Accepts JSON string or comma-separated list.",
+    ),
 });
 
 /**
@@ -252,12 +130,13 @@ const contentAnalysisSchema = z.object({
  * for AI/LLM consumption. Works independently of search and export tools.
  */
 export const contentAnalysisTool = {
-  name: ClaudeContentAnalysisSchema.name,
-  description: ClaudeContentAnalysisSchema.description,
-  inputSchema: ClaudeContentAnalysisSchema.inputSchema,
+  name: "analyze_content",
+  description:
+    "Analyze search results or scraped content for quality, relevance, patterns, and research insights. Provides AI-optimized analysis for Claude AI and other LLM clients.",
+  inputSchema: contentAnalysisSchema,
   execute: withErrorHandling(
     "contentAnalysisTool",
-    async (rawArgs, context) => {
+    async (rawArgs) => {
       const start_time = Date.now();
 
       try {

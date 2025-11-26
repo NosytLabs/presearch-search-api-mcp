@@ -6,73 +6,44 @@ import presearchService from "../services/presearchService.js";
 import { resultProcessor } from "../services/resultProcessor.js";
 import fs from "fs/promises";
 import path from "path";
-import { fileURLToPath } from "url";
 import {
   ValidationError,
   RateLimitError,
   withErrorHandling,
 } from "../utils/errors.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const ClaudeExportSchema = {
-  name: "export_search_results",
-  description:
-    "Export Presearch results in JSON, CSV, Markdown, or HTML without synthetic metrics. Uses deterministic fields only.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      query: {
-        type: "string",
-        description: "Search query to export results for",
-      },
-      format: {
-        type: "string",
-        description: "Export format",
-        enum: ["csv", "json", "markdown", "excel", "html"],
-        default: "json",
-      },
-      count: {
-        type: "integer",
-        description: "Maximum results to include (1-200)",
-        minimum: 1,
-        maximum: 200,
-        default: 25,
-      },
-      language: { type: "string", description: "Language code (optional)" },
-      country: { type: "string", description: "Country code (optional)" },
-      safesearch: {
-        type: "string",
-        enum: ["off", "moderate", "strict"],
-        default: "moderate",
-      },
-      freshness: {
-        type: "string",
-        enum: ["any", "day", "week", "month", "year"],
-        default: "any",
-      },
-      file_output: {
-        type: "boolean",
-        description: "Save export to `exports/`",
-        default: false,
-      },
-      filename: { type: "string", description: "Filename (without extension)" },
-    },
-    required: ["query"],
-  },
-};
+import { robustBoolean, robustInt } from "../utils/schemas.js";
 
 const exportSchema = z.object({
-  query: z.string().min(1),
-  format: z.enum(["csv", "json", "markdown", "excel", "html"]).default("json"),
-  count: z.number().int().min(1).max(200).default(25),
-  language: z.string().optional(),
-  country: z.string().optional(),
-  safesearch: z.enum(["off", "moderate", "strict"]).default("moderate"),
-  freshness: z.enum(["any", "day", "week", "month", "year"]).default("any"),
-  file_output: z.boolean().default(false),
-  filename: z.string().max(100).optional(),
+  query: z.string().min(1).describe("Search query to export results for"),
+  format: z
+    .enum(["csv", "json", "markdown", "excel", "html"])
+    .default("json")
+    .describe("Export format"),
+  count: robustInt()
+    .min(1)
+    .max(200)
+    .default(25)
+    .describe("Maximum results to include (1-200). Accepts number or string."),
+  language: z.string().optional().describe("Language code (optional)"),
+  country: z.string().optional().describe("Country code (optional)"),
+  safesearch: z
+    .enum(["off", "moderate", "strict"])
+    .default("moderate")
+    .describe("SafeSearch setting"),
+  freshness: z
+    .enum(["any", "day", "week", "month", "year"])
+    .default("any")
+    .describe("Freshness filter"),
+  file_output: robustBoolean()
+    .default(false)
+    .describe(
+      "Save export to `exports/` directory. Accepts boolean or string 'true'/'false'.",
+    ),
+  filename: z
+    .string()
+    .max(100)
+    .optional()
+    .describe("Filename (without extension)"),
 });
 
 function normalizeResults(results, max) {
@@ -175,10 +146,19 @@ function toHTML(results) {
 }
 
 export const exportResultsTool = {
-  name: ClaudeExportSchema.name,
-  description: ClaudeExportSchema.description,
-  inputSchema: ClaudeExportSchema.inputSchema,
-  execute: withErrorHandling("exportResultsTool", async (args, context) => {
+  name: "export_search_results",
+  description:
+    "Export Presearch results in JSON, CSV, Markdown, or HTML without synthetic metrics. Uses deterministic fields only.",
+  inputSchema: exportSchema,
+  execute: withErrorHandling("exportResultsTool", async (rawArgs, context) => {
+    const parsed = exportSchema.safeParse(rawArgs);
+    if (!parsed.success) {
+      throw new ValidationError("Invalid arguments", {
+        errors: parsed.error.flatten(),
+      });
+    }
+    const args = parsed.data;
+
     if (
       !args.query ||
       typeof args.query !== "string" ||

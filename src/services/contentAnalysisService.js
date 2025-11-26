@@ -1,4 +1,4 @@
-import logger from "../core/logger.js";
+
 
 export class ContentAnalysisService {
   /**

@@ -10,23 +10,39 @@ import logger, { updateLoggerConfig } from "./logger.js";
 dotenv.config();
 
 const configSchema = z.object({
-  apiKey: z.string().optional().default(""),
-  baseUrl: z.string().url().default("https://na-us-1.presearch.com"),
-  timeout: z.number().min(1000).max(30000).default(10000),
-  retries: z.number().min(0).max(5).default(3),
+  apiKey: z.string().optional().default("").describe("Presearch API Key"),
+  baseUrl: z
+    .string()
+    .url()
+    .default("https://na-us-1.presearch.com")
+    .describe("Presearch API Base URL"),
+  timeout: z
+    .number()
+    .min(1000)
+    .max(30000)
+    .default(10000)
+    .describe("Request timeout in milliseconds"),
+  retries: z
+    .number()
+    .min(0)
+    .max(5)
+    .default(3)
+    .describe("Number of retry attempts for failed requests"),
   rateLimit: z
     .object({
       maxRequests: z.number().min(1).max(1000).default(100),
       windowMs: z.number().min(1000).max(3600000).default(60000),
     })
-    .default({ maxRequests: 100, windowMs: 60000 }),
+    .default({ maxRequests: 100, windowMs: 60000 })
+    .describe("Rate limiting configuration"),
   cache: z
     .object({
       enabled: z.boolean().default(true),
       ttl: z.number().min(60).max(86400).default(300),
       maxKeys: z.number().min(100).max(10000).default(1000),
     })
-    .default({ enabled: true, ttl: 300, maxKeys: 1000 }),
+    .default({ enabled: true, ttl: 300, maxKeys: 1000 })
+    .describe("Caching configuration"),
   search: z
     .object({
       maxResults: z.number().min(10).max(100).default(50),
@@ -72,14 +88,16 @@ const configSchema = z.object({
         "BR",
         "JP",
       ],
-    }),
+    })
+    .describe("Search behavior configuration"),
   logging: z
     .object({
       level: z.enum(["error", "warn", "info", "debug"]).default("info"),
       pretty: z.boolean().default(false),
     })
-    .default({ level: "info", pretty: false }),
-  port: z.number().min(1000).max(65535).default(3000),
+    .default({ level: "info", pretty: false })
+    .describe("Logging configuration"),
+  port: z.number().min(1000).max(65535).default(3000).describe("Server port"),
 });
 
 let config;
@@ -277,7 +295,7 @@ const filterSearchParams = (params) => {
       try {
         const parsed = JSON.parse(params.location);
         if (isValidCoordinates(parsed)) locObj = parsed;
-      } catch (e) {
+      } catch {
         // ignore
       }
     } else if (isValidCoordinates(params.location)) {
