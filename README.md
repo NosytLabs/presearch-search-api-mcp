@@ -1,8 +1,8 @@
 # 🔍 Presearch MCP Server
 
+[![smithery badge](https://smithery.ai/badge/@NosytLabs/presearch-search-api-mcp)](https://smithery.ai/server/@NosytLabs/presearch-search-api-mcp)
 [![Presearch](https://img.shields.io/badge/Presearch-Decentralized%20Search-blue?logo=presearch)](https://presearch.io/)
 [![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-green)](https://modelcontextprotocol.io/)
-[![Smithery](https://smithery.ai/badge/@NosytLabs/presearch-search-api-mcp)](https://smithery.ai/server/@NosytLabs/presearch-search-api-mcp)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![npm version](https://badge.fury.io/js/presearch-mcp-server.svg)](https://badge.fury.io/js/presearch-mcp-server)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
