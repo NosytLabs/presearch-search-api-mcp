@@ -1,0 +1,42 @@
+
+runtime: "container"
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
+startCommand:
+  type: "http"
+  configSchema:
+    type: "object"
+    required: ["PRESEARCH_API_KEY"]
+    properties:
+      PRESEARCH_API_KEY:
+        type: "string"
+        description: "Your Presearch API Key"
+      PRESEARCH_TIMEOUT:
+        type: "number"
+        description: "API request timeout in milliseconds"
+        default: 10000
+      SEARCH_MAX_RESULTS:
+        type: "number"
+        description: "Maximum number of search results to return"
+        default: 50
+      PRESEARCH_SAFE_SEARCH:
+        type: "string"
+        description: "Default safe search setting"
+        enum: ["off", "moderate", "strict"]
+        default: "moderate"
+      PRESEARCH_DEFAULT_LANGUAGE:
+        type: "string"
+        description: "Default language for searches (e.g., en-US)"
+        default: "en-US"
+      CACHE_ENABLED:
+        type: "boolean"
+        description: "Enable caching of search results"
+        default: true
+  exampleConfig:
+    PRESEARCH_API_KEY: "your_presearch_api_key_here"
+    PRESEARCH_TIMEOUT: 10000
+    SEARCH_MAX_RESULTS: 50
+    PRESEARCH_SAFE_SEARCH: "moderate"
+    PRESEARCH_DEFAULT_LANGUAGE: "en-US"
+    CACHE_ENABLED: true
