@@ -1,0 +1,80 @@
+{
+  "name": "presearch-mcp-server",
+  "version": "2.1.0",
+  "description": "Privacy-focused MCP server for web search and content extraction with intelligent caching and result processing",
+  "main": "src/index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "start:stdio": "node src/index.js --stdio",
+    "dev": "node --watch src/index.js",
+    "start:port": "cross-env PORT=3002 node src/index.js",
+    "build": "node -e \"console.log('No build step for runtime server')\"",
+    "lint": "eslint src/ --fix",
+    "test": "node --test --experimental-test-module-mocks tests/*.test.js",
+    "test:coverage": "node --test --experimental-test-coverage --experimental-test-module-mocks tests/*.test.js",
+    "format": "prettier --write src/"
+  },
+  "keywords": [
+    "presearch",
+    "mcp",
+    "model-context-protocol",
+    "web-search",
+    "privacy-search",
+    "content-extraction",
+    "search-api",
+    "web-scraping",
+    "data-export",
+    "search-results",
+    "privacy-focused",
+    "decentralized-search",
+    "ai-tools",
+    "llm-integration"
+  ],
+  "author": "Presearch MCP Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NosytLabs/presearch-search-api-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NosytLabs/presearch-search-api-mcp/issues"
+  },
+  "homepage": "https://github.com/NosytLabs/presearch-search-api-mcp#readme",
+  "dependencies": {
+    "@humanwhocodes/config-array": "^0.13.0",
+    "@humanwhocodes/object-schema": "^2.0.3",
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "axios": "^1.6.2",
+    "cheerio": "^1.0.0",
+    "cross-env": "^10.1.0",
+    "dotenv": "^16.6.1",
+    "exponential-backoff": "^3.1.1",
+    "express": "^5.1.0",
+    "glob": "^11.0.3",
+    "node-cache": "^5.1.2",
+    "pino": "^10.1.0",
+    "pino-pretty": "^10.2.3",
+    "puppeteer": "^24.30.0",
+    "rimraf": "^6.1.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "nodemon": "^3.0.2",
+    "prettier": "^3.1.0"
+  },
+  "peerDependencies": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "src/",
+    "LICENSE",
+    "package.json",
+    ".env.example"
+  ]
+}

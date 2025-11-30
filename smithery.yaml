@@ -1,0 +1,101 @@
+runtime: "container"
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
+startCommand:
+  type: "http"
+  configSchema:
+    type: "object"
+    required: ["PRESEARCH_API_KEY"]
+    properties:
+      PRESEARCH_API_KEY:
+        type: "string"
+        title: "Presearch API Key"
+        description: "Your Presearch API Key for authentication. Get one at https://presearch.com/"
+      PRESEARCH_TIMEOUT:
+        type: "number"
+        title: "Request Timeout (ms)"
+        description: "Maximum time in milliseconds to wait for API requests."
+        default: 10000
+        minimum: 1000
+        maximum: 60000
+      SEARCH_MAX_RESULTS:
+        type: "number"
+        title: "Max Search Results"
+        description: "Maximum number of search results to return per query."
+        default: 50
+        minimum: 1
+        maximum: 100
+      PRESEARCH_SAFE_SEARCH:
+        type: "string"
+        title: "Safe Search Level"
+        description: "Filter adult content from search results."
+        enum: ["off", "moderate", "strict"]
+        default: "moderate"
+      PRESEARCH_DEFAULT_LANGUAGE:
+        type: "string"
+        title: "Default Language"
+        description: "Default language code for searches (e.g., en-US)."
+        default: "en-US"
+        pattern: "^[a-z]{2}(-[A-Z]{2})?$"
+      CACHE_ENABLED:
+        type: "boolean"
+        title: "Enable Caching"
+        description: "Enable in-memory caching of search results to improve performance."
+        default: true
+      CACHE_TTL:
+        type: "number"
+        title: "Cache TTL (seconds)"
+        description: "Time-To-Live for cached entries in seconds."
+        default: 300
+        minimum: 60
+      CACHE_MAX_KEYS:
+        type: "number"
+        title: "Max Cache Keys"
+        description: "Maximum number of entries to store in the cache."
+        default: 1000
+        minimum: 100
+      PRESEARCH_RETRIES:
+        type: "number"
+        title: "API Retries"
+        description: "Number of retry attempts for failed API requests."
+        default: 3
+        minimum: 0
+        maximum: 5
+      RATE_LIMIT_MAX_REQUESTS:
+        type: "number"
+        title: "Rate Limit (Requests)"
+        description: "Maximum number of requests allowed per window."
+        default: 100
+        minimum: 1
+      RATE_LIMIT_WINDOW_MS:
+        type: "number"
+        title: "Rate Limit Window (ms)"
+        description: "Time window for rate limiting in milliseconds."
+        default: 60000
+        minimum: 1000
+      LOG_LEVEL:
+        type: "string"
+        title: "Log Level"
+        description: "Verbosity of logging output."
+        enum: ["error", "warn", "info", "debug"]
+        default: "info"
+      LOG_PRETTY:
+        type: "boolean"
+        title: "Pretty Logs"
+        description: "Format logs for human readability (not recommended for production)."
+        default: false
+  exampleConfig:
+    PRESEARCH_API_KEY: "your_presearch_api_key_here"
+    PRESEARCH_TIMEOUT: 10000
+    SEARCH_MAX_RESULTS: 50
+    PRESEARCH_SAFE_SEARCH: "moderate"
+    PRESEARCH_DEFAULT_LANGUAGE: "en-US"
+    CACHE_ENABLED: true
+    CACHE_TTL: 300
+    CACHE_MAX_KEYS: 1000
+    PRESEARCH_RETRIES: 3
+    RATE_LIMIT_MAX_REQUESTS: 100
+    RATE_LIMIT_WINDOW_MS: 60000
+    LOG_LEVEL: "info"
+    LOG_PRETTY: false
