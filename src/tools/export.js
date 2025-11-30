@@ -26,21 +26,21 @@ const ExportResultsInputSchema = {
   properties: {
     results: {
       type: "array",
-      description: "Array of search results to export",
+      description: "Array of search result objects to export. Each object should contain title, url, description, etc.",
       items: { type: "object" }
     },
     format: {
       type: "string",
       enum: ["json", "csv", "markdown", "html"],
-      description: "Export format"
+      description: "Target format for the export: json, csv, markdown, or html. Defaults to json."
     },
     include_metadata: {
       type: "boolean",
-      description: "Include metadata in export"
+      description: "Whether to include additional metadata (timestamps, query info) in the export. Defaults to false."
     },
     filename: {
       type: "string",
-      description: "Filename for export"
+      description: "Optional filename for the exported file. If provided, suggests saving to disk."
     }
   },
   required: ["results"]
@@ -77,6 +77,7 @@ export const exportResultsTool = {
   name: "export_search_results",
   description: "Export search results to JSON, CSV, Markdown, or HTML format with optional metadata.",
   inputSchema: ExportResultsInputSchema,
+  tags: ["utility", "export"],
   execute: withErrorHandling("export_search_results", async (args) => {
     const parsed = ExportResultsSchema.safeParse(args);
     if (!parsed.success) {

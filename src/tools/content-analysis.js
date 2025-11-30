@@ -21,21 +21,21 @@ const ContentAnalysisInputSchema = {
   properties: {
     content: {
       type: "string",
-      description: "Content to analyze",
+      description: "The text content or JSON string to analyze.",
       minLength: 1
     },
     analysis_type: {
       type: "string",
       enum: ["summary", "keywords", "sentiment", "topics"],
-      description: "Type of analysis to perform"
+      description: "Type of analysis to perform: summary, keywords, sentiment, or topics."
     },
     language: {
       type: "string",
-      description: "Language code (e.g., 'en')"
+      description: "Language code for the analysis (e.g., 'en')."
     },
     max_summary_length: {
       type: "number",
-      description: "Maximum length of summary"
+      description: "Maximum character length for the generated summary."
     }
   },
   required: ["content"]
@@ -51,6 +51,7 @@ export const contentAnalysisTool = {
   name: "analyze_content",
   description: "NLP-based content analysis supporting summary, keywords, sentiment, and topics extraction.",
   inputSchema: ContentAnalysisInputSchema,
+  tags: ["analysis", "nlp"],
   execute: withErrorHandling("contentAnalysisTool", async (rawArgs) => {
     const start_time = Date.now();
 

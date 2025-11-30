@@ -10,24 +10,24 @@ const SearchScrapeInputSchema = {
   properties: {
     query: {
       type: "string",
-      description: "Search query to execute",
+      description: "The search query to execute. Supports standard operators.",
       minLength: 1
     },
     limit: {
       type: "number",
-      description: "Maximum number of search results (1-10)",
+      description: "Maximum number of results to search and scrape (1-10). Defaults to 5.",
       minimum: 1,
       maximum: 10,
       default: 5
     },
     depth: {
       type: "boolean",
-      description: "Enable deep search/scraping"
+      description: "Enable deep scraping mode for more comprehensive content extraction. Defaults to false."
     },
     exclude_domains: {
       type: "array",
       items: { type: "string" },
-      description: "List of domains to exclude from search"
+      description: "List of domain names to exclude from the search results."
     }
   },
   required: ["query"]
@@ -37,6 +37,7 @@ const tool = {
   name: "presearch_search_and_scrape",
   description: "Combined search and scraping (50-70% faster than sequential). Searches then extracts from top results.",
   inputSchema: SearchScrapeInputSchema,
+  tags: ["search", "scrape", "web"],
   execute: withErrorHandling(
     "presearch_search_and_scrape",
     async (args, context) => {

@@ -21,6 +21,7 @@ const tool = {
   name: "presearch_node_status",
   description: "Monitor Presearch network node health and performance metrics.",
   inputSchema: NodeStatusInputSchema,
+  tags: ["system", "node"],
   execute: withErrorHandling("presearch_node_status", async (rawArgs) => {
     const internalArgs = { ...rawArgs };
     

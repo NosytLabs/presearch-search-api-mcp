@@ -1,14 +1,18 @@
-import { z } from "zod";
 import { apiClient } from "../core/apiClient.js";
 import logger from "../core/logger.js";
 import { withErrorHandling } from "../utils/errors.js";
 
-export const cacheStatsSchema = z.object({}).describe("No parameters required");
+const cacheStatsSchema = {
+  type: "object",
+  properties: {},
+  description: "No parameters required"
+};
 
 export const cacheStatsTool = {
   name: "cache_stats",
   description: "Retrieve cache performance metrics: hits, misses, size, and entry count.",
   inputSchema: cacheStatsSchema,
+  tags: ["system", "cache"],
   execute: withErrorHandling("cache_stats", async () => {
     logger.info("Retrieving cache statistics");
     const stats = apiClient.getCacheStats();
@@ -27,12 +31,17 @@ export const cacheStatsTool = {
   }),
 };
 
-export const cacheClearSchema = z.object({}).describe("No parameters required");
+const cacheClearSchema = {
+  type: "object",
+  properties: {},
+  description: "No parameters required"
+};
 
 export const cacheClearTool = {
   name: "cache_clear",
   description: "Clear all cached data and reset statistics for fresh data collection.",
   inputSchema: cacheClearSchema,
+  tags: ["system", "cache"],
   execute: withErrorHandling("cache_clear", async () => {
     logger.info("Clearing cache");
     const beforeStats = apiClient.getCacheStats();

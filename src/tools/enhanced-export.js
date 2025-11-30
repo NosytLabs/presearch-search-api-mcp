@@ -20,27 +20,27 @@ const ExportSiteContentInputSchema = {
   properties: {
     url: {
       type: "string",
-      description: "URL to export content from"
+      description: "The starting URL to export content from."
     },
     format: {
       type: "string",
       enum: ["markdown", "json", "html", "pdf"],
       default: "json",
-      description: "Export format"
+      description: "Target export format: markdown, json, html, or pdf. Defaults to json."
     },
     recursive: {
       type: "boolean",
-      description: "Enable recursive crawling"
+      description: "Enable recursive crawling to follow links within the same domain. Defaults to false."
     },
     depth: {
       type: "number",
       minimum: 1,
       maximum: 5,
-      description: "Crawl depth (1-5)"
+      description: "Maximum crawl depth (1-5) when recursive is enabled."
     },
     include_assets: {
       type: "boolean",
-      description: "Include assets (images, styles)"
+      description: "Whether to include static assets (images, styles) in the export. Defaults to false."
     }
   },
   required: ["url"]
@@ -160,11 +160,12 @@ async function exportPdf(urls, a) {
   return files;
 }
 
-const enhancedExportTool = {
-  name: "enhanced_export_site_content",
-  description: "Export website content as Markdown, JSON, HTML, or PDF with recursive crawling support.",
+export const enhancedExportTool = {
+  name: "enhanced_site_export",
+  description: "Deep crawl and export site content to JSON, Markdown, HTML, or PDF. Supports recursive crawling and asset inclusion.",
   inputSchema: ExportSiteContentInputSchema,
-  execute: withErrorHandling(async (rawArgs) => {
+  tags: ["utility", "export", "web"],
+  execute: withErrorHandling("enhanced_site_export", async (rawArgs) => {
     if (typeof rawArgs.url !== 'string' || rawArgs.url.trim() === "") {
         throw new ValidationError("URL must be a non-empty string");
     }

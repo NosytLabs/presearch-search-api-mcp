@@ -89,8 +89,9 @@ const main = async () => {
       ];
 
       for (const tool of tools) {
-        server.registerTool(
+        server.tool(
           tool.name,
+          tool.description,
           tool.inputSchema,
           async (args) => tool.execute(args),
         );

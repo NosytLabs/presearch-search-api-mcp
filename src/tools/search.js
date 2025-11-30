@@ -122,19 +122,19 @@ const SearchInputSchema = {
   properties: {
     query: {
       type: "string",
-      description: "Search query",
+      description: "The search query to execute. Supports advanced operators like 'site:', 'quotes', and minus sign exclusion.",
     },
     limit: {
       type: "number",
-      description: "Number of results to return",
+      description: "The maximum number of search results to return. Defaults to 10, max 100.",
     },
     language: {
       type: "string",
-      description: "Language code (e.g., 'en')",
+      description: "The language code for the search results (e.g., 'en-US', 'es'). Defaults to 'en-US'.",
     },
     safe_search: {
       type: "boolean",
-      description: "Enable safe search",
+      description: "Enable or disable safe search filtering. Defaults to true.",
     },
   },
   required: ["query"],
@@ -145,6 +145,7 @@ const search = {
   description:
     "Privacy-focused search engine returning ranked results with relevance scores. Supports quotes, minus sign exclusion, and site: operators.",
   inputSchema: SearchInputSchema,
+  tags: ["search", "web"],
   execute: withErrorHandling(
     "presearch_ai_search",
     async (args, context) => {

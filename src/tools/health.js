@@ -13,6 +13,7 @@ const tool = {
   name: "presearch_health_check",
   description: "Verify API connectivity, authentication, and rate limit status.",
   inputSchema,
+  tags: ["system", "health"],
   execute: withErrorHandling(
     "presearch_health_check",
     async () => {

@@ -6,6 +6,7 @@ startCommand:
   type: "http"
   configSchema:
     type: "object"
+    additionalProperties: false
     required: ["PRESEARCH_API_KEY"]
     properties:
       PRESEARCH_API_KEY:

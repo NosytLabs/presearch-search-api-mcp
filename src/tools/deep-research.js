@@ -152,6 +152,7 @@ const tool = {
   description:
     "Performs a deep research session: searches multiple queries (if needed), scrapes authoritative sources, analyzes content quality/relevance, and synthesizes a comprehensive report with citations. Ideal for complex topics requiring fact-checking or broad overview.",
   inputSchema: DeepResearchInputSchema,
+  tags: ["research", "search", "analysis"],
   execute: withErrorHandling(
     "presearch_deep_research",
     async (args, context) => {
