@@ -1,39 +1,7 @@
-import { z } from "zod";
 import logger from "../core/logger.js";
 import apiClient from "../core/apiClient.js";
 import contentFetcher from "../services/contentFetcher.js";
 import { withErrorHandling } from "../utils/errors.js";
-import { robustBoolean, robustInt, robustArray } from "../utils/schemas.js";
-
-const scrapeSchema = z.object({
-  urls: robustArray(z.string().url(), { min: 1 }).describe(
-    'List of URLs to scrape content from. Must be a valid JSON string of URL strings (e.g. \'["https://example.com"]\') or a comma-separated list of URLs. Example: \'["https://example.com", "https://test.com"]\'.',
-  ),
-  include_text: robustBoolean()
-    .default(true)
-    .describe(
-      "Whether to extract and include the visible text content from the page. Set to false if you only need metadata. Accepts boolean or string 'true'/'false'. Example: true.",
-    ),
-  include_meta: robustBoolean()
-    .default(true)
-    .describe(
-      "Whether to extract and include metadata (title, description, keywords, author, etc.). Accepts boolean or string 'true'/'false'. Example: true.",
-    ),
-  timeout_ms: robustInt()
-    .min(1000)
-    .max(60000)
-    .default(15000)
-    .describe(
-      "Timeout in milliseconds for the scrape request. Increase for slow-loading sites. Default: 15000ms. Accepts number or string. Example: 30000.",
-    ),
-  max_bytes: robustInt()
-    .min(10000)
-    .max(5000000)
-    .default(500000)
-    .describe(
-      "Maximum size in bytes to download per URL. Prevents memory issues with large files. Default: 500KB. Accepts number or string. Example: 1000000.",
-    ),
-});
 
 const ScrapeInputSchema = {
   type: "object",

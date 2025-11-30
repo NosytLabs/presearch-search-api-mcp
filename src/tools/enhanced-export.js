@@ -1,15 +1,6 @@
-import { z } from "zod";
-import fs from "fs/promises";
-import path from "path";
 import logger from "../core/logger.js";
 import contentFetcher from "../services/contentFetcher.js";
 import { withErrorHandling, ValidationError } from "../utils/errors.js";
-import {
-  robustBoolean,
-  robustNumber,
-  robustInt,
-  robustArray,
-} from "../utils/schemas.js";
 
 async function getPuppeteer() {
   try {
@@ -23,86 +14,6 @@ async function getPuppeteer() {
   }
 }
 
-const zodSchema = z.object({
-  urls: robustArray(z.string().url(), { min: 1 }).describe(
-    "List of URLs to export. Can be a single URL string or an array of URL strings. Accepts JSON string or comma-separated list. Example: '[\"https://example.com\"]'.",
-  ),
-  format: z
-    .enum(["html", "json", "markdown", "pdf"])
-    .default("json")
-    .describe(
-      "Export format: 'json' (structured data), 'markdown' (readable text), 'html' (web archive), or 'pdf' (visual capture). Example: 'markdown'.",
-    ),
-  include_html: robustBoolean()
-    .default(true)
-    .describe(
-      "Include raw HTML content in the result (for non-PDF formats). Useful for debugging or custom parsing. Accepts boolean or string 'true'/'false'. Example: true.",
-    ),
-  include_text: robustBoolean()
-    .default(true)
-    .describe(
-      "Include extracted readable text content (for non-PDF formats). Ideal for LLM context. Accepts boolean or string 'true'/'false'. Example: true.",
-    ),
-  include_meta: robustBoolean()
-    .default(true)
-    .describe(
-      "Include parsed metadata (title, description, author) in the result. Accepts boolean or string 'true'/'false'. Example: true.",
-    ),
-  timeout_ms: robustInt()
-    .min(5000)
-    .max(60000)
-    .default(30000)
-    .describe("Timeout in milliseconds for the request. Accepts number or string. Example: 30000."),
-  max_bytes: robustInt()
-    .min(10000)
-    .max(5000000)
-    .default(1000000)
-    .describe("Maximum size in bytes to download per URL. Accepts number or string. Example: 1000000."),
-  filename: z
-    .string()
-    .optional()
-    .describe("Filename prefix for saved files (used with file_output). Example: 'report-2023'."),
-  pdf_mode: z
-    .enum(["screenshot", "dom"])
-    .default("screenshot")
-    .describe("PDF generation mode: 'screenshot' (full page image) or 'dom' (text-based PDF). 'screenshot' is better for complex layouts. Example: 'screenshot'."),
-  pdf_paper: z
-    .enum(["letter", "legal", "tabloid", "ledger", "a4", "a3"])
-    .default("a4")
-    .describe("Paper size for PDF export (e.g., 'a4', 'letter'). Example: 'a4'."),
-  pdf_margin_mm: robustNumber()
-    .min(0)
-    .max(50)
-    .default(20)
-    .describe("Margin size in millimeters. Accepts number or string. Example: 20."),
-  wait_until: z
-    .enum(["load", "domcontentloaded", "networkidle0", "networkidle2"])
-    .default("networkidle2")
-    .describe("Page wait condition: 'networkidle2' (recommended), 'load', 'domcontentloaded', or 'networkidle0'. Example: 'networkidle2'."),
-  viewport: z
-    .union([
-      z.object({
-        width: z.number().default(1280),
-        height: z.number().default(800),
-        deviceScaleFactor: z.number().default(1),
-      }),
-      z.string().transform((val) => {
-        try {
-          return JSON.parse(val);
-        } catch {
-          return { width: 1280, height: 800, deviceScaleFactor: 1 };
-        }
-      }),
-    ])
-    .default({ width: 1280, height: 800, deviceScaleFactor: 1 })
-    .describe("Viewport configuration for headless browser {width, height, deviceScaleFactor}. Can be an object or JSON string."),
-  country: z
-    .string()
-    .regex(/^[A-Z]{2}$/)
-    .optional()
-    .describe("Country code for locale emulation (e.g. US, GB)."),
-});
-
 // JSON Schema for MCP compatibility
 const ExportSiteContentInputSchema = {
   type: "object",
@@ -113,7 +24,7 @@ const ExportSiteContentInputSchema = {
     },
     format: {
       type: "string",
-      enum: ["markdown", "json", "html", "mhtml"],
+      enum: ["markdown", "json", "html", "pdf"],
       default: "json",
       description: "Export format"
     },
@@ -233,11 +144,18 @@ async function exportPdf(urls, a) {
   }
 
   const files = [];
-  // PDF implementation would go here - simplified for now
-  // Note: PDF is not in the schema enum, so this logic is likely unreachable via schema validation,
-  // but I'll leave the function helper just in case.
-  // If I strictly follow the enum, PDF is not allowed.
-  // ... (PDF implementation omitted/simplified since not in schema)
+  for (const url of urls) {
+    try {
+      await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+      const pdfBuffer = await page.pdf({ format: "A4" });
+      files.push({
+        url,
+        pdf_base64: pdfBuffer.toString("base64")
+      });
+    } catch (e) {
+      files.push({ url, error: e.message });
+    }
+  }
   await browser.close();
   return files;
 }
@@ -267,10 +185,22 @@ const enhancedExportTool = {
       // but for now we do root only
       timeout_ms: 30000,
       max_bytes: 1000000,
+      country: rawArgs.country
     };
 
     logger.info("Enhanced export", { count: a.urls.length, format: a.format });
     
+    // Handle PDF format separately
+    if (a.format === "pdf") {
+        const pdfResults = await exportPdf(a.urls, a);
+        return {
+            success: true,
+            format: "pdf",
+            count: pdfResults.length,
+            data: pdfResults
+        };
+    }
+
     const items = [];
     for (const url of a.urls) {
       try {
@@ -293,7 +223,14 @@ const enhancedExportTool = {
     }
 
     // Handle formats
-    let resultData = items;
+    let resultData;
+    if (a.format === "markdown") {
+        resultData = toMarkdown(items);
+    } else if (a.format === "html") {
+        resultData = toHtml(items);
+    } else {
+        resultData = toJson(items);
+    }
     
     return {
       success: true,

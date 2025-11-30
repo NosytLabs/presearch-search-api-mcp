@@ -1,4 +1,3 @@
-import { z } from "zod";
 import axios from "axios";
 import {
   withErrorHandling,
@@ -6,54 +5,6 @@ import {
   ValidationError,
 } from "../utils/errors.js";
 import logger from "../core/logger.js";
-import { robustBoolean } from "../utils/schemas.js";
-
-const nodeStatusSchema = z.object({
-  node_api_key: z
-    .string()
-    .min(1, "Node API key is required")
-    .describe(
-      "Your Node API key (found at https://nodes.presearch.com/dashboard). Required to access node statistics. Example: 'your_node_api_key_here'.",
-    ),
-  public_keys: z
-    .string()
-    .optional()
-    .describe(
-      "Comma-separated list of node public keys to filter by (e.g., 'key1,key2'). Leave empty to fetch all nodes.",
-    ),
-  start_date: z
-    .string()
-    .optional()
-    .describe(
-      "Start date for stats (Y-m-d H:i) - UTC. Example: '2023-01-01 00:00'.",
-    ),
-  end_date: z
-    .string()
-    .optional()
-    .describe(
-      "End date for stats (Y-m-d H:i) - UTC. Example: '2023-01-31 23:59'.",
-    ),
-  stats: robustBoolean()
-    .default(false)
-    .describe(
-      "Include aggregated historical stats (earnings, uptime) in the response. Default is false. Accepts boolean or string 'true'/'false'. Example: true.",
-    ),
-  connected: robustBoolean()
-    .default(true)
-    .describe(
-      "Include currently connected nodes in the list. Default is true. Accepts boolean or string 'true'/'false'. Example: true.",
-    ),
-  disconnected: robustBoolean()
-    .default(true)
-    .describe(
-      "Include currently disconnected nodes in the list. Default is true. Accepts boolean or string 'true'/'false'. Example: true.",
-    ),
-  include_inactive: robustBoolean()
-    .default(false)
-    .describe(
-      "Include nodes that haven't been active during the timeframe (useful for historical audits). Default is false. Accepts boolean or string 'true'/'false'. Example: false.",
-    ),
-});
 
 // JSON Schema for MCP compatibility
 const NodeStatusInputSchema = {

@@ -15,7 +15,7 @@ const tool = {
   inputSchema,
   execute: withErrorHandling(
     "presearch_health_check",
-    async (args, context) => {
+    async () => {
       const config = await loadConfig();
       const status = await apiClient.healthCheck(config.apiKey);
       

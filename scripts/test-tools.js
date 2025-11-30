@@ -7,7 +7,7 @@ import { scrapeTool } from '../src/tools/scrape.js';
 import { healthTool } from '../src/tools/health.js';
 import { nodeStatusTool } from '../src/tools/node-status.js';
 import { cacheStatsTool, cacheClearTool } from '../src/tools/cache.js';
-import { enhancedExportTool } from '../src/tools/enhanced-export.js';
+import enhancedExportTool from '../src/tools/enhanced-export.js';
 
 import dotenv from 'dotenv';
 dotenv.config();
