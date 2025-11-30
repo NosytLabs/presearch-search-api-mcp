@@ -47,8 +47,6 @@
   },
   "homepage": "https://github.com/NosytLabs/presearch-search-api-mcp#readme",
   "dependencies": {
-    "@humanwhocodes/config-array": "^0.13.0",
-    "@humanwhocodes/object-schema": "^2.0.3",
     "@modelcontextprotocol/sdk": "^1.22.0",
     "axios": "^1.6.2",
     "cheerio": "^1.0.0",
@@ -56,12 +54,10 @@
     "dotenv": "^16.6.1",
     "exponential-backoff": "^3.1.1",
     "express": "^5.1.0",
-    "glob": "^11.0.3",
     "node-cache": "^5.1.2",
     "pino": "^10.1.0",
     "pino-pretty": "^10.2.3",
     "puppeteer": "^24.30.0",
-    "rimraf": "^6.1.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
