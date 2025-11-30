@@ -8,6 +8,7 @@ import { scrapeTool } from "./scrape.js";
 import { cacheStatsTool, cacheClearTool } from "./cache.js";
 import { healthTool } from "./health.js";
 import { nodeStatusTool } from "./node-status.js";
+import enhancedExportTool from "./enhanced-export.js";
 
 export { searchTool } from "./search.js";
 export { searchAndScrapeTool } from "./search-scrape.js";
@@ -19,6 +20,7 @@ export { scrapeTool } from "./scrape.js";
 export { cacheStatsTool, cacheClearTool } from "./cache.js";
 export { healthTool } from "./health.js";
 export { nodeStatusTool } from "./node-status.js";
+export { enhancedExportTool };
 
 export const tools = [
   searchTool,
@@ -32,4 +34,5 @@ export const tools = [
   cacheClearTool,
   healthTool,
   nodeStatusTool,
+  enhancedExportTool,
 ];
