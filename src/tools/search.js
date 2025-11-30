@@ -145,115 +145,111 @@ const search = {
   description:
     "Privacy-focused search engine returning ranked results with relevance scores. Supports quotes, minus sign exclusion, and site: operators.",
   inputSchema: SearchInputSchema,
-  execute: async (args, context) => {
-    const searchFn = withErrorHandling(
-      "presearch_ai_search",
-      async (args, context) => {
-        const {
-          query,
-          limit,
-          language,
-          safe_search,
-        } = args;
+  execute: withErrorHandling(
+    "presearch_ai_search",
+    async (args, context) => {
+      const {
+        query,
+        limit,
+        language,
+        safe_search,
+      } = args;
 
-        if (!query || typeof query !== "string" || query.trim().length === 0) {
-          throw new Error("Invalid query: expected non-empty string");
-        }
-        
-        // Map boolean safe_search to API string values
-        const safe = safe_search ? "strict" : "off";
+      if (!query || typeof query !== "string" || query.trim().length === 0) {
+        throw new Error("Invalid query: expected non-empty string");
+      }
+      
+      // Map boolean safe_search to API string values
+      const safe = safe_search ? "strict" : "off";
 
-        const searchParams = {
-          q: query,
-          // map limit to count (max 100)
-          count: limit ? Math.min(limit, 100) : 10,
-          lang: language,
-          safe: safe,
-        };
+      const searchParams = {
+        q: query,
+        // map limit to count (max 100)
+        count: limit ? Math.min(limit, 100) : 10,
+        lang: language,
+        safe: safe,
+      };
 
-        const response = await presearchService.search(
-          searchParams,
-          context?.apiKey,
-        );
+      const response = await presearchService.search(
+        searchParams,
+        context?.apiKey,
+      );
 
-        const results = response.results || [];
-        const { results: parsedResults, metadata } = await _parseResults(
-          results,
-          { ...args, count: limit } // Pass limit as count for _parseResults logic
-        );
+      const results = response.results || [];
+      const { results: parsedResults, metadata } = await _parseResults(
+        results,
+        { ...args, count: limit } // Pass limit as count for _parseResults logic
+      );
 
 
-        // Extract metadata from response
-        const {
-          // eslint-disable-next-line no-unused-vars
-          results: _results,
-          // eslint-disable-next-line no-unused-vars
-          standardResults: _standardResults,
-          infoSection = {},
-          specialSections = {},
-          links = {},
-          meta = {},
-          ...rest
-        } = response;
+      // Extract metadata from response
+      const {
+        // eslint-disable-next-line no-unused-vars
+        results: _results,
+        // eslint-disable-next-line no-unused-vars
+        standardResults: _standardResults,
+        infoSection = {},
+        specialSections = {},
+        links = {},
+        meta = {},
+        ...rest
+      } = response;
 
-        // Perform AI Analysis if requested
-        let analysis = {};
-        if (args.include_analysis && parsedResults.length > 0) {
-          try {
-            // Use the reusable service for pattern analysis
-            const patternAnalysis = contentAnalysisService.analyzePatterns(
-              parsedResults,
-              {
-                include_temporal_analysis: args.freshness !== "all",
-              },
-            );
-
-            analysis = {
-              ...patternAnalysis,
-              recommendations: contentAnalysisService.generateRecommendations({
-                patterns_analysis: patternAnalysis,
-              }),
-            };
-          } catch (error) {
-            logger.warn("Analysis generation failed", { error: error.message });
-            analysis = { error: "Analysis failed to generate" };
-          }
-        }
-
-        return {
-          results: parsedResults,
-          metadata: {
-            ...metadata,
-            ...rest,
-            analysis,
-            infoSection,
-            specialSections,
-            links,
-            meta,
-            highlights: {
-              topStories: Array.isArray(specialSections?.topStories)
-                ? specialSections.topStories.map((s) => ({
-                    title: s.title,
-                    link: s.link,
-                    source: s.source,
-                  }))
-                : [],
-              videos: Array.isArray(specialSections?.videos)
-                ? specialSections.videos.map((v) => ({
-                    title: v.title,
-                    link: v.link,
-                    source: v.source,
-                  }))
-                : [],
+      // Perform AI Analysis if requested
+      let analysis = {};
+      if (args.include_analysis && parsedResults.length > 0) {
+        try {
+          // Use the reusable service for pattern analysis
+          const patternAnalysis = contentAnalysisService.analyzePatterns(
+            parsedResults,
+            {
+              include_temporal_analysis: args.freshness !== "all",
             },
-            rateLimit: apiClient.getRateLimitStats(),
-          },
-        };
-      },
-    );
+          );
 
-    return searchFn(args, context);
-  },
+          analysis = {
+            ...patternAnalysis,
+            recommendations: contentAnalysisService.generateRecommendations({
+              patterns_analysis: patternAnalysis,
+            }),
+          };
+        } catch (error) {
+          logger.warn("Analysis generation failed", { error: error.message });
+          analysis = { error: "Analysis failed to generate" };
+        }
+      }
+
+      return {
+        results: parsedResults,
+        metadata: {
+          ...metadata,
+          ...rest,
+          analysis,
+          infoSection,
+          specialSections,
+          links,
+          meta,
+          highlights: {
+            topStories: Array.isArray(specialSections?.topStories)
+              ? specialSections.topStories.map((s) => ({
+                  title: s.title,
+                  link: s.link,
+                  source: s.source,
+                }))
+              : [],
+            videos: Array.isArray(specialSections?.videos)
+              ? specialSections.videos.map((v) => ({
+                  title: v.title,
+                  link: v.link,
+                  source: v.source,
+                }))
+              : [],
+          },
+          rateLimit: apiClient.getRateLimitStats(),
+        },
+      };
+    },
+  ),
 };
 
 export const searchTool = search;

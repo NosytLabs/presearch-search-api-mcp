@@ -84,8 +84,7 @@ const tool = {
       });
 
       const urlsToScrape = results
-        .filter((r) => r.url)
-        // .slice(0, a.scrape_count); // already sliced results
+        .filter((r) => r.url);
 
       const scrapePromises = urlsToScrape.map(async (item) => {
         try {

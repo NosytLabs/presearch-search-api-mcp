@@ -90,11 +90,68 @@ const DeepResearchSchema = z.object({
     ),
 });
 
+// JSON Schema for MCP compatibility
+const DeepResearchInputSchema = {
+  type: "object",
+  properties: {
+    query: {
+      type: "string",
+      description: "The research topic or question. Example: 'impact of ai on healthcare'."
+    },
+    depth: {
+      type: "number",
+      description: "Number of source pages to scrape and analyze (1-10).",
+      default: 3,
+      minimum: 1,
+      maximum: 10
+    },
+    breadth: {
+      type: "number",
+      description: "Number of search results to consider for selection (5-20).",
+      default: 10,
+      minimum: 5,
+      maximum: 20
+    },
+    research_focus: {
+      type: "string",
+      enum: ["general", "academic", "market", "technical", "news"],
+      default: "general",
+      description: "The context of the research to guide relevance scoring."
+    },
+    country: {
+      type: "string",
+      description: "Country filtering using ISO 3166-1 alpha-2 codes (e.g., US, CA)."
+    },
+    language: {
+      type: "string",
+      description: "Language filtering using BCP 47 codes (e.g., en-US)."
+    },
+    freshness: {
+      type: "string",
+      enum: ["hour", "day", "week", "month", "year", "all"],
+      default: "all",
+      description: "Temporal filtering for recency."
+    },
+    safesearch: {
+      type: "string",
+      enum: ["off", "moderate", "strict"],
+      default: "moderate",
+      description: "Content safety filtering level."
+    },
+    timeout_ms: {
+      type: "number",
+      description: "Timeout in milliseconds for the research session.",
+      default: 60000
+    }
+  },
+  required: ["query"]
+};
+
 const tool = {
   name: "presearch_deep_research",
   description:
     "Performs a deep research session: searches multiple queries (if needed), scrapes authoritative sources, analyzes content quality/relevance, and synthesizes a comprehensive report with citations. Ideal for complex topics requiring fact-checking or broad overview.",
-  inputSchema: DeepResearchSchema,
+  inputSchema: DeepResearchInputSchema,
   execute: withErrorHandling(
     "presearch_deep_research",
     async (args, context) => {
