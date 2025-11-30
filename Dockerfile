@@ -61,7 +61,7 @@ RUN mkdir -p logs && chown -R node:node /app
 ENV NODE_ENV=production
 
 # Expose port
-EXPOSE 3000
+EXPOSE 3002
 
 # Run as non-root user
 USER node

@@ -1,7 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express from "express";
+import path from "path";
 import {
   searchTool,
   contentAnalysisTool,
@@ -64,83 +66,179 @@ const main = async () => {
       transport: flags.stdio ? "stdio" : "http",
     });
 
-    const server = new McpServer({
-      name: "presearch-mcp-server",
-      description:
-        "Privacy-focused MCP server for web search and content export with intelligent caching, rate limiting, and comprehensive Presearch API integration.",
-      version: "2.1.0",
-    });
+    const createMcpServer = async () => {
+      const server = new McpServer({
+        name: "presearch-mcp-server",
+        description:
+          "Privacy-focused MCP server for web search and content export with intelligent caching, rate limiting, and comprehensive Presearch API integration.",
+        version: "2.1.0",
+      });
 
-    const tools = [
-      searchTool,
-      contentAnalysisTool,
-      exportResultsTool,
-      scrapeTool,
-      searchAndScrapeTool,
-      enhancedExportTool,
-      cacheStatsTool,
-      cacheClearTool,
-      healthTool,
-      nodeStatusTool,
-      deepResearchTool
-    ];
+      const tools = [
+        searchTool,
+        contentAnalysisTool,
+        exportResultsTool,
+        scrapeTool,
+        searchAndScrapeTool,
+        enhancedExportTool,
+        cacheStatsTool,
+        cacheClearTool,
+        healthTool,
+        nodeStatusTool,
+        deepResearchTool
+      ];
 
-    // Register tools
-    for (const tool of tools) {
-      server.registerTool(
-        tool.name,
-        tool.inputSchema,
-        async (args) => tool.execute(args),
-      );
-    }
+      for (const tool of tools) {
+        server.registerTool(
+          tool.name,
+          tool.inputSchema,
+          async (args) => tool.execute(args),
+        );
+      }
 
-    // Register resources
-    registerResources(server);
+      registerResources(server);
+      registerPrompts(server);
 
-    // Register prompts
-    registerPrompts(server);
+      return server;
+    };
 
     if (flags.stdio) {
+      const server = await createMcpServer();
       const transport = new StdioServerTransport();
       await server.connect(transport);
       logger.info("✅ Presearch MCP Server running on stdio");
     } else {
       const app = express();
       const port = flags.port || config.port || 3002;
+      
+      // Enable JSON parsing for POST bodies
+      app.use(express.json());
+
+      // CORS Middleware
+      app.use((req, res, next) => {
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+        res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        if (req.method === 'OPTIONS') {
+             return res.sendStatus(200);
+        }
+        next();
+      });
+
+      // Serve MCP Config for Smithery
+      app.get('/.well-known/mcp-config', (req, res) => {
+        res.sendFile(path.join(process.cwd(), 'mcp-config.json'));
+      });
+
+      // Request logging middleware
+      app.use((req, res, next) => {
+        logger.info(`Incoming request: ${req.method} ${req.url}`, { headers: req.headers });
+        next();
+      });
+
+      // Middleware to fix Accept header for MCP clients that don't send strict headers
+      app.use((req, res, next) => {
+        if (req.path === '/mcp' || req.path === '/mcp/') {
+          const accept = req.headers.accept || '';
+          const needsEventStream = !accept.includes('text/event-stream');
+          const needsJson = !accept.includes('application/json');
+
+          if (needsEventStream || needsJson) {
+            let newAccept = accept;
+            if (needsEventStream) {
+              newAccept = newAccept ? `${newAccept}, text/event-stream` : 'text/event-stream';
+            }
+            if (needsJson) {
+              newAccept = newAccept ? `${newAccept}, application/json` : 'application/json';
+            }
+            req.headers.accept = newAccept;
+            logger.info(`Patched Accept header for /mcp: ${newAccept}`);
+          }
+        }
+        next();
+      });
+
+      app.get("/", (req, res) => {
+        res.json({ status: "online", service: "presearch-mcp-server" });
+      });
 
       app.get("/health", async (req, res) => {
         const status = await healthTool.execute({});
         res.json(status);
       });
 
+      // Store active sessions: sessionId -> { server, transport }
+      const sessions = new Map();
+
       app.get("/sse", async (req, res) => {
-        const transport = new StreamableHTTPServerTransport(res);
-        await server.connect(transport);
+        logger.info("New SSE connection initiated");
+        const transport = new SSEServerTransport("/messages", res);
+        const sessionId = transport.sessionId;
         
-        res.on('close', () => {
-           logger.info("SSE connection closed");
+        const server = await createMcpServer();
+        sessions.set(sessionId, { server, transport });
+
+        transport.on("close", async () => {
+          sessions.delete(sessionId);
+          await server.close();
+          logger.info(`SSE connection closed for session ${sessionId}`);
         });
+
+        await server.connect(transport);
       });
 
       app.post("/messages", async (req, res) => {
-        // Note: StreamableHTTPServerTransport handles messages via the transport object created in /sse
-        // typically, but here we might need to handle it differently if using express directly.
-        // However, the SDK's StreamableHTTPServerTransport is designed to work with a single request/response cycle or SSE.
-        // For SSE, the client connects to /sse.
-        // Messages usually go over the SSE connection or a separate POST endpoint if configured.
-        // But the SDK example typically shows handling everything via the transport.
-        // Let's stick to the standard SSE pattern if possible, but the SDK might require a handlePostMessage.
-        // Actually, StreamableHTTPServerTransport.handlePostMessage is what we need.
-        
-        // Since we can't easily share the transport instance between /sse and /messages in this simple setup without a store,
-        // we'll rely on the fact that McpServer usually manages this if we pass the transport correctly.
-        // But wait, StreamableHTTPServerTransport is per-connection.
-        
-        // Simplification: If we are using stdio, we don't need this. 
-        // If using HTTP, we usually use the SSE endpoint for everything in simple implementations.
-        // But let's just return 404 for now to avoid confusion, or implement it properly if we had the transport map.
-        // Given the context, I'll leave it as just SSE support which is standard for many MCP clients.
-        res.status(501).json({ error: "Not implemented via HTTP POST yet, use SSE or Stdio" });
+        const sessionId = req.query.sessionId;
+        if (!sessionId) {
+           return res.status(400).send("Missing sessionId query parameter");
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+           return res.status(404).send("Session not found");
+        }
+
+        await session.transport.handlePostMessage(req, res);
+      });
+
+      // Proper HTTP-based MCP endpoint using StreamableHTTPServerTransport
+       app.post("/mcp", async (req, res) => {
+         logger.info("Received POST to /mcp", { body: req.body });
+         
+         const server = await createMcpServer();
+         try {
+           const transport = new StreamableHTTPServerTransport({
+             sessionIdGenerator: undefined
+           });
+           
+           await server.connect(transport);
+           await transport.handleRequest(req, res, req.body);
+           
+           res.on('close', () => {
+             logger.info('MCP HTTP request closed');
+             transport.close();
+             server.close();
+           });
+         } catch (error) {
+           logger.error('Error handling MCP HTTP request:', error);
+           if (!res.headersSent) {
+             res.status(500).json({
+               jsonrpc: '2.0',
+               error: {
+                 code: -32603,
+                 message: 'Internal server error',
+                 data: error.message
+               },
+               id: req.body?.id || null
+             });
+           }
+         }
+       });
+
+      // Catch-all for 404s to help debugging
+      app.use((req, res) => {
+        logger.warn(`404 Not Found: ${req.method} ${req.url}`);
+        res.status(404).send(`Cannot ${req.method} ${req.url}`);
       });
 
       app.listen(port, () => {
