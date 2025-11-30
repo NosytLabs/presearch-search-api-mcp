@@ -17,7 +17,7 @@
   <h3>🔐 Privacy-First AI Search Integration</h3>
   <p><strong>Empower your AI with decentralized, uncensored web search capabilities through the Model Context Protocol (MCP).</strong></p>
 
-  <a href="https://smithery.ai/deploy?repository=https://github.com/NosytLabs/presearch-search-api-mcp" target="_blank">
+  <a href="https://smithery.ai/server/@NosytLabs/presearch-search-api-mcp" target="_blank">
     <img src="https://smithery.ai/button/deploy-on-smithery" alt="Deploy on Smithery" height="40" />
   </a>
 </div>
