@@ -388,6 +388,15 @@ const filterSearchParams = (params) => {
     filtered.page = params.page;
   }
 
+  // Map result count parameters (count, limit, per_page, max_results) to 'count'
+  const countVal = params.count || params.limit || params.per_page || params.max_results;
+  if (countVal !== undefined) {
+    const parsedCount = parseInt(countVal, 10);
+    if (!isNaN(parsedCount) && parsedCount > 0 && parsedCount <= 100) {
+      filtered.count = parsedCount;
+    }
+  }
+
   if (!filtered.ip && !filtered.location) {
     filtered.ip = "8.8.8.8";
   }

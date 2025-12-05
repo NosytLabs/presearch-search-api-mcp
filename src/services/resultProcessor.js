@@ -496,9 +496,9 @@ export class ResultProcessor {
       this.metrics.deduplicatedResults += deduplicationResult.results.length;
 
       // Calculate quality scores
-      const resultsWithScores = deduplicationResult.results.map((result) => ({
+      const resultsWithScores = deduplicationResult.results.map((result, index) => ({
         ...result,
-        qualityScore: this.calculateQualityScore(result),
+        qualityScore: this.calculateQualityScore(result, index),
         processingTimestamp: new Date().toISOString(),
       }));
 
@@ -540,8 +540,21 @@ export class ResultProcessor {
   /**
    * Calculate quality score for a result
    */
-  calculateQualityScore(result) {
+  calculateQualityScore(result, index) {
     let score = 0;
+
+    // Original Rank bonus (0-20 points)
+    // Respect the search engine's original ranking
+    if (index !== undefined) {
+      score += Math.max(0, 20 - index * 2);
+    }
+
+    // API Relevance Score (if available)
+    if (result.score && typeof result.score === 'number') {
+        // Assuming score is significant, add it. 
+        // Cap at 20 to prevent skewing if score is huge.
+        score += Math.min(20, result.score * 10); 
+    }
 
     // Title quality (0-30 points)
     if (result.title) {

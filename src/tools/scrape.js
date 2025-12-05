@@ -97,6 +97,5 @@ export const scrapeTool = {
   }),
 };
 
-export default tool;
-export { tool as scrapeTool };
+export default scrapeTool;
 export { ScrapeInputSchema };

@@ -189,6 +189,7 @@ const tool = {
       const searchParams = {
         q: query,
         page: 1,
+        count: breadth, // Explicitly request 'breadth' number of results
         country: country,
         lang: language,
         safe: safesearch,
@@ -196,7 +197,7 @@ const tool = {
         ...(ip ? { ip } : {}),
         ...(location ? { location } : {}),
         // Fetch enough results to satisfy breadth
-        // Presearch usually returns 10-20 results per page
+        // Presearch usually returns 10-20 results per page if count is not specified
       };
 
       const searchData = await presearchService.search(

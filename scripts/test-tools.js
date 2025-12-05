@@ -7,26 +7,25 @@ import { scrapeTool } from '../src/tools/scrape.js';
 import { healthTool } from '../src/tools/health.js';
 import { nodeStatusTool } from '../src/tools/node-status.js';
 import { cacheStatsTool, cacheClearTool } from '../src/tools/cache.js';
-import enhancedExportTool from '../src/tools/enhanced-export.js';
+import { enhancedExportTool } from '../src/tools/enhanced-export.js';
 
 import dotenv from 'dotenv';
 dotenv.config();
 
-const API_KEY = process.env.PRESEARCH_API_KEY;
+const API_KEY = process.env.PRESEARCH_API_KEY || "test_key"; // Fallback for testing if env missing
 
-if (!API_KEY) {
-  console.error('ERROR: PRESEARCH_API_KEY not found in environment variables.');
-  process.exit(1);
+if (!process.env.PRESEARCH_API_KEY) {
+  console.warn('WARNING: PRESEARCH_API_KEY not found. Using mock key. Some tests may fail or return errors.');
 }
 
 const context = { apiKey: API_KEY };
 
 const tools = [
-  { name: 'search', tool: searchTool, testArgs: { query: 'AI news', count: 3 } },
-  { name: 'searchAndScrape', tool: searchAndScrapeTool, testArgs: { query: 'machine learning', count: 2, scrape_results: true } },
-  { name: 'deepResearch', tool: deepResearchTool, testArgs: { query: 'climate change effects', max_iterations: 2 } },
-  { name: 'contentAnalysis', tool: contentAnalysisTool, testArgs: { content: [{ title: 'Test Article', url: 'https://example.com', description: 'A test article about AI' }], focus_area: 'technical' } },
-  { name: 'exportResults', tool: exportResultsTool, testArgs: { query: 'test search', format: 'json' } },
+  { name: 'search', tool: searchTool, testArgs: { query: 'AI news', limit: 3 } },
+  { name: 'searchAndScrape', tool: searchAndScrapeTool, testArgs: { query: 'machine learning', limit: 2, depth: true } },
+  { name: 'deepResearch', tool: deepResearchTool, testArgs: { query: 'climate change effects', breadth: 2, depth: 1 } },
+  { name: 'contentAnalysis', tool: contentAnalysisTool, testArgs: { content: "Test content for analysis", analysis_type: "summary" } },
+  { name: 'exportResults', tool: exportResultsTool, testArgs: { results: [{ title: "Test", url: "http://test.com", description: "desc" }], format: 'json' } },
   { name: 'scrape', tool: scrapeTool, testArgs: { url: 'https://example.com' } },
   { name: 'health', tool: healthTool, testArgs: {} },
   { name: 'nodeStatus', tool: nodeStatusTool, testArgs: { node_id: 'test_node' } },
