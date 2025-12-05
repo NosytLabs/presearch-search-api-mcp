@@ -67,7 +67,6 @@ export const scrapeTool = {
     try {
         const res = await contentFetcher.fetch(url, {
           timeout: a.timeout_ms,
-          maxBytes: 500000, // Default max bytes
           includeText: true,
           includeHtml: true // Always fetch HTML to allow processing
         });

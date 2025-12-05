@@ -80,13 +80,27 @@ export class ContentFetcher {
 
         // Add newlines after block elements to preserve readability
         contentRoot
-          .find("p, h1, h2, h3, h4, h5, h6, li, div, br")
+          .find("p, h1, h2, h3, h4, h5, h6, li, div, br, tr")
           .each((i, el) => {
             $(el).append("\n");
           });
+          
+        // Headers should have double newlines before them to separate sections
+        contentRoot
+          .find("h1, h2, h3, h4, h5, h6")
+          .each((i, el) => {
+            $(el).prepend("\n\n");
+          });
 
-        // Get text and clean up whitespace
-        text = contentRoot.text().replace(/\s+/g, " ").trim();
+        // Get text
+        let rawText = contentRoot.text();
+        
+        // Clean up whitespace: collapse multiple spaces/tabs to single space, but preserve newlines
+        text = rawText
+            .replace(/[ \t]+/g, " ") // Collapse horizontal whitespace
+            .replace(/\n\s+/g, "\n") // Remove leading space on new lines
+            .replace(/\n{3,}/g, "\n\n") // Collapse multiple newlines to max 2
+            .trim();
       }
 
       const meta = {
