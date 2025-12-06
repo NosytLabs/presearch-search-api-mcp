@@ -12,9 +12,9 @@ const NodeStatusInputSchema = {
   properties: {
     node_id: {
       type: "string",
-      description: "Specific Node ID or public key to query. Optional."
-    }
-  }
+      description: "Specific Node ID or public key to query. Optional.",
+    },
+  },
 };
 
 const tool = {
@@ -24,22 +24,27 @@ const tool = {
   tags: ["system", "node"],
   execute: withErrorHandling("presearch_node_status", async (rawArgs) => {
     const internalArgs = { ...rawArgs };
-    
+
     // Handle aliases
     if (internalArgs.node_id && !internalArgs.public_keys) {
-        internalArgs.public_keys = internalArgs.node_id;
+      internalArgs.public_keys = internalArgs.node_id;
     }
-    
+
     // If node_api_key is missing, try env
     if (!internalArgs.node_api_key) {
-         internalArgs.node_api_key = process.env.PRESEARCH_NODE_API_KEY;
+      internalArgs.node_api_key = process.env.PRESEARCH_NODE_API_KEY;
     }
-    
+
     // Validate that we have an API key
     if (!internalArgs.node_api_key) {
-        throw new ValidationError("Node API key is required. Provide node_api_key parameter or set PRESEARCH_NODE_API_KEY environment variable.");
+      return {
+        success: false,
+        error:
+          "Node API key is required. Provide node_api_key parameter or set PRESEARCH_NODE_API_KEY environment variable.",
+        data: null,
+      };
     }
-    
+
     const { node_api_key, ...params } = internalArgs;
 
     logger.info("Fetching node status", {

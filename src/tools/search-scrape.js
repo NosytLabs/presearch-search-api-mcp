@@ -11,31 +11,29 @@ const SearchScrapeInputSchema = {
     query: {
       type: "string",
       description: "The search query to execute. Supports standard operators.",
-      minLength: 1
+      minLength: 1,
     },
     limit: {
       type: "number",
-      description: "Maximum number of results to search and scrape (1-10). Defaults to 5.",
+      description:
+        "Maximum number of results to search and scrape (1-10). Defaults to 5.",
       minimum: 1,
       maximum: 10,
-      default: 5
-    },
-    depth: {
-      type: "boolean",
-      description: "Enable deep scraping mode for more comprehensive content extraction. Defaults to false."
+      default: 5,
     },
     exclude_domains: {
       type: "array",
       items: { type: "string" },
-      description: "List of domain names to exclude from the search results."
-    }
+      description: "List of domain names to exclude from the search results.",
+    },
   },
-  required: ["query"]
+  required: ["query"],
 };
 
 const tool = {
   name: "presearch_search_and_scrape",
-  description: "Combined search and scraping (50-70% faster than sequential). Searches then extracts from top results.",
+  description:
+    "Combined search and scraping (50-70% faster than sequential). Searches then extracts from top results.",
   inputSchema: SearchScrapeInputSchema,
   tags: ["search", "scrape", "web"],
   execute: withErrorHandling(
@@ -43,16 +41,14 @@ const tool = {
     async (args, context) => {
       // Map args to internal schema
       const a = {
-          query: args.query,
-          count: args.limit || 5,
-          scrape_count: args.limit || 5, // Assuming limit applies to both search and scrape count in this simplified tool
-          // depth? maybe maps to something or just ignored for now as per requirement
-          // exclude_domains? passed to search params?
+        query: args.query,
+        count: args.limit || 5,
+        scrape_count: args.limit || 5,
       };
 
       // If exclude_domains is supported by presearchService.search, I should pass it.
       // Looking at search.js, it filtered results manually. I might need to do that here too.
-      
+
       const searchParams = {
         q: a.query,
         page: 1,
@@ -62,19 +58,19 @@ const tool = {
 
       logger.info("Search & scrape starting", {
         query: a.query,
-        limit: a.count
+        limit: a.count,
       });
-      
+
       const data = await presearchService.search(searchParams, context?.apiKey);
       let arr = data.results || [];
 
       // Filter exclude_domains if provided
       if (args.exclude_domains && Array.isArray(args.exclude_domains)) {
-          arr = arr.filter(r => {
-              const url = r.url || r.link;
-              if (!url) return true;
-              return !args.exclude_domains.some(d => url.includes(d));
-          });
+        arr = arr.filter((r) => {
+          const url = r.url || r.link;
+          if (!url) return true;
+          return !args.exclude_domains.some((d) => url.includes(d));
+        });
       }
 
       const results = arr.slice(0, a.count).map((r, i) => {
@@ -84,28 +80,29 @@ const tool = {
         return { url, title, description, position: r.position || i + 1 };
       });
 
-      const urlsToScrape = results
-        .filter((r) => r.url);
+      const urlsToScrape = results.filter((r) => r.url).map((r) => r.url);
 
-      const scrapePromises = urlsToScrape.map(async (item) => {
-        try {
-          const res = await contentFetcher.fetch(item.url, {
-            timeout: 15000,
-            includeText: true,
-          });
-          return {
-            url: item.url,
-            status: res.status,
-            meta: res.meta,
-            text: res.text,
-            textLength: res.textLength,
-          };
-        } catch (e) {
-          return { url: item.url, error: e.message };
-        }
+      logger.info("Scraping urls", { count: urlsToScrape.length });
+
+      const batchResults = await contentFetcher.fetchBatchSmart(urlsToScrape, {
+        timeout: 15000,
+        includeText: true,
+        concurrency: 5,
       });
 
-      const scraped = await Promise.all(scrapePromises);
+      const scraped = batchResults.results.map((res) => {
+        if (res.success) {
+          return {
+            url: res.url,
+            status: res.data.status,
+            meta: res.data.meta,
+            text: res.data.text,
+            textLength: res.data.textLength,
+          };
+        } else {
+          return { url: res.url, error: res.error };
+        }
+      });
 
       return {
         success: true,

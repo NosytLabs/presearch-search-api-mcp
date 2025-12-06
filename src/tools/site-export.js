@@ -20,30 +20,33 @@ const ExportSiteContentInputSchema = {
   properties: {
     url: {
       type: "string",
-      description: "The starting URL to export content from."
+      description: "The starting URL to export content from.",
     },
     format: {
       type: "string",
       enum: ["markdown", "json", "html", "pdf"],
       default: "json",
-      description: "Target export format: markdown, json, html, or pdf. Defaults to json."
+      description:
+        "Target export format: markdown, json, html, or pdf. Defaults to json.",
     },
     recursive: {
       type: "boolean",
-      description: "Enable recursive crawling to follow links within the same domain. Defaults to false."
+      description:
+        "Enable recursive crawling to follow links within the same domain. Defaults to false.",
     },
     depth: {
       type: "number",
       minimum: 1,
       maximum: 5,
-      description: "Maximum crawl depth (1-5) when recursive is enabled."
+      description: "Maximum crawl depth (1-5) when recursive is enabled.",
     },
     include_assets: {
       type: "boolean",
-      description: "Whether to include static assets (images, styles) in the export. Defaults to false."
-    }
+      description:
+        "Whether to include static assets (images, styles) in the export. Defaults to false.",
+    },
   },
-  required: ["url"]
+  required: ["url"],
 };
 
 function toJson(items) {
@@ -85,12 +88,21 @@ function toHtml(items) {
       const metaRows =
         it.meta && typeof it.meta === "object"
           ? Object.entries(it.meta)
-              .map(([k, v]) => `<tr><td>${k}</td><td>${typeof v === "string" ? v : JSON.stringify(v)}</td></tr>`)
+              .map(
+                ([k, v]) =>
+                  `<tr><td>${k}</td><td>${typeof v === "string" ? v : JSON.stringify(v)}</td></tr>`,
+              )
               .join("")
           : "";
-      const metaTable = metaRows ? `<table class="meta"><tbody>${metaRows}</tbody></table>` : "";
-      const textBlock = it.text ? `<div class="text"><h3>Text Content</h3><pre style="white-space:pre">${escapeHtml(it.text.substring(0, 2000))}</pre></div>` : "";
-      const htmlBlock = it.html ? `<details><summary>Raw HTML (truncated)</summary><pre style="white-space:pre">${escapeHtml(it.html.substring(0, 200000))}</pre></details>` : "";
+      const metaTable = metaRows
+        ? `<table class="meta"><tbody>${metaRows}</tbody></table>`
+        : "";
+      const textBlock = it.text
+        ? `<div class="text"><h3>Text Content</h3><pre style="white-space:pre">${escapeHtml(it.text.substring(0, 2000))}</pre></div>`
+        : "";
+      const htmlBlock = it.html
+        ? `<details><summary>Raw HTML (truncated)</summary><pre style="white-space:pre">${escapeHtml(it.html.substring(0, 200000))}</pre></details>`
+        : "";
       return `<section id="item-${i}">
         <h2><a href="${it.url}" target="_blank">${escapeHtml(it.meta?.title || it.url)}</a></h2>
         <p><strong>URL:</strong> <a href="${it.url}" target="_blank">${it.url}</a></p>
@@ -150,7 +162,7 @@ async function exportPdf(urls, a) {
       const pdfBuffer = await page.pdf({ format: "A4" });
       files.push({
         url,
-        pdf_base64: pdfBuffer.toString("base64")
+        pdf_base64: pdfBuffer.toString("base64"),
       });
     } catch (e) {
       files.push({ url, error: e.message });
@@ -160,79 +172,83 @@ async function exportPdf(urls, a) {
   return files;
 }
 
-export const enhancedExportTool = {
-  name: "enhanced_site_export",
-  description: "Deep crawl and export site content to JSON, Markdown, HTML, or PDF. Supports recursive crawling and asset inclusion.",
+export const siteExportTool = {
+  name: "site_export",
+  description:
+    "Deep crawl and export site content to JSON, Markdown, HTML, or PDF. Supports recursive crawling and asset inclusion.",
   inputSchema: ExportSiteContentInputSchema,
   tags: ["utility", "export", "web"],
-  execute: withErrorHandling("enhanced_site_export", async (rawArgs) => {
-    if (typeof rawArgs.url !== 'string' || rawArgs.url.trim() === "") {
-        throw new ValidationError("URL must be a non-empty string");
+  execute: withErrorHandling("site_export", async (rawArgs) => {
+    if (typeof rawArgs.url !== "string" || rawArgs.url.trim() === "") {
+      throw new ValidationError("URL must be a non-empty string");
     }
     try {
-        new URL(rawArgs.url);
+      new URL(rawArgs.url);
     } catch {
-        throw new ValidationError("Invalid URL");
+      throw new ValidationError("Invalid URL");
     }
-    
+
     // Map new args to internal structure
     const a = {
       urls: [rawArgs.url],
       format: rawArgs.format || "json",
-      include_html: rawArgs.format === "html" || rawArgs.format === "mhtml", 
+      include_html: rawArgs.format === "html" || rawArgs.format === "mhtml",
       include_text: true,
       include_meta: true,
       // recursive/depth/include_assets would be used here if implemented
       // but for now we do root only
       timeout_ms: 30000,
       max_bytes: 1000000,
-      country: rawArgs.country
+      country: rawArgs.country,
     };
 
-    logger.info("Enhanced export", { count: a.urls.length, format: a.format });
-    
+    logger.info("Site export", { count: a.urls.length, format: a.format });
+
     // Handle PDF format separately
     if (a.format === "pdf") {
-        const pdfResults = await exportPdf(a.urls, a);
-        return {
-            success: true,
-            format: "pdf",
-            count: pdfResults.length,
-            data: pdfResults
-        };
+      const pdfResults = await exportPdf(a.urls, a);
+      return {
+        success: true,
+        format: "pdf",
+        count: pdfResults.length,
+        data: pdfResults,
+      };
     }
 
     const items = [];
-    for (const url of a.urls) {
-      try {
-        const res = await contentFetcher.fetch(url, {
-          timeout: a.timeout_ms,
-          maxBytes: 1000000,
-          includeText: a.include_text,
-        });
+    // Optimization: Use fetchBatchSmart even for single URL to leverage caching/concurrency if expanded later
+    const batchResults = await contentFetcher.fetchBatchSmart(a.urls, {
+      timeout: a.timeout_ms,
+      maxBytes: 1000000,
+      includeText: a.include_text,
+      includeHtml: a.include_html,
+    });
+
+    for (const res of batchResults.results) {
+      if (res.success) {
         items.push({
-          url,
-          status: res.status,
-          meta: res.meta,
-          text: res.text,
-          html: res.html,
-          textLength: res.textLength,
+          url: res.url,
+          status: res.data.status,
+          meta: res.data.meta,
+          text: res.data.text,
+          html: res.data.html,
+          textLength: res.data.textLength,
         });
-      } catch (e) {
-        items.push({ url, error: e.message });
+      } else {
+        items.push({ url: res.url, error: res.error });
       }
     }
 
     // Handle formats
     let resultData;
     if (a.format === "markdown") {
-        resultData = toMarkdown(items);
+      resultData = toMarkdown(items);
     } else if (a.format === "html") {
-        resultData = toHtml(items);
+      resultData = toHtml(items);
     } else {
-        resultData = toJson(items);
+      resultData = toJson(items);
     }
-    
+
     return {
       success: true,
       format: a.format,
@@ -242,4 +258,4 @@ export const enhancedExportTool = {
   }),
 };
 
-export default enhancedExportTool;
+export default siteExportTool;

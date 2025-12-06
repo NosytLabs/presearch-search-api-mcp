@@ -96,55 +96,69 @@ const DeepResearchInputSchema = {
   properties: {
     query: {
       type: "string",
-      description: "The research topic or question. Example: 'impact of ai on healthcare'."
+      description:
+        "The research topic or question. Example: 'impact of ai on healthcare'.",
     },
     depth: {
       type: "number",
       description: "Number of source pages to scrape and analyze (1-10).",
       default: 3,
       minimum: 1,
-      maximum: 10
+      maximum: 10,
     },
     breadth: {
       type: "number",
       description: "Number of search results to consider for selection (5-20).",
       default: 10,
       minimum: 5,
-      maximum: 20
+      maximum: 20,
     },
     research_focus: {
       type: "string",
       enum: ["general", "academic", "market", "technical", "news"],
       default: "general",
-      description: "The context of the research to guide relevance scoring."
+      description: "The context of the research to guide relevance scoring.",
     },
     country: {
       type: "string",
-      description: "Country filtering using ISO 3166-1 alpha-2 codes (e.g., US, CA)."
+      description:
+        "Country filtering using ISO 3166-1 alpha-2 codes (e.g., US, CA).",
     },
     language: {
       type: "string",
-      description: "Language filtering using BCP 47 codes (e.g., en-US)."
+      description: "Language filtering using BCP 47 codes (e.g., en-US).",
     },
     freshness: {
       type: "string",
       enum: ["hour", "day", "week", "month", "year", "all"],
       default: "all",
-      description: "Temporal filtering for recency."
+      description: "Temporal filtering for recency.",
     },
     safesearch: {
       type: "string",
       enum: ["off", "moderate", "strict"],
       default: "moderate",
-      description: "Content safety filtering level."
+      description: "Content safety filtering level.",
+    },
+    ip: {
+      type: "string",
+      description: "User IP for localization. Example: '1.2.3.4'.",
+    },
+    location: {
+      type: "object",
+      properties: {
+        lat: { type: "number" },
+        long: { type: "number" },
+      },
+      description: "Geolocation override. {lat, long}",
     },
     timeout_ms: {
       type: "number",
       description: "Timeout in milliseconds for the research session.",
-      default: 60000
-    }
+      default: 60000,
+    },
   },
-  required: ["query"]
+  required: ["query"],
 };
 
 const tool = {
@@ -221,34 +235,35 @@ const tool = {
       // Step 3: Scrape Content
       const errors = [];
 
-      // Run scrapes in parallel (with limit handled by contentFetcher or simple loop)
-      // Using Promise.all for speed, but mindful of rate limits if contentFetcher doesn't handle it
-      // contentFetcher usually uses axios which is fine for small batches
-      const scrapePromises = candidates.map(async (result) => {
-        const url = result.url || result.link;
-        if (!url) return null;
+      const urlsToScrape = candidates
+        .map((result) => result.url || result.link)
+        .filter((url) => url);
 
-        try {
-          const fetchResult = await contentFetcher.fetch(url, {
-            timeout: Math.floor(timeout_ms / 2), // Allocate half timeout for fetching
-            includeText: true,
-          });
+      const batchResults = await contentFetcher.fetchBatchSmart(urlsToScrape, {
+        timeout: Math.floor(timeout_ms / 2),
+        includeText: true,
+        concurrency: 5,
+      });
 
+      const results = batchResults.results.map((res) => {
+        if (res.success) {
+          const sourceResult = candidates.find(
+            (c) => (c.url || c.link) === res.url,
+          );
           return {
-            source_result: result,
-            url: url,
-            title: fetchResult.meta.title || result.title,
-            description: fetchResult.meta.description || result.description,
-            content: fetchResult.text,
-            domain: new URL(url).hostname,
+            source_result: sourceResult,
+            url: res.url,
+            title: res.data.meta.title || sourceResult?.title,
+            description: res.data.meta.description || sourceResult?.description,
+            content: res.data.text,
+            domain: new URL(res.url).hostname,
           };
-        } catch (error) {
-          errors.push({ url, error: error.message });
+        } else {
+          errors.push({ url: res.url, error: res.error });
           return null;
         }
       });
 
-      const results = await Promise.all(scrapePromises);
       const validContent = results.filter((r) => r !== null);
 
       if (validContent.length === 0) {

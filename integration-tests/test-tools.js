@@ -7,7 +7,7 @@ import { scrapeTool } from '../src/tools/scrape.js';
 import { healthTool } from '../src/tools/health.js';
 import { nodeStatusTool } from '../src/tools/node-status.js';
 import { cacheStatsTool, cacheClearTool } from '../src/tools/cache.js';
-import { enhancedExportTool } from '../src/tools/enhanced-export.js';
+import { siteExportTool } from '../src/tools/site-export.js';
 
 import dotenv from 'dotenv';
 dotenv.config();
@@ -23,7 +23,7 @@ const context = { apiKey: API_KEY };
 const tools = [
   { name: 'search', tool: searchTool, testArgs: { query: 'AI news', limit: 3 } },
   { name: 'searchAndScrape', tool: searchAndScrapeTool, testArgs: { query: 'machine learning', limit: 2, depth: true } },
-  { name: 'deepResearch', tool: deepResearchTool, testArgs: { query: 'climate change effects', breadth: 2, depth: 1 } },
+  { name: 'deepResearch', tool: deepResearchTool, testArgs: { query: 'climate change effects', breadth: 5, depth: 1 } },
   { name: 'contentAnalysis', tool: contentAnalysisTool, testArgs: { content: "Test content for analysis", analysis_type: "summary" } },
   { name: 'exportResults', tool: exportResultsTool, testArgs: { results: [{ title: "Test", url: "http://test.com", description: "desc" }], format: 'json' } },
   { name: 'scrape', tool: scrapeTool, testArgs: { url: 'https://example.com' } },
@@ -31,7 +31,7 @@ const tools = [
   { name: 'nodeStatus', tool: nodeStatusTool, testArgs: { node_id: 'test_node' } },
   { name: 'cacheStats', tool: cacheStatsTool, testArgs: {} },
   { name: 'cacheClear', tool: cacheClearTool, testArgs: {} },
-  { name: 'enhancedExport', tool: enhancedExportTool, testArgs: { url: 'https://example.com', format: 'json' } },
+  { name: 'siteExport', tool: siteExportTool, testArgs: { url: 'https://example.com', format: 'json' } },
 ];
 
 async function testAllTools() {

@@ -41,9 +41,9 @@ describe('Node Status Tool', () => {
   it('should return error response if node_api_key is missing', async () => {
     const result = await tool.execute({});
     
-    // It should not throw, but return an error object
-    assert.ok(result.error, 'Should return error object');
-    assert.equal(result.error.code, -32602); // Validation error code
-    assert.ok(result.error.message.includes('Invalid input parameters'), 'Should have correct error message');
+    // It should not throw, but return an error object in the result
+    // The tool now returns { success: false, error: "..." }
+    assert.equal(result.success, false);
+    assert.ok(result.error.includes('Node API key is required'), 'Should have correct error message');
   });
 });

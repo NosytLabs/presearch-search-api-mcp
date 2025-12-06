@@ -5,12 +5,13 @@ import { withErrorHandling } from "../utils/errors.js";
 const cacheStatsSchema = {
   type: "object",
   properties: {},
-  description: "No parameters required"
+  description: "No parameters required",
 };
 
 export const cacheStatsTool = {
   name: "cache_stats",
-  description: "Retrieve cache performance metrics: hits, misses, size, and entry count.",
+  description:
+    "Retrieve cache performance metrics: hits, misses, size, and entry count.",
   inputSchema: cacheStatsSchema,
   tags: ["system", "cache"],
   execute: withErrorHandling("cache_stats", async () => {
@@ -34,12 +35,13 @@ export const cacheStatsTool = {
 const cacheClearSchema = {
   type: "object",
   properties: {},
-  description: "No parameters required"
+  description: "No parameters required",
 };
 
 export const cacheClearTool = {
   name: "cache_clear",
-  description: "Clear all cached data and reset statistics for fresh data collection.",
+  description:
+    "Clear all cached data and reset statistics for fresh data collection.",
   inputSchema: cacheClearSchema,
   tags: ["system", "cache"],
   execute: withErrorHandling("cache_clear", async () => {

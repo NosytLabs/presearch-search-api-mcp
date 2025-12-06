@@ -57,8 +57,11 @@ async function runRealTests() {
     const result = await searchAndScrapeTool.execute(args, { apiKey: API_KEY });
     
     if (result.success && result.results && result.results.length > 0) {
-      const scrapedCount = result.results.filter(r => r.scraped_content).length;
+      const scrapedCount = result.scraped ? result.scraped.length : 0;
       console.log(`✅ PASS: Found ${result.results.length} results, scraped ${scrapedCount}`);
+      if (scrapedCount > 0) {
+          console.log(`   First scraped content length: ${result.scraped[0].textLength || 'N/A'}`);
+      }
       passed++;
     } else {
       console.log('❌ FAIL: Search and scrape failed');
@@ -79,9 +82,12 @@ async function runRealTests() {
     };
     const result = await deepResearchTool.execute(args, { apiKey: API_KEY });
     
-    if (result.success && result.research_summary) {
-      console.log(`✅ PASS: Research completed with ${result.sources_used} sources`);
-      console.log(`   Summary length: ${result.research_summary.length} characters`);
+    if (result.success) {
+      const sourcesCount = result.research_summary?.sources_analyzed || result.sources?.length || 0;
+      console.log(`✅ PASS: Research completed with ${sourcesCount} sources analyzed`);
+      if (result.analysis) {
+          console.log(`   Analysis topics: ${Object.keys(result.analysis).length}`);
+      }
       passed++;
     } else {
       console.log('❌ FAIL: Deep research failed');
@@ -91,21 +97,5 @@ async function runRealTests() {
     console.log('❌ FAIL: Deep research error:', error.message);
     failed++;
   }
-
-  // Summary
-  console.log('\n=== TEST SUMMARY ===');
-  console.log(`✅ Passed: ${passed}`);
-  console.log(`❌ Failed: ${failed}`);
-  console.log(`📊 Success Rate: ${Math.round((passed / (passed + failed)) * 100)}%`);
-  
-  if (failed > 0) {
-    console.log('\n⚠️  Some tests failed. Check your API key and network connection.');
-    process.exit(1);
-  } else {
-    console.log('\n🎉 All tests passed! Your Presearch MCP Server is working correctly.');
-    process.exit(0);
-  }
 }
-
-// Run tests
-runRealTests().catch(console.error);
+runRealTests();

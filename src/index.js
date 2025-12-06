@@ -10,12 +10,12 @@ import {
   exportResultsTool,
   scrapeTool,
   searchAndScrapeTool,
-  enhancedExportTool,
+  siteExportTool,
   cacheStatsTool,
   cacheClearTool,
   healthTool,
   nodeStatusTool,
-  deepResearchTool
+  deepResearchTool,
 } from "./tools/index.js";
 
 import { registerResources } from "./resources/index.js";
@@ -42,9 +42,11 @@ function parseArgs() {
 
 const main = async () => {
   try {
-    logger.info("🚀 Starting Presearch MCP Server v2.1.0");
-    logger.info("📡 Connecting to Presearch API with Bearer OAuth authentication");
-    
+    logger.info("🚀 Starting Presearch MCP Server v2.1.4");
+    logger.info(
+      "📡 Connecting to Presearch API with Bearer OAuth authentication",
+    );
+
     const config = await loadConfig();
     const flags = parseArgs();
 
@@ -52,7 +54,9 @@ const main = async () => {
     if (config.apiKey) {
       logger.info("✅ Presearch API key configured");
     } else {
-      logger.warn("⚠️  No Presearch API key configured. Some features may be limited.");
+      logger.warn(
+        "⚠️  No Presearch API key configured. Some features may be limited.",
+      );
       logger.info("💡 Get your free API key at: https://presearch.com/");
     }
 
@@ -71,7 +75,7 @@ const main = async () => {
         name: "presearch-mcp-server",
         description:
           "Privacy-focused MCP server for web search and content export with intelligent caching, rate limiting, and comprehensive Presearch API integration.",
-        version: "2.1.0",
+        version: "2.1.4",
       });
 
       const tools = [
@@ -80,12 +84,12 @@ const main = async () => {
         exportResultsTool,
         scrapeTool,
         searchAndScrapeTool,
-        enhancedExportTool,
+        siteExportTool,
         cacheStatsTool,
         cacheClearTool,
         healthTool,
         nodeStatusTool,
-        deepResearchTool
+        deepResearchTool,
       ];
 
       for (const tool of tools) {
@@ -111,46 +115,58 @@ const main = async () => {
     } else {
       const app = express();
       const port = flags.port || config.port || 3002;
-      
+
       // Enable JSON parsing for POST bodies
       app.use(express.json());
 
       // CORS Middleware
       app.use((req, res, next) => {
         res.header("Access-Control-Allow-Origin", "*");
-        res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-        res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        if (req.method === 'OPTIONS') {
-             return res.sendStatus(200);
+        res.header(
+          "Access-Control-Allow-Headers",
+          "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        );
+        res.header(
+          "Access-Control-Allow-Methods",
+          "GET, POST, PUT, DELETE, OPTIONS",
+        );
+        if (req.method === "OPTIONS") {
+          return res.sendStatus(200);
         }
         next();
       });
 
       // Serve MCP Config for Smithery
-      app.get('/.well-known/mcp-config', (req, res) => {
-        res.sendFile(path.join(process.cwd(), 'mcp-config.json'));
+      app.get("/.well-known/mcp-config", (req, res) => {
+        res.sendFile(path.join(process.cwd(), "mcp-config.json"));
       });
 
       // Request logging middleware
       app.use((req, res, next) => {
-        logger.info(`Incoming request: ${req.method} ${req.url}`, { headers: req.headers });
+        logger.info(`Incoming request: ${req.method} ${req.url}`, {
+          headers: req.headers,
+        });
         next();
       });
 
       // Middleware to fix Accept header for MCP clients that don't send strict headers
       app.use((req, res, next) => {
-        if (req.path === '/mcp' || req.path === '/mcp/') {
-          const accept = req.headers.accept || '';
-          const needsEventStream = !accept.includes('text/event-stream');
-          const needsJson = !accept.includes('application/json');
+        if (req.path === "/mcp" || req.path === "/mcp/") {
+          const accept = req.headers.accept || "";
+          const needsEventStream = !accept.includes("text/event-stream");
+          const needsJson = !accept.includes("application/json");
 
           if (needsEventStream || needsJson) {
             let newAccept = accept;
             if (needsEventStream) {
-              newAccept = newAccept ? `${newAccept}, text/event-stream` : 'text/event-stream';
+              newAccept = newAccept
+                ? `${newAccept}, text/event-stream`
+                : "text/event-stream";
             }
             if (needsJson) {
-              newAccept = newAccept ? `${newAccept}, application/json` : 'application/json';
+              newAccept = newAccept
+                ? `${newAccept}, application/json`
+                : "application/json";
             }
             req.headers.accept = newAccept;
             logger.info(`Patched Accept header for /mcp: ${newAccept}`);
@@ -175,7 +191,7 @@ const main = async () => {
         logger.info("New SSE connection initiated");
         const transport = new SSEServerTransport("/messages", res);
         const sessionId = transport.sessionId;
-        
+
         const server = await createMcpServer();
         sessions.set(sessionId, { server, transport });
 
@@ -191,50 +207,50 @@ const main = async () => {
       app.post("/messages", async (req, res) => {
         const sessionId = req.query.sessionId;
         if (!sessionId) {
-           return res.status(400).send("Missing sessionId query parameter");
+          return res.status(400).send("Missing sessionId query parameter");
         }
 
         const session = sessions.get(sessionId);
         if (!session) {
-           return res.status(404).send("Session not found");
+          return res.status(404).send("Session not found");
         }
 
         await session.transport.handlePostMessage(req, res);
       });
 
       // Proper HTTP-based MCP endpoint using StreamableHTTPServerTransport
-       app.post("/mcp", async (req, res) => {
-         logger.info("Received POST to /mcp", { body: req.body });
-         
-         const server = await createMcpServer();
-         try {
-           const transport = new StreamableHTTPServerTransport({
-             sessionIdGenerator: undefined
-           });
-           
-           await server.connect(transport);
-           await transport.handleRequest(req, res, req.body);
-           
-           res.on('close', () => {
-             logger.info('MCP HTTP request closed');
-             transport.close();
-             server.close();
-           });
-         } catch (error) {
-           logger.error('Error handling MCP HTTP request:', error);
-           if (!res.headersSent) {
-             res.status(500).json({
-               jsonrpc: '2.0',
-               error: {
-                 code: -32603,
-                 message: 'Internal server error',
-                 data: error.message
-               },
-               id: req.body?.id || null
-             });
-           }
-         }
-       });
+      app.post("/mcp", async (req, res) => {
+        logger.info("Received POST to /mcp", { body: req.body });
+
+        const server = await createMcpServer();
+        try {
+          const transport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: undefined,
+          });
+
+          await server.connect(transport);
+          await transport.handleRequest(req, res, req.body);
+
+          res.on("close", () => {
+            logger.info("MCP HTTP request closed");
+            transport.close();
+            server.close();
+          });
+        } catch (error) {
+          logger.error("Error handling MCP HTTP request:", error);
+          if (!res.headersSent) {
+            res.status(500).json({
+              jsonrpc: "2.0",
+              error: {
+                code: -32603,
+                message: "Internal server error",
+                data: error.message,
+              },
+              id: req.body?.id || null,
+            });
+          }
+        }
+      });
 
       // Catch-all for 404s to help debugging
       app.use((req, res) => {
@@ -243,11 +259,16 @@ const main = async () => {
       });
 
       app.listen(port, () => {
-        logger.info(`✅ Presearch MCP Server running on http://localhost:${port}/sse`);
+        logger.info(
+          `✅ Presearch MCP Server running on http://localhost:${port}/sse`,
+        );
       });
     }
   } catch (error) {
-    logger.error("Failed to start server", { error: error.message, stack: error.stack });
+    logger.error("Failed to start server", {
+      error: error.message,
+      stack: error.stack,
+    });
     process.exit(1);
   }
 };

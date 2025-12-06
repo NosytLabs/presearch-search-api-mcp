@@ -16,8 +16,8 @@
     "lint": "eslint src/ --fix",
     "test": "node --test --experimental-test-module-mocks tests/*.test.js",
     "test:coverage": "node --test --experimental-test-coverage --experimental-test-module-mocks tests/*.test.js",
-    "test:search": "node scripts/test-search.js",
-    "test:tools": "node scripts/test-tools.js",
+    "test:search": "node integration-tests/test-search.js",
+    "test:tools": "node integration-tests/test-tools.js",
     "format": "prettier --write src/"
   },
   "keywords": [

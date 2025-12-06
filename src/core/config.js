@@ -11,7 +11,11 @@ import logger, { updateLoggerConfig } from "./logger.js";
 dotenv.config();
 
 const configSchema = z.object({
-  apiKey: z.string().optional().default("").describe("Presearch API Key - Get yours at https://presearch.com/"),
+  apiKey: z
+    .string()
+    .optional()
+    .default("")
+    .describe("Presearch API Key - Get yours at https://presearch.com/"),
   baseUrl: z
     .string()
     .url()
@@ -110,18 +114,18 @@ let config;
  */
 const validateApiKeyFormat = (apiKey) => {
   if (!apiKey || typeof apiKey !== "string") return false;
-  
+
   // Presearch API keys can be either:
   // 1. JWT tokens (contain dots and special characters)
   // 2. Simple alphanumeric strings with hyphens/underscores
   // Both should be at least 16 characters
   if (apiKey.length < 16) return false;
-  
+
   // JWT tokens contain dots and are longer
-  if (apiKey.includes('.') && apiKey.length > 50) {
+  if (apiKey.includes(".") && apiKey.length > 50) {
     return true; // Likely a JWT token
   }
-  
+
   // Simple API key format
   return /^[a-zA-Z0-9_-]+$/.test(apiKey);
 };
@@ -135,15 +139,15 @@ const getApiKeyGuidance = (apiKey) => {
   if (!apiKey) {
     return "No PRESEARCH_API_KEY found. Get your free API key at https://presearch.com/";
   }
-  
+
   if (apiKey.length < 16) {
     return "PRESEARCH_API_KEY appears too short. API keys are typically 16+ characters.";
   }
-  
-  if (!apiKey.includes('.') && !/^[a-zA-Z0-9_-]+$/.test(apiKey)) {
+
+  if (!apiKey.includes(".") && !/^[a-zA-Z0-9_-]+$/.test(apiKey)) {
     return "PRESEARCH_API_KEY contains invalid characters. Simple keys should use only letters, numbers, hyphens, and underscores.";
   }
-  
+
   return "PRESEARCH_API_KEY format appears valid. If authentication fails, verify your key at https://presearch.com/";
 };
 
@@ -242,20 +246,24 @@ export const loadConfig = () => {
     config = parsedConfig;
     updateLoggerConfig(config);
     logger.info("Configuration loaded and validated successfully");
-    
+
     // Log configuration summary (without exposing API key)
     logger.info("Presearch MCP Server Configuration Summary", {
       baseUrl: config.baseUrl,
       timeout: config.timeout,
       retries: config.retries,
       rateLimit: config.rateLimit,
-      cache: { enabled: config.cache.enabled, ttl: config.cache.ttl, maxKeys: config.cache.maxKeys },
+      cache: {
+        enabled: config.cache.enabled,
+        ttl: config.cache.ttl,
+        maxKeys: config.cache.maxKeys,
+      },
       search: config.search,
       logging: config.logging,
       port: config.port,
       apiKeyConfigured: !!config.apiKey,
     });
-    
+
     return config;
   } catch (error) {
     // Use console.error instead of logger to avoid dependency on config
@@ -389,7 +397,8 @@ const filterSearchParams = (params) => {
   }
 
   // Map result count parameters (count, limit, per_page, max_results) to 'count'
-  const countVal = params.count || params.limit || params.per_page || params.max_results;
+  const countVal =
+    params.count || params.limit || params.per_page || params.max_results;
   if (countVal !== undefined) {
     const parsedCount = parseInt(countVal, 10);
     if (!isNaN(parsedCount) && parsedCount > 0 && parsedCount <= 100) {
@@ -397,7 +406,10 @@ const filterSearchParams = (params) => {
     }
   }
 
+  // Default to using a dummy IP if neither IP nor location is provided
+  // This is required by Presearch API as of recent updates
   if (!filtered.ip && !filtered.location) {
+    // Use a generic US IP address if none provided
     filtered.ip = "8.8.8.8";
   }
 

@@ -51,56 +51,171 @@ export class ResultDeduplicator {
   constructor(threshold = 0.85) {
     this.threshold = threshold;
     this.similarityCache = new Map();
+    this.maxCacheSize = 10000; // Prevent memory leaks
+    this.urlIndex = new Map(); // Quick URL-based deduplication
+    this.titleIndex = new Map(); // Quick title-based grouping
   }
 
   /**
-   * Calculate Jaccard similarity between two strings
+   * Calculate Jaccard similarity between two strings - Optimized version
    */
   calculateJaccardSimilarity(str1, str2) {
-    const set1 = new Set(str1.toLowerCase().split(/\s+/));
-    const set2 = new Set(str2.toLowerCase().split(/\s+/));
+    // Use cache for repeated calculations
+    const cacheKey = `jaccard:${str1}|${str2}`;
+    if (this.similarityCache.has(cacheKey)) {
+      return this.similarityCache.get(cacheKey);
+    }
 
-    const intersection = new Set([...set1].filter((x) => set2.has(x)));
-    const union = new Set([...set1, ...set2]);
+    // Early exit for identical strings
+    if (str1 === str2) {
+      this.addToCache(cacheKey, 1.0);
+      return 1.0;
+    }
 
-    return intersection.size / union.size;
+    // Early exit for very different lengths
+    const len1 = str1.length;
+    const len2 = str2.length;
+    if (Math.abs(len1 - len2) > Math.max(len1, len2) * 0.5) {
+      this.addToCache(cacheKey, 0.0);
+      return 0.0;
+    }
+
+    // Use word frequency maps for better performance
+    const words1 = this.getWordFrequency(str1);
+    const words2 = this.getWordFrequency(str2);
+
+    const intersection = new Set(
+      [...words1.keys()].filter((x) => words2.has(x)),
+    );
+    const union = new Set([...words1.keys(), ...words2.keys()]);
+
+    const similarity = intersection.size / union.size;
+    this.addToCache(cacheKey, similarity);
+
+    return similarity;
+  }
+
+  addToCache(key, value) {
+    if (this.similarityCache.size >= this.maxCacheSize) {
+      // Evict oldest entry (LRU-like for Map)
+      const firstKey = this.similarityCache.keys().next().value;
+      this.similarityCache.delete(firstKey);
+    }
+    this.similarityCache.set(key, value);
   }
 
   /**
-   * Calculate cosine similarity between two strings
+   * Get word frequency map for a string
+   */
+  getWordFrequency(text) {
+    const words = text.toLowerCase().split(/\s+/);
+    const frequency = new Map();
+
+    for (const word of words) {
+      if (word.length > 2) {
+        // Skip very short words for performance
+        frequency.set(word, (frequency.get(word) || 0) + 1);
+      }
+    }
+
+    return frequency;
+  }
+
+  /**
+   * Calculate cosine similarity between two strings - Optimized version
    */
   calculateCosineSimilarity(str1, str2) {
-    const words1 = str1.toLowerCase().split(/\s+/);
-    const words2 = str2.toLowerCase().split(/\s+/);
+    const cacheKey = `cosine:${str1}|${str2}`;
+    if (this.similarityCache.has(cacheKey)) {
+      return this.similarityCache.get(cacheKey);
+    }
 
-    const allWords = new Set([...words1, ...words2]);
-    const vector1 = Array.from(allWords).map(
-      (word) => words1.filter((w) => w === word).length,
-    );
-    const vector2 = Array.from(allWords).map(
-      (word) => words2.filter((w) => w === word).length,
-    );
+    if (str1 === str2) {
+      this.addToCache(cacheKey, 1.0);
+      return 1.0;
+    }
 
-    const dotProduct = vector1.reduce(
-      (sum, val, i) => sum + val * vector2[i],
-      0,
-    );
-    const magnitude1 = Math.sqrt(
-      vector1.reduce((sum, val) => sum + val * val, 0),
-    );
-    const magnitude2 = Math.sqrt(
-      vector2.reduce((sum, val) => sum + val * val, 0),
-    );
+    // Use sparse vector representation for better performance
+    const vec1 = this.getSparseVector(str1);
+    const vec2 = this.getSparseVector(str2);
 
-    return magnitude1 === 0 || magnitude2 === 0
-      ? 0
-      : dotProduct / (magnitude1 * magnitude2);
+    const dotProduct = this.calculateSparseDotProduct(vec1, vec2);
+    const magnitude1 = this.calculateSparseMagnitude(vec1);
+    const magnitude2 = this.calculateSparseMagnitude(vec2);
+
+    const similarity =
+      magnitude1 === 0 || magnitude2 === 0
+        ? 0
+        : dotProduct / (magnitude1 * magnitude2);
+
+    this.addToCache(cacheKey, similarity);
+    return similarity;
   }
 
   /**
-   * Calculate similarity between two results
+   * Get sparse vector representation of text
+   */
+  getSparseVector(text) {
+    const words = text.toLowerCase().split(/\s+/);
+    const vector = new Map();
+
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      if (word.length > 2) {
+        // Skip very short words
+        vector.set(word, (vector.get(word) || 0) + 1);
+      }
+    }
+
+    return vector;
+  }
+
+  /**
+   * Calculate dot product of two sparse vectors
+   */
+  calculateSparseDotProduct(vec1, vec2) {
+    let dotProduct = 0;
+
+    // Iterate over the smaller vector for efficiency
+    if (vec1.size <= vec2.size) {
+      for (const [word, count1] of vec1) {
+        const count2 = vec2.get(word);
+        if (count2 !== undefined) {
+          dotProduct += count1 * count2;
+        }
+      }
+    } else {
+      for (const [word, count2] of vec2) {
+        const count1 = vec1.get(word);
+        if (count1 !== undefined) {
+          dotProduct += count1 * count2;
+        }
+      }
+    }
+
+    return dotProduct;
+  }
+
+  /**
+   * Calculate magnitude of sparse vector
+   */
+  calculateSparseMagnitude(vector) {
+    let sum = 0;
+    for (const count of vector.values()) {
+      sum += count * count;
+    }
+    return Math.sqrt(sum);
+  }
+
+  /**
+   * Calculate similarity between two results - Optimized version
    */
   calculateSimilarity(result1, result2) {
+    // Quick URL comparison first
+    if (result1.url && result2.url && result1.url === result2.url) {
+      return 1.0;
+    }
+
     const titleSimilarity = this.calculateCosineSimilarity(
       result1.title || "",
       result2.title || "",
@@ -118,31 +233,102 @@ export class ResultDeduplicator {
   }
 
   /**
-   * Remove duplicate results
+   * Get normalized title key for grouping
+   */
+  getTitleKey(title) {
+    return title
+      .toLowerCase()
+      .replace(/[^\w\s]/g, "") // Remove punctuation
+      .split(/\s+/)
+      .filter((word) => word.length > 2)
+      .sort() // Sort words for consistent grouping
+      .join(" ");
+  }
+
+  /**
+   * Remove duplicate results - Highly optimized multi-stage approach
    */
   deduplicate(results) {
     const uniqueResults = [];
     const duplicates = [];
 
+    // Clear indexes for this batch
+    this.urlIndex.clear();
+    this.titleIndex.clear();
+
+    // Early return for empty results
+    if (!results || results.length === 0) {
+      return { unique: [], duplicates: [] };
+    }
+
+    // Stage 1: Quick URL-based deduplication (O(n))
+    const urlDeduplicated = [];
+    const startTime = Date.now();
+    
     for (const result of results) {
-      let isDuplicate = false;
-
-      for (const uniqueResult of uniqueResults) {
-        const similarity = this.calculateSimilarity(result, uniqueResult);
-
-        if (similarity >= this.threshold) {
-          isDuplicate = true;
-          duplicates.push({
-            original: uniqueResult,
-            duplicate: result,
-            similarity,
-          });
-          break;
-        }
+      const urlKey = result.url || result.link || "";
+      if (urlKey && this.urlIndex.has(urlKey)) {
+        duplicates.push({
+          original: this.urlIndex.get(urlKey),
+          duplicate: result,
+          similarity: 1.0,
+          reason: "identical_url",
+        });
+      } else {
+        if (urlKey) this.urlIndex.set(urlKey, result);
+        urlDeduplicated.push(result);
       }
+    }
+    
+    logger.debug("URL deduplication completed", {
+      originalCount: results.length,
+      afterUrlDedup: urlDeduplicated.length,
+      duplicatesFound: duplicates.length,
+      duration: Date.now() - startTime
+    });
 
-      if (!isDuplicate) {
-        uniqueResults.push(result);
+    // Stage 2: Title-based grouping (reduces comparisons)
+    const titleGroups = new Map();
+    for (const result of urlDeduplicated) {
+      const titleKey = this.getTitleKey(result.title || "");
+      if (!titleGroups.has(titleKey)) {
+        titleGroups.set(titleKey, []);
+      }
+      titleGroups.get(titleKey).push(result);
+    }
+
+    // Stage 3: Detailed similarity comparison within groups
+    for (const [, group] of titleGroups) {
+      if (group.length === 1) {
+        uniqueResults.push(group[0]);
+      } else {
+        // Compare within the group (much smaller than full dataset)
+        for (let i = 0; i < group.length; i++) {
+          const result = group[i];
+          let isDuplicate = false;
+
+          for (let j = 0; j < uniqueResults.length; j++) {
+            const similarity = this.calculateSimilarity(
+              result,
+              uniqueResults[j],
+            );
+
+            if (similarity >= this.threshold) {
+              isDuplicate = true;
+              duplicates.push({
+                original: uniqueResults[j],
+                duplicate: result,
+                similarity,
+                reason: "content_similarity",
+              });
+              break;
+            }
+          }
+
+          if (!isDuplicate) {
+            uniqueResults.push(result);
+          }
+        }
       }
     }
 
@@ -158,6 +344,12 @@ export class ResultDeduplicator {
         uniqueCount: uniqueResults.length,
         duplicateCount: duplicates.length,
         deduplicationRatio: duplicates.length / results.length,
+        cacheHits: this.similarityCache.size,
+        urlDuplicates: duplicates.filter((d) => d.reason === "identical_url")
+          .length,
+        contentDuplicates: duplicates.filter(
+          (d) => d.reason === "content_similarity",
+        ).length,
       },
     };
   }
@@ -373,7 +565,7 @@ export class CircuitBreaker {
  * Enhanced cache with metrics
  */
 export class EnhancedCache {
-  constructor(timeout = 300000) {
+  constructor(timeout = 300000, maxSize = 1000) {
     this.cache = new Map();
     this.metrics = {
       hits: 0,
@@ -382,6 +574,7 @@ export class EnhancedCache {
       totalRequests: 0,
     };
     this.timeout = timeout;
+    this.maxSize = maxSize;
   }
 
   /**
@@ -421,9 +614,16 @@ export class EnhancedCache {
   }
 
   /**
-   * Set cached result
+   * Set cached result with memory management
    */
   set(key, data) {
+    // Eviction if full
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+      this.metrics.evictions++;
+    }
+
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
@@ -434,8 +634,8 @@ export class EnhancedCache {
    * Clear cache
    */
   clear() {
-    this.cache.clear();
     this.metrics.evictions += this.cache.size;
+    this.cache.clear();
   }
 
   /**
@@ -477,6 +677,27 @@ export class ResultProcessor {
   }
 
   /**
+   * Normalize a single result object
+   */
+  normalizeResult(result, index) {
+    const url = result.url || result.link;
+    const title = result.title || result.name || "Untitled";
+    const description =
+      result.description || result.snippet || result.summary || "";
+
+    return {
+      ...result,
+      url,
+      title,
+      description,
+      position: result.position || index + 1,
+      domain: url ? new URL(url).hostname : "unknown",
+      contentCategory: this.categorizeContent(title, description),
+      isRecent: this.isRecentContent(result.publishedDate),
+    };
+  }
+
+  /**
    * Process search results
    */
   async processResults(results, query, params = {}) {
@@ -491,16 +712,53 @@ export class ResultProcessor {
         throw new Error("Circuit breaker is open");
       }
 
-      // Deduplicate results
-      const deduplicationResult = this.deduplicator.deduplicate(results);
-      this.metrics.deduplicatedResults += deduplicationResult.results.length;
+      // 1. Normalize results
+      let processedResults = results.map((result, index) =>
+        this.normalizeResult(result, index),
+      );
 
-      // Calculate quality scores
-      const resultsWithScores = deduplicationResult.results.map((result, index) => ({
+      // 2. Filter by content categories if specified
+      if (params.content_categories && params.content_categories.length > 0) {
+        processedResults = processedResults.filter((result) =>
+          params.content_categories.includes(result.contentCategory),
+        );
+      }
+
+      // 3. Filter by excluded domains if specified
+      if (params.exclude_domains && params.exclude_domains.length > 0) {
+        processedResults = processedResults.filter(
+          (result) =>
+            !params.exclude_domains.some((d) => result.domain.includes(d)),
+        );
+      }
+
+      // 4. Deduplicate results
+      const deduplicationResult =
+        this.deduplicator.deduplicate(processedResults);
+      processedResults = deduplicationResult.results;
+      this.metrics.deduplicatedResults += processedResults.length;
+
+      // 5. Calculate quality scores
+      processedResults = processedResults.map((result, index) => ({
         ...result,
         qualityScore: this.calculateQualityScore(result, index),
         processingTimestamp: new Date().toISOString(),
       }));
+
+      // 6. Filter by quality score if specified
+      if (
+        typeof params.min_quality_score === "number" &&
+        params.min_quality_score > 0
+      ) {
+        processedResults = processedResults.filter(
+          (result) => result.qualityScore >= params.min_quality_score,
+        );
+      }
+
+      // 7. Apply count limit
+      if (params.count && processedResults.length > params.count) {
+        processedResults = processedResults.slice(0, params.count);
+      }
 
       const processingTime = Date.now() - startTime;
       this.updateAverageProcessingTime(processingTime);
@@ -508,14 +766,17 @@ export class ResultProcessor {
       this.circuitBreaker.recordSuccess();
 
       return {
-        results: resultsWithScores,
+        results: processedResults,
         metadata: {
           query,
           params,
           processingTime,
           deduplication: deduplicationResult.metrics,
           cacheHit: false,
-          qualityMetrics: this.getQualityMetrics(resultsWithScores),
+          qualityMetrics: this.getQualityMetrics(processedResults),
+          total: results.length,
+          processed: processedResults.length,
+          filteredOut: results.length - processedResults.length,
         },
       };
     } catch (error) {
@@ -538,50 +799,119 @@ export class ResultProcessor {
   }
 
   /**
-   * Calculate quality score for a result
+   * Calculate quality score for a result based on available Presearch API data
+   * Optimized for actual API response structure: title, link, description only
    */
   calculateQualityScore(result, index) {
     let score = 0;
 
     // Original Rank bonus (0-20 points)
-    // Respect the search engine's original ranking
+    // Respect the search engine's original ranking - higher ranks get better scores
     if (index !== undefined) {
       score += Math.max(0, 20 - index * 2);
     }
 
-    // API Relevance Score (if available)
-    if (result.score && typeof result.score === 'number') {
-        // Assuming score is significant, add it. 
-        // Cap at 20 to prevent skewing if score is huge.
-        score += Math.min(20, result.score * 10); 
-    }
-
-    // Title quality (0-30 points)
+    // Title quality (0-40 points) - most important factor for click-through
     if (result.title) {
-      score += Math.min(30, result.title.length / 2);
-      // Bonus for descriptive titles
-      if (result.title.length > 50 && result.title.length < 120) score += 5;
-      // Penalty for generic titles
-      if (["home", "index", "untitled"].includes(result.title.toLowerCase()))
-        score -= 10;
-    }
+      const titleLength = result.title.length;
 
-    // Description quality (0-25 points)
-    if (result.description) {
-      score += Math.min(25, result.description.length / 4);
-      // Bonus for comprehensive descriptions
-      if (result.description.length > 150) score += 5;
-      // Penalty for duplicate content indicators
-      if (result.description.includes("...") || result.description.length < 30)
+      // Base score based on length (0-25 points)
+      if (titleLength >= 30 && titleLength <= 80) {
+        score += 25; // Optimal length range
+      } else if (titleLength > 80) {
+        score += Math.max(15, 25 - (titleLength - 80) / 10); // Gradual penalty for too long
+      } else {
+        score += Math.min(20, titleLength * 0.8); // Gradual bonus for reasonable length
+      }
+
+      // Bonus for descriptive titles (0-10 points)
+      const descriptiveWords = [
+        "guide",
+        "tutorial",
+        "overview",
+        "introduction",
+        "complete",
+        "ultimate",
+        "best",
+        "review",
+        "comparison",
+        "analysis",
+      ];
+      const titleLower = result.title.toLowerCase();
+      const hasDescriptiveWords = descriptiveWords.some((word) =>
+        titleLower.includes(word),
+      );
+      if (hasDescriptiveWords) score += 10;
+
+      // Penalty for generic titles (0-5 points)
+      const genericTitles = [
+        "home",
+        "index",
+        "untitled",
+        "page",
+        "document",
+        "article",
+      ];
+      if (
+        genericTitles.some(
+          (generic) => titleLower === generic || titleLower.includes(generic),
+        )
+      ) {
         score -= 5;
+      }
+
+      // Bonus for question titles (indicates helpful content)
+      if (result.title.includes("?")) score += 5;
+
+      // Bonus for numbered lists (indicates structured content)
+      if (/\d+/.test(result.title)) score += 3;
     }
 
-    // URL authority and trust (0-25 points)
-    if (result.url) {
-      try {
-        const domain = new URL(result.url).hostname;
+    // Description quality (0-35 points) - secondary importance for context
+    if (result.description) {
+      const descLength = result.description.length;
 
-        // High-authority domains
+      // Base score based on length (0-25 points)
+      if (descLength >= 100 && descLength <= 300) {
+        score += 25; // Optimal length range
+      } else if (descLength > 300) {
+        score += Math.max(15, 25 - (descLength - 300) / 50); // Gradual penalty for too long
+      } else {
+        score += Math.min(20, descLength / 5); // Gradual bonus for reasonable length
+      }
+
+      // Bonus for comprehensive descriptions (0-5 points)
+      if (descLength > 200) score += 5;
+
+      // Penalty for low-quality indicators (0-5 points)
+      if (result.description.includes("...") || descLength < 50) score -= 5;
+
+      // Bonus for specific content indicators
+      const qualityIndicators = [
+        "learn",
+        "understand",
+        "discover",
+        "find out",
+        "explore",
+        "step-by-step",
+        "comprehensive",
+      ];
+      if (
+        qualityIndicators.some((indicator) =>
+          result.description.toLowerCase().includes(indicator),
+        )
+      ) {
+        score += 3;
+      }
+    }
+
+    // URL authority and trust (0-25 points) - trust factor for credibility
+    if (result.url || result.link) {
+      try {
+        const url = result.url || result.link;
+        const domain = new URL(url).hostname;
+
+        // High-authority domains (trusted sources)
         const highAuthorityDomains = [
           "wikipedia.org",
           "github.com",
@@ -596,9 +926,19 @@ export class ResultProcessor {
           "harvard.edu",
           "cambridge.org",
           "ox.ac.uk",
+          "nasa.gov",
+          "nist.gov",
+          "ibm.com",
+          "google.com",
+          "microsoft.com",
+          "amazon.com",
+          "apple.com",
+          "cloud.google.com",
+          "aws.amazon.com",
+          "azure.microsoft.com",
         ];
 
-        // Medium-authority domains
+        // Medium-authority domains (reputable sources)
         const mediumAuthorityDomains = [
           "medium.com",
           "reddit.com",
@@ -611,6 +951,11 @@ export class ResultProcessor {
           "nationalgeographic.com",
           "scientificamerican.com",
           "nature.com",
+          "britannica.com",
+          "investopedia.com",
+          "coursera.org",
+          "sciencedirect.com",
+          "sas.com",
         ];
 
         if (
@@ -624,108 +969,74 @@ export class ResultProcessor {
         ) {
           score += 15;
         } else {
-          // Generic scoring based on domain characteristics
-          score += Math.min(15, domain.length / 2);
+          // Generic domain scoring (0-10 points)
+          // Prefer shorter, cleaner domains
 
-          // Bonus for HTTPS
-          if (result.url.startsWith("https://")) score += 5;
+          // Bonus for professional TLDs
+          if (domain.endsWith(".edu") || domain.endsWith(".gov")) score += 8;
+          else if (domain.endsWith(".org")) score += 5;
+          else if (domain.endsWith(".com")) score += 3;
+          else if (domain.endsWith(".net")) score += 2;
+
+          // Bonus for HTTPS (security indicator)
+          if (url.startsWith("https://")) score += 5;
 
           // Bonus for clean URLs (no excessive parameters)
-          if (!result.url.includes("?") || result.url.split("?")[1].length < 50)
-            score += 3;
+          if (!url.includes("?") || url.split("?")[1].length < 50) score += 3;
 
-          // Penalty for suspicious domains
+          // Penalty for suspicious or low-quality TLDs
           if (
             domain.includes(".tk") ||
             domain.includes(".ml") ||
-            domain.includes(".cf")
+            domain.includes(".cf") ||
+            domain.includes(".ga") ||
+            domain.includes(".click") ||
+            domain.includes(".link") ||
+            domain.includes(".top")
           )
             score -= 10;
+
+          // Penalty for very long domains (often spammy)
+          if (domain.length > 30) score -= 5;
         }
       } catch {
-        // Invalid URL
+        // Invalid URL - no penalty, just no bonus
         score += 0;
       }
     }
 
-    // Content freshness (0-15 points)
+    // Note: The following sections are commented out as they depend on data
+    // not available in Presearch API responses. They are preserved for future
+    // enhancement if additional data sources are integrated.
+
+    /*
+    // Content freshness (0-15 points) - requires publishedDate, lastModified, or timestamp
     if (result.publishedDate || result.lastModified || result.timestamp) {
-      const dateStr =
-        result.publishedDate || result.lastModified || result.timestamp;
+      const dateStr = result.publishedDate || result.lastModified || result.timestamp;
       try {
         const contentDate = new Date(dateStr);
         const now = new Date();
         const daysDiff = (now - contentDate) / (1000 * 60 * 60 * 24);
-
-        if (daysDiff < 7)
-          score += 15; // Very recent
-        else if (daysDiff < 30)
-          score += 10; // Recent
-        else if (daysDiff < 90)
-          score += 5; // Moderately recent
-        else if (daysDiff < 365) score += 2; // Within a year
-        // Older content gets no bonus but no penalty either
+        if (daysDiff < 7) score += 15;
+        else if (daysDiff < 30) score += 10;
+        else if (daysDiff < 90) score += 5;
+        else if (daysDiff < 365) score += 2;
       } catch {
         // Invalid date format
       }
     }
 
-    // Engagement metrics (0-15 points)
-    if (result.engagement) {
-      if (result.engagement.likes && result.engagement.likes > 100) score += 5;
-      if (result.engagement.shares && result.engagement.shares > 50) score += 5;
-      if (result.engagement.comments && result.engagement.comments > 20)
-        score += 5;
-    }
-
-    // Content type bonuses (0-10 points)
-    if (result.contentType) {
-      const contentType = result.contentType.toLowerCase();
-      if (contentType.includes("article") || contentType.includes("blog"))
-        score += 8;
-      else if (
-        contentType.includes("documentation") ||
-        contentType.includes("guide")
-      )
-        score += 10;
-      else if (
-        contentType.includes("tutorial") ||
-        contentType.includes("how-to")
-      )
-        score += 9;
-      else if (
-        contentType.includes("research") ||
-        contentType.includes("paper")
-      )
-        score += 10;
-      else if (
-        contentType.includes("video") ||
-        contentType.includes("presentation")
-      )
-        score += 6;
-      else if (
-        contentType.includes("image") ||
-        contentType.includes("infographic")
-      )
-        score += 4;
-    }
-
-    // Language and accessibility (0-10 points)
-    if (result.language) {
-      // Prefer English content for broader accessibility
-      if (result.language === "en") score += 5;
-      // Still give some credit for other languages
-      else score += 2;
-    }
-
-    // Structured data presence (0-10 points)
-    if (result.schema || result.structuredData || result.jsonLd) {
-      score += 10; // Rich structured data indicates quality content
-    }
-
-    // Mobile optimization (0-5 points)
-    if (result.mobileFriendly === true) score += 5;
-    else if (result.mobileFriendly === false) score -= 3;
+    /*
+    // The following scoring sections are disabled as they depend on data
+    // not available in Presearch API responses:
+    
+    // Engagement metrics (0-15 points) - requires engagement data
+    // Content type bonuses (0-10 points) - requires contentType field  
+    // Language and accessibility (0-10 points) - requires language field
+    // Structured data presence (0-10 points) - requires schema/structuredData/jsonLd
+    // Mobile optimization (0-5 points) - requires mobileFriendly field
+    // Content freshness (0-15 points) - requires publishedDate/lastModified/timestamp
+    */
 
     // Normalize score to 0-100 range
     return Math.max(0, Math.min(100, score));

@@ -208,7 +208,7 @@ npm install
 ### Run Tests
 ```bash
 # Run real API tests (requires .env with API key)
-npm run test:real
+npm run test:search
 
 # Run mock tool tests
 npm run test:tools

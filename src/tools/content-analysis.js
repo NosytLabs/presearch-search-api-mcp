@@ -22,23 +22,24 @@ const ContentAnalysisInputSchema = {
     content: {
       type: "string",
       description: "The text content or JSON string to analyze.",
-      minLength: 1
+      minLength: 1,
     },
     analysis_type: {
       type: "string",
       enum: ["summary", "keywords", "sentiment", "topics"],
-      description: "Type of analysis to perform: summary, keywords, sentiment, or topics."
+      description:
+        "Type of analysis to perform: summary, keywords, sentiment, or topics.",
     },
     language: {
       type: "string",
-      description: "Language code for the analysis (e.g., 'en')."
+      description: "Language code for the analysis (e.g., 'en').",
     },
     max_summary_length: {
       type: "number",
-      description: "Maximum character length for the generated summary."
-    }
+      description: "Maximum character length for the generated summary.",
+    },
   },
-  required: ["content"]
+  required: ["content"],
 };
 
 /**
@@ -49,7 +50,8 @@ const ContentAnalysisInputSchema = {
  */
 export const contentAnalysisTool = {
   name: "analyze_content",
-  description: "NLP-based content analysis supporting summary, keywords, sentiment, and topics extraction.",
+  description:
+    "NLP-based content analysis supporting summary, keywords, sentiment, and topics extraction.",
   inputSchema: ContentAnalysisInputSchema,
   tags: ["analysis", "nlp"],
   execute: withErrorHandling("contentAnalysisTool", async (rawArgs) => {
@@ -57,45 +59,50 @@ export const contentAnalysisTool = {
 
     try {
       // Handle simple string content from MCP
-      if (typeof rawArgs.content === 'string') {
-         if (rawArgs.content.trim().length === 0) {
-             throw new ValidationError("Content cannot be empty");
-         }
+      if (typeof rawArgs.content === "string") {
+        if (rawArgs.content.trim().length === 0) {
+          throw new ValidationError("Content cannot be empty");
+        }
 
-         try {
-             const parsed = JSON.parse(rawArgs.content);
-             if (Array.isArray(parsed)) {
-                 rawArgs.content = parsed;
-             } else {
-                 // Treat as raw text content item
-                 rawArgs.content = [{
-                     title: "User Content",
-                     url: "user-input",
-                     content: rawArgs.content,
-                     description: rawArgs.content.substring(0, 200)
-                 }];
-             }
-         } catch {
-             // Not JSON, treat as raw text
-             rawArgs.content = [{
-                 title: "User Content",
-                 url: "user-input",
-                 content: rawArgs.content,
-                 description: rawArgs.content.substring(0, 200)
-             }];
-         }
+        try {
+          const parsed = JSON.parse(rawArgs.content);
+          if (Array.isArray(parsed)) {
+            rawArgs.content = parsed;
+          } else {
+            // Treat as raw text content item
+            rawArgs.content = [
+              {
+                title: "User Content",
+                url: "user-input",
+                content: rawArgs.content,
+                description: rawArgs.content.substring(0, 200),
+              },
+            ];
+          }
+        } catch {
+          // Not JSON, treat as raw text
+          rawArgs.content = [
+            {
+              title: "User Content",
+              url: "user-input",
+              content: rawArgs.content,
+              description: rawArgs.content.substring(0, 200),
+            },
+          ];
+        }
       }
 
       // Map user analysis_type to internal types
       let internalAnalysisType = "comprehensive";
-      if (rawArgs.analysis_type === "keywords") internalAnalysisType = "patterns";
+      if (rawArgs.analysis_type === "keywords")
+        internalAnalysisType = "patterns";
       if (rawArgs.analysis_type === "topics") internalAnalysisType = "patterns";
       // sentiment and summary default to comprehensive which includes everything
 
       const args = {
         ...rawArgs,
         analysis_type: internalAnalysisType,
-        content: rawArgs.content
+        content: rawArgs.content,
       };
 
       // Validate input content
