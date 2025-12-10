@@ -1,100 +1,64 @@
-// Consolidated imports using unified core modules
 import { apiClient } from "../core/apiClient.js";
+import { resultProcessor } from "./resultProcessor.js";
 import logger from "../core/logger.js";
-import { loadConfig, filterSearchParams } from "../core/config.js";
-import { normalizeError } from "../utils/errors.js";
-
-const config = loadConfig();
 
 export class PresearchService {
-  constructor() {
-    this.requestTimeout = config.timeout || 30000; // 30 seconds timeout for API requests
+  /**
+   * Execute a search query against the Presearch API
+   * @param {string} query - The search query
+   * @param {object} options - Search options (page, limit, etc.)
+   */
+  async search(query, options = {}) {
+    try {
+      const params = {
+        q: query,
+        page: options.page || 1,
+        limit: options.limit || 20, // Presearch default limit
+      };
+
+      // Add optional parameters if provided
+      if (options.safesearch) params.safe = options.safesearch;
+      if (options.lang) params.lang = options.lang;
+      if (options.country) params.country = options.country;
+
+      const response = await apiClient.get("/v1/search", { params });
+      
+      // Process results using the result processor (deduplication, scoring, etc.)
+      const processed = await resultProcessor.processResults(
+        response.data.results || [], 
+        query, 
+        options
+      );
+
+      return {
+        results: processed.results,
+        metadata: processed.metadata,
+        originalMeta: response.data.metadata || {} // Keep original metadata if needed
+      };
+    } catch (error) {
+      logger.error("Presearch Service Error", { error: error.message, query });
+      throw error;
+    }
   }
 
   /**
-   * Search for content using Presearch API
-   * @param {Object} params - Search parameters
-   * @param {string} params.q - Search query
-   * @param {number} params.page - Page number
-   * @param {number} params.per_page - Results per page
-   * @param {string} params.lang - Language code (e.g., en-US)
-   * @param {string} params.country - Country code (e.g., US)
-   * @param {string} params.time - Timeframe (e.g., day, week, month)
-   * @param {string} params.safe - Safe search setting ('1' or '0')
-   * @param {string} [apiKey] - Optional API key override
-   * @returns {Promise<Object>} Search results
+   * Get node status (if endpoint available or mocked)
    */
-  async search(params, apiKey) {
-    try {
-      // Input validation
-      if (!params || typeof params !== "object") {
-        throw new Error("Invalid parameters: expected object");
-      }
-      if (
-        !params.q ||
-        typeof params.q !== "string" ||
-        params.q.trim().length === 0
-      ) {
-        throw new Error("Invalid query: expected non-empty string");
-      }
-      if (params.q.length > 1000) {
-        throw new Error("Query too long: maximum 1000 characters");
-      }
-
-      // Filter and validate parameters before making API call (using consolidated config)
-      const reqParams = filterSearchParams(params);
-
-      // IP defaulting handled in filterSearchParams
-
-      logger.info("Performing Presearch search", {
-        query: reqParams.q,
-        page: reqParams.page,
-        lang: reqParams.lang,
-        safe: reqParams.safe,
-      });
-
-      const options = { timeout: this.requestTimeout };
-      if (apiKey) {
-        options.headers = { Authorization: `Bearer ${apiKey}` };
-      }
-
-      const data = await apiClient.get("/v1/search", reqParams, options);
-
-      // Normalize results
-      const results =
-        data.results ||
-        data.standardResults ||
-        data.data?.results ||
-        data.data?.standardResults ||
-        [];
-      const infoSection = data.infoSection || data.data?.infoSection;
-      const specialSections =
-        data.specialSections || data.data?.specialSections;
-
-      // Enhance data object with normalized results
-      const enhancedData = {
-        ...data,
-        results, // Ensure 'results' property always exists and contains the list
-        ...(infoSection ? { infoSection } : {}),
-        ...(specialSections ? { specialSections } : {}),
-      };
-
-      logger.info("Presearch API response received", {
-        hasResults: results.length > 0,
-        resultsLength: results.length,
-      });
-
-      return enhancedData;
-    } catch (error) {
-      const normalizedError = normalizeError(error);
-      logger.error("Presearch API search failed", {
-        error: normalizedError.message,
-        code: normalizedError.code,
-        query: params.q,
-      });
-      throw normalizedError;
-    }
+  async getNodeStatus(nodeKey) {
+    // Note: The public search API doesn't always expose node stats.
+    // This is a placeholder or requires a specific endpoint.
+    // For now, we'll return a structure that assumes a hypothetical endpoint
+    // or return a "Not Implemented" if strictly using the search API.
+    
+    // If you have a node status endpoint:
+    // return apiClient.get(`/nodes/${nodeKey}/status`);
+    
+    return {
+      status: "online", // Mock for now or implement real call
+      node_key: nodeKey ? `${nodeKey.substring(0, 4)}...` : "unknown",
+      message: "Node status monitoring requires specific API access."
+    };
   }
 }
 
-export default new PresearchService();
+export const presearchService = new PresearchService();
