@@ -75,7 +75,7 @@ const main = async () => {
         name: "presearch-mcp-server",
         description:
           "Privacy-focused MCP server for web search and content export with intelligent caching, rate limiting, and comprehensive Presearch API integration.",
-        version: "2.1.4",
+        version: "2.1.5",
       });
 
       const tools = [

@@ -1,12 +1,13 @@
-version: "3.9"
+version: '3.8'
+
 services:
   presearch-mcp:
     build: .
-    image: presearch-mcp:latest
-    ports:
-      - "3000:3000"
     environment:
       - PRESEARCH_API_KEY=${PRESEARCH_API_KEY}
-      - PRESEARCH_BASE_URL=${PRESEARCH_BASE_URL:-https://na-us-1.presearch.com}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      - PORT=3000
+      - LOG_LEVEL=info
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
