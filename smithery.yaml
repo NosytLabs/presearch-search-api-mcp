@@ -1,37 +1,160 @@
-startCommand:
-  type: stdio
-  command: node
-  args:
-    - src/index.js
+# Smithery.ai Configuration
+name: "presearch-mcp-server"
+title: "Presearch MCP Server"
+description: "The ultimate Presearch API MCP server for AI agents with decentralized web search, autonomous deep research, intelligent content scraping, and detailed analysis. Built for privacy and performance."
+author: "Presearch MCP Team"
+version: "2.2.0"
+homepage: "https://github.com/NosytLabs/presearch-search-api-mcp"
+repository: "https://github.com/NosytLabs/presearch-search-api-mcp"
+documentation: "https://github.com/NosytLabs/presearch-search-api-mcp#readme"
 
+# Runtime configuration
+runtime: "container"
 build:
-  type: dockerfile
-  dockerfile: Dockerfile
-  context: .
+  dockerfile: "Dockerfile"
 
+# MCP protocol version
+mcp_version: "1.0.0"
+
+# Required and optional configuration
 config:
-  apiKey:
-    type: string
-    description: Presearch API Key
-    required: true
-    environmentVariable: PRESEARCH_API_KEY
-  rateLimit:
-    type: object
-    description: Rate limiting configuration
-    properties:
-      maxRequests:
-        type: number
-        default: 60
-      windowMs:
-        type: number
-        default: 60000
-  cache:
-    type: object
-    description: Caching configuration
-    properties:
-      enabled:
-        type: boolean
-        default: true
-      ttl:
-        type: number
-        default: 300
+  required: ["PRESEARCH_API_KEY"]
+  properties:
+    PRESEARCH_API_KEY:
+      type: "string"
+      title: "Presearch API Key"
+      description: "Your Presearch API Key for authentication. Get one at https://presearch.com/"
+    PRESEARCH_TIMEOUT:
+      type: "number"
+      title: "API Timeout"
+      description: "Timeout for Presearch API requests in milliseconds"
+      default: 10000
+      minimum: 5000
+      maximum: 30000
+    SEARCH_MAX_RESULTS:
+      type: "number"
+      title: "Max Search Results"
+      description: "Maximum number of search results to return"
+      default: 50
+      minimum: 10
+      maximum: 100
+    PRESEARCH_SAFE_SEARCH:
+      type: "string"
+      title: "Safe Search Level"
+      description: "Safe search filtering level"
+      default: "moderate"
+      enum: ["off", "moderate", "strict"]
+    PRESEARCH_DEFAULT_LANGUAGE:
+      type: "string"
+      title: "Default Language"
+      description: "Default language for search results"
+      default: "en-US"
+    CACHE_ENABLED:
+      type: "boolean"
+      title: "Cache Enabled"
+      description: "Enable response caching for better performance"
+      default: true
+    CACHE_TTL:
+      type: "number"
+      title: "Cache TTL"
+      description: "Cache time-to-live in seconds"
+      default: 300
+      minimum: 60
+      maximum: 3600
+    CACHE_MAX_KEYS:
+      type: "number"
+      title: "Cache Max Keys"
+      description: "Maximum number of cached entries"
+      default: 1000
+      minimum: 100
+      maximum: 10000
+    PRESEARCH_RETRIES:
+      type: "number"
+      title: "API Retries"
+      description: "Number of retry attempts for failed API requests."
+      default: 3
+      minimum: 0
+      maximum: 5
+    CONNECTION_POOL_MAX_SOCKETS:
+      type: "number"
+      title: "Connection Pool Max Sockets"
+      description: "Maximum number of concurrent connections in the HTTP connection pool."
+      default: 10
+      minimum: 1
+      maximum: 50
+    CONNECTION_POOL_KEEP_ALIVE:
+      type: "boolean"
+      title: "Connection Pool Keep Alive"
+      description: "Enable persistent connections for better performance."
+      default: true
+    SCRAPE_MAX_RETRIES:
+      type: "number"
+      title: "Scrape Max Retries"
+      description: "Maximum retry attempts for web scraping failures."
+      default: 3
+      minimum: 1
+      maximum: 10
+    RATE_LIMIT_MAX_REQUESTS:
+      type: "number"
+      title: "Rate Limit Max Requests"
+      description: "Maximum requests per rate limit window"
+      default: 100
+      minimum: 50
+      maximum: 1000
+    RATE_LIMIT_WINDOW_MS:
+      type: "number"
+      title: "Rate Limit Window"
+      description: "Rate limit time window in milliseconds"
+      default: 60000
+      minimum: 10000
+      maximum: 300000
+    LOG_LEVEL:
+      type: "string"
+      title: "Log Level"
+      description: "Logging level"
+      default: "info"
+      enum: ["error", "warn", "info", "debug"]
+    LOG_PRETTY:
+      type: "boolean"
+      title: "Pretty Logging"
+      description: "Enable pretty formatted logging output"
+      default: false
+
+  exampleConfig:
+    PRESEARCH_API_KEY: "your_presearch_api_key_here"
+    PRESEARCH_TIMEOUT: 10000
+    SEARCH_MAX_RESULTS: 50
+    PRESEARCH_SAFE_SEARCH: "moderate"
+    PRESEARCH_DEFAULT_LANGUAGE: "en-US"
+    CACHE_ENABLED: true
+    CACHE_TTL: 300
+    CACHE_MAX_KEYS: 1000
+    PRESEARCH_RETRIES: 3
+    CONNECTION_POOL_MAX_SOCKETS: 10
+    CONNECTION_POOL_KEEP_ALIVE: true
+    SCRAPE_MAX_RETRIES: 3
+    RATE_LIMIT_MAX_REQUESTS: 100
+    RATE_LIMIT_WINDOW_MS: 60000
+    LOG_LEVEL: "info"
+    LOG_PRETTY: false
+
+# Tool categories
+categories:
+  - "search"
+  - "research"
+  - "scraping"
+  - "export"
+  - "utility"
+
+# Tags for discovery
+tags:
+  - "presearch"
+  - "mcp"
+  - "search"
+  - "privacy"
+  - "decentralized"
+  - "ai-tools"
+  - "web-scraping"
+  - "research"
+  - "export"
+  - "optimization"
