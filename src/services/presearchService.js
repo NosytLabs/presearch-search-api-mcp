@@ -73,3 +73,6 @@ export class PresearchService {
 }
 
 export const presearchService = new PresearchService();
+
+// Export the cache instance from resultProcessor for direct access by tools
+export const cache = resultProcessor.cache;
