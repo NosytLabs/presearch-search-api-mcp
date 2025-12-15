@@ -53,23 +53,23 @@
   "homepage": "https://github.com/NosytLabs/presearch-search-api-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.24.3",
-    "axios": "^1.6.2",
+    "axios": "^1.13.2",
     "cheerio": "^1.0.0",
     "cross-env": "^10.1.0",
     "dotenv": "^16.6.1",
     "exponential-backoff": "^3.1.1",
-    "express": "^5.1.0",
+    "express": "^5.2.1",
     "node-cache": "^5.1.2",
     "pino": "^10.1.0",
     "pino-pretty": "^10.2.3",
-    "zod": "^3.23.8",
+    "zod": "^3.25.76",
     "zod-to-json-schema": "^3.25.0"
   },
   "devDependencies": {
     "@smithery/cli": "^1.4.6",
-    "eslint": "^9.39.1",
+    "eslint": "^9.39.2",
     "globals": "^16.5.0",
-    "prettier": "^3.1.0"
+    "prettier": "^3.7.4"
   },
   "peerDependencies": {
     "node": ">=18.0.0"

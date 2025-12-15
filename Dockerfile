@@ -1,70 +1,29 @@
 FROM node:20-slim
 
-# Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json ./
-
-# Install system dependencies required for Puppeteer/Chromium
+# Install chrome dependencies for puppeteer
 RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    fonts-liberation \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libatk1.0-0 \
-    libc6 \
-    libcairo2 \
-    libcups2 \
-    libdbus-1-3 \
-    libexpat1 \
-    libfontconfig1 \
-    libgbm1 \
-    libgcc1 \
-    libglib2.0-0 \
-    libgtk-3-0 \
-    libnspr4 \
-    libnss3 \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libstdc++6 \
-    libx11-6 \
-    libx11-xcb1 \
-    libxcb1 \
-    libxcomposite1 \
-    libxcursor1 \
-    libxdamage1 \
-    libxext6 \
-    libxfixes3 \
-    libxi6 \
-    libxrandr2 \
-    libxrender1 \
+    chromium \
+    fonts-ipafont-gothic \
+    fonts-wqy-zenhei \
+    fonts-thai-tlwg \
+    fonts-kacst \
+    fonts-freefont-ttf \
     libxss1 \
-    libxtst6 \
-    lsb-release \
-    wget \
-    xdg-utils \
-    libatomic1 \
+    --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN npm ci --omit=dev
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Copy source code
-COPY src ./src
-COPY .env.example ./
+COPY package*.json ./
 
-# Create logs directory and ensure permissions
-RUN mkdir -p logs && chown -R node:node /app
+RUN npm ci --only=production
 
-# Set environment
-ENV NODE_ENV=production
+COPY . .
 
-# Expose port
-EXPOSE 3002
+# Expose port for HTTP transport if needed
+EXPOSE 3000
 
-# Run as non-root user
-USER node
-
-# Start the application
 CMD ["node", "src/index.js"]

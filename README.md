@@ -40,6 +40,65 @@ Unlike traditional search APIs that track user behavior, Presearch offers a dece
 
 ---
 
+## 🔥 Real-World Examples
+
+See what's possible when you give your AI access to Presearch.
+
+### 1. 🧠 Deep Research Mode
+**User Prompt:** *"Research the effects of climate change on coastal real estate markets."*
+
+**Tool Used:** `presearch_deep_research`
+```json
+{
+  "query": "climate change effects on coastal real estate",
+  "breadth": 5,
+  "depth": 2,
+  "research_focus": "market"
+}
+```
+
+**Result:**
+The agent autonomously performs a multi-step investigation:
+1.  **Initial Search:** Queries Presearch for broad market trends.
+2.  **Analysis:** Identifies key sub-topics (insurance rates, flood risk zones, property devaluation).
+3.  **Deep Dive:** Executes targeted sub-searches for each topic.
+4.  **Synthesis:** Returns a comprehensive report citing 14+ distinct sources, including academic papers and market reports, with no tracking of the search intent.
+
+### 2. ⚡ Search & Scrape (Fast Context)
+**User Prompt:** *"Get me the latest specs for the iPhone 16 Pro and summarize the camera upgrades."*
+
+**Tool Used:** `presearch_search_and_scrape`
+```json
+{
+  "query": "iPhone 16 Pro camera specs official",
+  "limit": 3
+}
+```
+
+**Result:**
+1.  **Search:** Finds the top 3 most relevant pages (Apple Official, TechCrunch, The Verge).
+2.  **Scrape:** Immediately fetches the full HTML content of all 3 pages in parallel using a headless browser.
+3.  **Output:** Returns 35kb of clean text content.
+4.  **AI Action:** The AI reads the raw specs and generates a perfect summary of the 48MP Ultra Wide camera and 5x Telephoto lens features.
+
+### 3. 🛡️ Privacy-First Market Analysis
+**User Prompt:** *"Find competitors to our new SaaS product 'StealthMode' without alerting them via analytics."*
+
+**Tool Used:** `presearch_ai_search`
+```json
+{
+  "query": "StealthMode SaaS competitors",
+  "safesearch": "strict",
+  "freshness": "month"
+}
+```
+
+**Result:**
+*   **Anonymity:** The searches are routed through Presearch's decentralized node network. The competitor websites see traffic from generic Presearch nodes, not your corporate IP address.
+*   **Outcome:** A list of 10 direct competitors launched in the last month, gathered without leaving a digital footprint.
+
+---
+
 ## 🛡️ What is Presearch?
 
 Presearch is a **decentralized search engine** built on blockchain technology that rewards community members with Presearch tokens (PRE) for their usage, contribution to, and promotion of the platform.

@@ -1,157 +1,114 @@
-import { apiClient } from "../core/apiClient.js";
-import logger from "../core/logger.js";
-import presearchService from "../services/presearchService.js";
-import { resultProcessor } from "../services/resultProcessor.js";
-import contentAnalysisService from "../services/contentAnalysisService.js";
+import { z } from "zod";
 import { withErrorHandling } from "../utils/errors.js";
+import { logToolUsage } from "../utils/logging.js";
+import { getConfig } from "../core/config.js";
 
-/**
- * AI-Optimized Search Tool for Presearch API
- * Designed specifically for Claude AI and other LLM clients
- * Provides intelligent search with comprehensive metadata and analysis
- */
+const SearchInputSchema = z.object({
+  query: z
+    .string()
+    .min(1, "Search query cannot be empty")
+    .describe(
+      "The search query to execute. Supports advanced operators like 'site:', 'quotes', and minus sign exclusion.",
+    ),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(10)
+    .describe("Maximum number of results to return (1-100)"),
+  include_analysis: z
+    .boolean()
+    .default(false)
+    .describe("Include AI-powered analysis of search results"),
+  safe_search: z
+    .enum(["off", "moderate", "strict"])
+    .default("moderate")
+    .describe("Safe search filtering level"),
+  language: z
+    .string()
+    .default("en-US")
+    .describe("Language for search results"),
+  time_range: z
+    .enum(["any", "day", "week", "month", "year"])
+    .optional()
+    .describe("Time range filter for results"),
+  region: z
+    .string()
+    .optional()
+    .describe("Geographic region for search results"),
+});
 
-// JSON Schema for MCP compatibility
-const SearchInputSchema = {
-  type: "object",
-  properties: {
-    query: {
-      type: "string",
-      description:
-        "The search query to execute. Supports advanced operators like 'site:', 'quotes', and minus sign exclusion.",
-    },
-    limit: {
-      type: "number",
-      description:
-        "The maximum number of search results to return. Defaults to 10, max 100.",
-    },
-    language: {
-      type: "string",
-      description:
-        "The language code for the search results (e.g., 'en-US', 'es'). Defaults to 'en-US'.",
-    },
-    safe_search: {
-      type: "boolean",
-      description: "Enable or disable safe search filtering. Defaults to true.",
-    },
-    include_analysis: {
-      type: "boolean",
-      description: "Include AI analysis of the results.",
-    },
-  },
-  required: ["query"],
-};
-
-const search = {
+export const searchTool = {
   name: "presearch_ai_search",
   description:
-    "Privacy-focused search engine returning ranked results with relevance scores. Supports quotes, minus sign exclusion, and site: operators.",
+    "Perform AI-optimized web search using Presearch decentralized search engine. Returns comprehensive results with titles, URLs, snippets, and optional AI analysis. Supports advanced search operators and filtering.",
   inputSchema: SearchInputSchema,
-  tags: ["search", "web"],
-  execute: withErrorHandling("presearch_ai_search", async (args, context) => {
-    const { query, limit, language, safe_search } = args;
-
-    if (!query || typeof query !== "string" || query.trim().length === 0) {
-      throw new Error("Invalid query: expected non-empty string");
-    }
-
-    // Map boolean safe_search to API string values
-    const safe = safe_search ? "strict" : "off";
-
-    const searchParams = {
-      q: query,
-      count: limit ? Math.min(limit, 100) : 10,
-      lang: language,
-      safe: safe,
-    };
-
-    const response = await presearchService.search(
-      searchParams,
-      context?.apiKey,
-    );
-
-    const results = response.results || [];
-
-    // Use ResultProcessor for normalization, filtering, deduplication and scoring
-    const processingResult = await resultProcessor.processResults(
-      results,
+  execute: withErrorHandling(
+    async ({
       query,
-      {
-        count: limit,
-      },
-    );
+      limit,
+      include_analysis,
+      safe_search,
+      language,
+      time_range,
+      region,
+    }) => {
+      const config = getConfig();
+      const startTime = Date.now();
 
-    const parsedResults = processingResult.results;
-    const processorMetadata = processingResult.metadata;
+      logToolUsage("presearch_ai_search", {
+        query,
+        limit,
+        include_analysis,
+        safe_search,
+        language,
+        time_range,
+        region,
+      });
 
-    // Extract metadata from response
-    const {
-      // eslint-disable-next-line no-unused-vars
-      results: _results,
-      // eslint-disable-next-line no-unused-vars
-      standardResults: _standardResults,
-      infoSection = {},
-      specialSections = {},
-      links = {},
-      meta = {},
-      ...rest
-    } = response;
+      // Build search parameters
+      const searchParams = {
+        q: query,
+        max_results: limit,
+        safe_search: safe_search || config.presearch.safe_search,
+        language: language || config.presearch.default_language,
+        ...(time_range && { time_range }),
+        ...(region && { region }),
+      };
 
-    // Perform AI Analysis if requested
-    let analysis = {};
-    if (args.include_analysis && parsedResults.length > 0) {
       try {
-        const patternAnalysis = contentAnalysisService.analyzePatterns(
-          parsedResults,
-          {
-            include_temporal_analysis: true,
+        const searchResults = await config.presearchClient.search(searchParams);
+
+        // Add AI analysis if requested
+        let analysis = null;
+        if (include_analysis && searchResults.results?.length > 0) {
+          analysis = await config.aiService.analyzeSearchResults(
+            query,
+            searchResults.results,
+          );
+        }
+
+        const response = {
+          query,
+          total_results: searchResults.total_results || searchResults.results?.length || 0,
+          results: searchResults.results || [],
+          search_metadata: {
+            engine: "presearch",
+            language: searchParams.language,
+            safe_search: searchParams.safe_search,
+            timestamp: new Date().toISOString(),
+            response_time_ms: Date.now() - startTime,
           },
-        );
-
-        analysis = {
-          ...patternAnalysis,
-          recommendations: contentAnalysisService.generateRecommendations({
-            patterns_analysis: patternAnalysis,
-          }),
+          ...(analysis && { analysis }),
         };
-      } catch (error) {
-        logger.warn("Analysis generation failed", { error: error.message });
-        analysis = { error: "Analysis failed to generate" };
-      }
-    }
 
-    return {
-      success: true,
-      results: parsedResults,
-      metadata: {
-        ...processorMetadata,
-        ...rest,
-        analysis,
-        infoSection,
-        specialSections,
-        links,
-        meta,
-        highlights: {
-          topStories: Array.isArray(specialSections?.topStories)
-            ? specialSections.topStories.map((s) => ({
-                title: s.title,
-                link: s.link,
-                source: s.source,
-              }))
-            : [],
-          videos: Array.isArray(specialSections?.videos)
-            ? specialSections.videos.map((v) => ({
-                title: v.title,
-                link: v.link,
-                source: v.source,
-              }))
-            : [],
-        },
-        rateLimit: apiClient.getRateLimitStats(),
-      },
-    };
-  }),
+        return response;
+      } catch (error) {
+        throw new Error(`Search failed: ${error.message}`);
+      }
+    },
+  ),
 };
 
-export const searchTool = search;
-export default search;
+export default searchTool;

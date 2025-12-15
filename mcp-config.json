@@ -1,75 +1,25 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "/.well-known/mcp-config",
-  "title": "MCP Session Configuration",
-  "description": "Schema for the /mcp endpoint configuration",
-  "x-query-style": "dot+bracket",
-  "type": "object",
-  "required": ["PRESEARCH_API_KEY"],
-  "properties": {
-    "PRESEARCH_API_KEY": {
-      "type": "string",
-      "description": "Your Presearch API Key for authentication. Get one at https://presearch.com/"
+  "mcp": {
+    "version": "1.0.0",
+    "server": {
+      "name": "presearch-mcp-server",
+      "version": "2.1.5",
+      "description": "Presearch decentralized search integration for AI agents"
     },
-    "PRESEARCH_TIMEOUT": {
-      "type": "number",
-      "default": 10000,
-      "description": "Maximum time in milliseconds to wait for API requests."
-    },
-    "SEARCH_MAX_RESULTS": {
-      "type": "number",
-      "default": 50,
-      "description": "Maximum number of search results to return per query."
-    },
-    "PRESEARCH_SAFE_SEARCH": {
-      "type": "string",
-      "default": "moderate",
-      "description": "Filter adult content from search results."
-    },
-    "PRESEARCH_DEFAULT_LANGUAGE": {
-      "type": "string",
-      "default": "en-US",
-      "description": "Default language code for searches (e.g., en-US)."
-    },
-    "CACHE_ENABLED": {
-      "type": "boolean",
-      "default": true,
-      "description": "Enable in-memory caching of search results to improve performance."
-    },
-    "CACHE_TTL": {
-      "type": "number",
-      "default": 300,
-      "description": "Time-To-Live for cached entries in seconds."
-    },
-    "CACHE_MAX_KEYS": {
-      "type": "number",
-      "default": 1000,
-      "description": "Maximum number of entries to store in the cache."
-    },
-    "PRESEARCH_RETRIES": {
-      "type": "number",
-      "default": 3,
-      "description": "Number of retry attempts for failed API requests."
-    },
-    "RATE_LIMIT_MAX_REQUESTS": {
-      "type": "number",
-      "default": 100,
-      "description": "Maximum number of requests allowed per window."
-    },
-    "RATE_LIMIT_WINDOW_MS": {
-      "type": "number",
-      "default": 60000,
-      "description": "Time window for rate limiting in milliseconds."
-    },
-    "LOG_LEVEL": {
-      "type": "string",
-      "default": "info",
-      "description": "Verbosity of logging output."
-    },
-    "LOG_PRETTY": {
-      "type": "boolean",
-      "default": false,
-      "description": "Format logs for human readability (not recommended for production)."
+    "capabilities": {
+      "tools": {
+        "search": true,
+        "content_analysis": true,
+        "deep_research": true
+      },
+      "resources": {
+        "config": true,
+        "metrics": true
+      },
+      "prompts": {
+        "research": true,
+        "news": true
+      }
     }
   }
 }

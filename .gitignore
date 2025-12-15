@@ -1,22 +1,7 @@
-# Node.js
-node_modules/
-npm-debug.log
-yarn-error.log
+node_modules
 .env
 .DS_Store
-
-# MCP
-mcp-servers.json
-credentials.json
-keystore/
-
-# Exports
-exports/
-
-# Logs
-logs/
-*.log
-
-# OS
-.DS_Store
-Thumbs.db
+logs
+coverage
+dist
+.vscode

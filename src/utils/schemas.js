@@ -1,68 +1,67 @@
 import { z } from "zod";
 
 /**
- * Robust Boolean Schema
- * Handles booleans, strings ("true", "false"), and numbers (1, 0)
+ * Common Schemas for Tool Inputs
  */
-export const robustBoolean = () =>
-  z.union([z.boolean(), z.string(), z.number()]).transform((val) => {
-    if (typeof val === "boolean") return val;
-    if (typeof val === "number") return val !== 0;
-    if (typeof val === "string") {
-      const lower = val.toLowerCase().trim();
-      return lower === "true" || lower === "1" || lower === "yes";
-    }
-    return false;
-  });
 
-/**
- * Robust Number Schema
- * Handles numbers and numeric strings using Zod coercion
- */
-export const robustNumber = () => z.coerce.number();
+// Basic search parameters
+export const SearchParamsSchema = z.object({
+  query: z.string().describe("The search query"),
+  count: z
+    .union([z.number(), z.string()])
+    .transform((val) => Number(val) || 20)
+    .optional()
+    .describe("Number of results to return (default: 20, max: 100)"),
+  page: z
+    .union([z.number(), z.string()])
+    .transform((val) => Number(val) || 1)
+    .optional()
+    .describe("Page number (default: 1)"),
+  safesearch: z
+    .enum(["strict", "moderate", "off"])
+    .optional()
+    .describe("Safe search setting"),
+});
 
-/**
- * Robust Int Schema
- */
-export const robustInt = () => z.coerce.number().int();
+// Deep research parameters
+export const DeepResearchSchema = z.object({
+  query: z.string().describe("Research topic or question"),
+  breadth: z
+    .union([z.number(), z.string()])
+    .transform((val) => Number(val) || 4)
+    .optional()
+    .describe("Number of parallel search paths (2-10)"),
+  depth: z
+    .union([z.number(), z.string()])
+    .transform((val) => Number(val) || 2)
+    .optional()
+    .describe("Depth of recursive research (1-5)"),
+  research_focus: z
+    .enum(["general", "academic", "market", "technical", "news"])
+    .optional()
+    .describe("Focus area for research"),
+  location: z.string().optional().describe("Geographic context (e.g., 'US')"),
+});
 
-/**
- * Robust Array Schema
- * Handles arrays and comma-separated strings or JSON strings
- * @param {z.ZodType} itemSchema
- * @param {Object} options - { min: number, max: number }
- */
-export const robustArray = (itemSchema = z.string(), options = {}) => {
-  let schema = z.union([z.array(itemSchema), z.string()]).transform((val) => {
-    if (Array.isArray(val)) return val;
-    if (typeof val === "string") {
-      const trimmed = val.trim();
-      if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          if (Array.isArray(parsed)) return parsed;
-        } catch {
-          // Fall through to split
-        }
-      }
-      return trimmed
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-    }
-    return [];
-  });
+// Scrape parameters
+export const ScrapeSchema = z.object({
+  urls: z
+    .array(z.string())
+    .describe("List of URLs to scrape")
+    .or(z.string().transform((val) => [val])),
+  include_text: z
+    .boolean()
+    .optional()
+    .describe("Include full text content (default: true)"),
+  timeout_ms: z.number().optional().describe("Timeout in milliseconds"),
+});
 
-  if (options.min !== undefined) {
-    schema = schema.refine((arr) => arr.length >= options.min, {
-      message: `Array must contain at least ${options.min} element(s)`,
-    });
-  }
-  if (options.max !== undefined) {
-    schema = schema.refine((arr) => arr.length <= options.max, {
-      message: `Array must contain at most ${options.max} element(s)`,
-    });
-  }
-
-  return schema;
-};
+// Analysis parameters
+export const AnalysisSchema = z.object({
+  content: z.string().describe("Text content to analyze"),
+  include_quality_assessment: z
+    .boolean()
+    .optional()
+    .describe("Include quality metrics"),
+  custom_keywords: z.array(z.string()).optional().describe("Keywords to track"),
+});

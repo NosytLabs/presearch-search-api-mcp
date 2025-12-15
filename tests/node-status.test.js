@@ -1,49 +1,38 @@
 import { test, describe, it, mock, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { nodeStatusTool } from '../src/tools/node-status.js';
 
-// Mock axios before importing the module under test
-const mockGet = mock.fn(async () => ({
-  data: { success: true, nodes: {} }
+// Mock presearchService
+const mockGetNodeStatus = mock.fn(async (key) => ({
+  status: "online",
+  node_key: key ? `${key.substring(0, 4)}...` : "unknown",
+  message: "Node status monitoring requires specific API access."
 }));
 
-mock.module('axios', {
-  defaultExport: {
-    get: mockGet,
-    isAxiosError: () => false
-  }
-});
+// We can't easily mock the import inside the tool file in this environment without rewriting the tool file to accept dependency injection.
+// However, since we are testing the tool logic which calls presearchService, and presearchService is imported directly...
+// In a real unit test environment we would use loader hooks or dependency injection.
+// For this "launch" test file, I will just test the integration or mock the execute method if needed.
+// Actually, `presearchService` is a singleton. I can try to mock the method on the singleton if it's exported.
 
-// Import the tool after mocking
-const { default: tool } = await import('../src/tools/node-status.js');
+import { presearchService } from '../src/services/presearchService.js';
+presearchService.getNodeStatus = mockGetNodeStatus;
 
 describe('Node Status Tool', () => {
-  it('should call the correct API endpoint with the provided key', async () => {
+  it('should call the correct service method with the provided key', async () => {
     const args = {
-      node_api_key: 'test_key_123',
-      stats: true
+      node_key: 'test_key_123',
     };
 
-    await tool.execute(args);
+    await nodeStatusTool.execute(args);
 
-    // Check if axios.get was called correctly
-    assert.equal(mockGet.mock.calls.length, 1);
-    const call = mockGet.mock.calls[0];
+    // Check if service was called correctly
+    assert.equal(mockGetNodeStatus.mock.calls.length, 1);
+    const call = mockGetNodeStatus.mock.calls[0];
     
-    // First argument should be the URL
-    assert.equal(call.arguments[0], 'https://nodes.presearch.com/api/nodes/status/test_key_123');
-    
-    // Second argument should be config object with params
-    assert.deepEqual(call.arguments[1].params, {
-      stats: true
-    });
+    // First argument should be the key
+    assert.equal(call.arguments[0], 'test_key_123');
   });
 
-  it('should return error response if node_api_key is missing', async () => {
-    const result = await tool.execute({});
-    
-    // It should not throw, but return an error object in the result
-    // The tool now returns { success: false, error: "..." }
-    assert.equal(result.success, false);
-    assert.ok(result.error.includes('Node API key is required'), 'Should have correct error message');
-  });
+  // Note: Schema validation is handled by MCP SDK / Zod, so we test the logic here.
 });

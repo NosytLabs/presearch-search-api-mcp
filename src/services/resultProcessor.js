@@ -1005,39 +1005,6 @@ export class ResultProcessor {
       }
     }
 
-    // Note: The following sections are commented out as they depend on data
-    // not available in Presearch API responses. They are preserved for future
-    // enhancement if additional data sources are integrated.
-
-    /*
-    // Content freshness (0-15 points) - requires publishedDate, lastModified, or timestamp
-    if (result.publishedDate || result.lastModified || result.timestamp) {
-      const dateStr = result.publishedDate || result.lastModified || result.timestamp;
-      try {
-        const contentDate = new Date(dateStr);
-        const now = new Date();
-        const daysDiff = (now - contentDate) / (1000 * 60 * 60 * 24);
-        if (daysDiff < 7) score += 15;
-        else if (daysDiff < 30) score += 10;
-        else if (daysDiff < 90) score += 5;
-        else if (daysDiff < 365) score += 2;
-      } catch {
-        // Invalid date format
-      }
-    }
-
-    /*
-    // The following scoring sections are disabled as they depend on data
-    // not available in Presearch API responses:
-    
-    // Engagement metrics (0-15 points) - requires engagement data
-    // Content type bonuses (0-10 points) - requires contentType field  
-    // Language and accessibility (0-10 points) - requires language field
-    // Structured data presence (0-10 points) - requires schema/structuredData/jsonLd
-    // Mobile optimization (0-5 points) - requires mobileFriendly field
-    // Content freshness (0-15 points) - requires publishedDate/lastModified/timestamp
-    */
-
     // Normalize score to 0-100 range
     return Math.max(0, Math.min(100, score));
   }
