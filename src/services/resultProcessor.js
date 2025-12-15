@@ -713,7 +713,20 @@ export class ResultProcessor {
       }
 
       // 1. Normalize results
-      let processedResults = results.map((result, index) =>
+      // Presearch API v1 returns 'standardResults' (or 'results' in some contexts).
+      // We check for both.
+      let rawResults = [];
+      if (Array.isArray(results)) {
+        rawResults = results;
+      } else if (results && typeof results === 'object') {
+        if (Array.isArray(results.standardResults)) {
+          rawResults = results.standardResults;
+        } else if (Array.isArray(results.results)) {
+          rawResults = results.results;
+        }
+      }
+      
+      let processedResults = rawResults.map((result, index) =>
         this.normalizeResult(result, index),
       );
 

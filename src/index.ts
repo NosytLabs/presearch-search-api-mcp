@@ -55,5 +55,6 @@ export default async function createServer({ config }: { config: z.infer<typeof 
   };
 
   // Create and return the MCP server
-  return await createMcpServer(internalConfig);
+  const server = await createMcpServer(internalConfig);
+  return server.server;
 }

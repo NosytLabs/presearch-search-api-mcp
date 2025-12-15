@@ -1,20 +1,23 @@
-import { z } from "zod";
-import { presearchService } from "../services/presearchService.js";
-import { resultProcessor } from "../services/resultProcessor.js";
+import logger from "../core/logger.js";
+import { cache } from "../services/presearchService.js";
+
+const CacheStatsSchema = {
+  type: "object",
+  properties: {},
+};
 
 export const cacheStatsTool = {
   name: "cache_stats",
   description: "Get statistics about the internal result cache",
-  inputSchema: {
-    type: "object",
-    properties: {},
-  },
+  inputSchema: CacheStatsSchema,
   execute: async () => {
+    const stats = cache.getStats();
+    logger.debug("Cache stats requested", stats);
     return {
       content: [
         {
           type: "text",
-          text: JSON.stringify(resultProcessor.cache.getMetrics(), null, 2),
+          text: JSON.stringify(stats, null, 2),
         },
       ],
     };

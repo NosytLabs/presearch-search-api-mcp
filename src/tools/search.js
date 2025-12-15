@@ -2,6 +2,8 @@ import { z } from "zod";
 import { withErrorHandling } from "../utils/errors.js";
 import { logToolUsage } from "../utils/logging.js";
 import { getConfig } from "../core/config.js";
+import { presearchService } from "../services/presearchService.js";
+import { contentAnalyzer } from "../services/contentAnalysisService.js";
 
 const SearchInputSchema = z.object({
   query: z
@@ -71,19 +73,26 @@ export const searchTool = {
       const searchParams = {
         q: query,
         max_results: limit,
-        safe_search: safe_search || config.presearch.safe_search,
-        language: language || config.presearch.default_language,
+        safe_search: safe_search || config.search?.defaultSafeSearch || "moderate",
+        language: language || config.search?.defaultLanguage || "en-US",
         ...(time_range && { time_range }),
         ...(region && { region }),
       };
 
       try {
-        const searchResults = await config.presearchClient.search(searchParams);
+        // Use presearchService directly instead of config.presearchClient
+        // The search method signature is search(query, options)
+        const searchResults = await presearchService.search(query, {
+           limit: limit,
+           safesearch: searchParams.safe_search,
+           lang: searchParams.language,
+           country: region // map region to country if applicable
+        });
 
         // Add AI analysis if requested
         let analysis = null;
         if (include_analysis && searchResults.results?.length > 0) {
-          analysis = await config.aiService.analyzeSearchResults(
+          analysis = await contentAnalyzer.analyzeSearchResults(
             query,
             searchResults.results,
           );

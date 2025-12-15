@@ -1,7 +1,6 @@
 import axios from "axios";
 import { loadConfig } from "./config.js";
 import logger from "./logger.js";
-import { ErrorCategories } from "../services/resultProcessor.js";
 
 /**
  * Enhanced API Client with monitoring, retries, and circuit breaking
@@ -66,6 +65,17 @@ class ApiClient {
               url: error.config?.url,
             },
           );
+
+          // Enhanced handling for 402 Payment Required
+          if (error.response.status === 402) {
+             const paymentError = new Error(
+               "PRESEARCH API PAYMENT REQUIRED: Your account has insufficient credits. " +
+               "Please visit https://presearch.com/account/tokens to top up your account or check your plan."
+             );
+             paymentError.name = "PaymentRequiredError";
+             paymentError.status = 402;
+             return Promise.reject(paymentError);
+          }
         } else {
           logger.error("Network Error", { error: error.message });
         }

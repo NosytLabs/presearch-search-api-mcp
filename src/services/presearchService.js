@@ -19,13 +19,24 @@ export class PresearchService {
       // Add optional parameters if provided
       if (options.safesearch) params.safe = options.safesearch;
       if (options.lang) params.lang = options.lang;
-      if (options.country) params.country = options.country;
+      
+      // Handle location/IP requirements
+      // API requires either 'ip' or 'location' (coordinates)
+      if (options.country) {
+         // If country provided, we can't easily map to coordinates without a lookup.
+         // For now, we fall back to a generic IP which will geo-locate to *some* location.
+         // Ideally, client should provide specific coordinates if location precision is needed.
+         // We use 1.1.1.1 as a generic valid IP.
+         params.ip = "1.1.1.1"; 
+      } else {
+         params.ip = "1.1.1.1"; // Default to generic IP
+      }
 
       const response = await apiClient.get("/v1/search", { params });
       
       // Process results using the result processor (deduplication, scoring, etc.)
       const processed = await resultProcessor.processResults(
-        response.data.results || [], 
+        response.data, // Pass entire data object so processor can find 'standardResults'
         query, 
         options
       );

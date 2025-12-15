@@ -1,4 +1,8 @@
-import { z } from "zod";
+import fs from "fs/promises";
+import path from "path";
+import os from "os";
+import logger from "../core/logger.js";
+import { presearchService } from "../services/presearchService.js";
 
 export const exportResultsTool = {
   name: "export_search_results",
@@ -16,6 +20,7 @@ export const exportResultsTool = {
     required: ["results"],
   },
   execute: async (args) => {
+    try {
     let results;
     try {
       results =
@@ -53,5 +58,17 @@ export const exportResultsTool = {
         },
       ],
     };
+    } catch (error) {
+      logger.error("Export failed", { error: error.message });
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Failed to export results: ${error.message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
   },
 };

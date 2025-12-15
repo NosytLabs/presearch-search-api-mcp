@@ -1,6 +1,5 @@
-import { z } from "zod";
+import logger from "../core/logger.js";
 import { contentFetcher } from "../services/contentFetcher.js";
-import { ScrapeSchema } from "../utils/schemas.js";
 
 export const scrapeTool = {
   name: "scrape_url_content",

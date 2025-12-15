@@ -41,6 +41,56 @@ export class ContentAnalysisService {
     };
   }
 
+  /**
+   * Analyze a batch of search results
+   * @param {string} query
+   * @param {Array} results
+   */
+  async analyzeSearchResults(query, results) {
+    if (!results || results.length === 0) return null;
+
+    const analysis = {
+      summary: "Analysis of top results",
+      topKeywords: {},
+      averageSentiment: { score: 0, label: "neutral" },
+      resultsAnalysis: []
+    };
+
+    let totalSentiment = 0;
+    const allKeywords = {};
+
+    results.forEach(result => {
+      const text = (result.title + " " + (result.snippet || "")).trim();
+      const resultAnalysis = this.analyze(text, query);
+      
+      analysis.resultsAnalysis.push({
+        url: result.url,
+        ...resultAnalysis
+      });
+
+      // Aggregate sentiment
+      if (resultAnalysis.sentiment === "positive") totalSentiment++;
+      if (resultAnalysis.sentiment === "negative") totalSentiment--;
+
+      // Aggregate keywords
+      resultAnalysis.keywords.forEach(kw => {
+        allKeywords[kw] = (allKeywords[kw] || 0) + 1;
+      });
+    });
+
+    // Finalize aggregates
+    analysis.averageSentiment.score = totalSentiment;
+    if (totalSentiment > 0) analysis.averageSentiment.label = "positive";
+    else if (totalSentiment < 0) analysis.averageSentiment.label = "negative";
+
+    analysis.topKeywords = Object.entries(allKeywords)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([word, count]) => ({ word, count }));
+
+    return analysis;
+  }
+
   calculateRelevance(text, query) {
     const queryTerms = query.split(/\s+/).filter((t) => !this.stopwords.has(t));
     if (queryTerms.length === 0) return 0;
