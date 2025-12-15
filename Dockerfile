@@ -2,7 +2,7 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Install chrome dependencies for puppeteer
+# Install chrome dependencies for puppeteer and libatomic1 for esbuild
 RUN apt-get update && apt-get install -y \
     chromium \
     fonts-ipafont-gothic \
@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     fonts-kacst \
     fonts-freefont-ttf \
     libxss1 \
+    libatomic1 \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
