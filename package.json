@@ -16,7 +16,8 @@
     "build": "npx smithery build",
     "dev:smithery": "npx smithery dev",
     "lint": "eslint src/ --fix",
-    "test": "node tests/live_test.js",
+    "test": "node tests/mock_test.js",
+    "test:live": "node tests/live_test.js",
     "format": "prettier --write src/"
   },
   "keywords": [
