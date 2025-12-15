@@ -3,6 +3,9 @@ minMcpVersion: "1.0.0"
 docUrl: "https://github.com/NosytLabs/presearch-search-api-mcp#readme"
 startCommand:
   type: "stdio"
+  command: "node"
+  args:
+    - "src/index.js"
   configSchema:
     type: "object"
     additionalProperties: false
