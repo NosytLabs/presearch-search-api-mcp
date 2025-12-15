@@ -58,3 +58,5 @@ export function loadConfig() {
 }
 
 export const config = loadConfig();
+
+export const getConfig = () => config;
