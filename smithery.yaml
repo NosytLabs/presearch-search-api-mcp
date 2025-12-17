@@ -2,7 +2,7 @@ runtime: "container"
 minMcpVersion: "1.0.0"
 docUrl: "https://github.com/NosytLabs/presearch-search-api-mcp#readme"
 startCommand:
-  type: "stdio"
+  type: "http"
   command: "node"
   args:
     - "src/index.js"
