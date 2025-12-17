@@ -86,7 +86,7 @@ async function runComprehensiveTests() {
 
   // Test 4: Scrape Valid URL
   await testTool('Scrape Valid URL', async () => {
-    const scrapeTool = tools.find(t => t.name === 'scrape_url');
+    const scrapeTool = tools.find(t => t.name === 'scrape_url_content');
     return await scrapeTool.execute({ 
       url: 'https://example.com',
       format: 'text'
@@ -95,15 +95,18 @@ async function runComprehensiveTests() {
 
   // Test 5: Scrape Invalid URL
   await testTool('Scrape Invalid URL', async () => {
-    const scrapeTool = tools.find(t => t.name === 'scrape_url');
+    const scrapeTool = tools.find(t => t.name === 'scrape_url_content');
     const result = await scrapeTool.execute({ 
       url: 'not-a-valid-url',
       format: 'text'
     });
-    // Check if result contains error
-    if (result && result.error) {
-      throw new Error(result.error.message || 'URL validation error occurred');
+    
+    // Parse content to check for application-level error
+    const content = JSON.parse(result.content[0].text);
+    if (content.error) {
+      throw new Error(content.error);
     }
+    
     return result;
   }, true); // Expect error
 

@@ -11,7 +11,7 @@ export const cacheStatsTool = {
   description: "Get statistics about the internal result cache",
   inputSchema: CacheStatsSchema,
   execute: async () => {
-    const stats = cache.getStats();
+    const stats = cache.getMetrics();
     logger.debug("Cache stats requested", stats);
     return {
       content: [

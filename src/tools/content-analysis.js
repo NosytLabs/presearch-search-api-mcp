@@ -1,5 +1,5 @@
 import logger from "../core/logger.js";
-import { contentAnalysisService } from "../services/contentAnalysisService.js";
+import { contentAnalyzer } from "../services/contentAnalysisService.js";
 
 export const contentAnalysisTool = {
   name: "analyze_content",
