@@ -1,11 +1,11 @@
 runtime: "container"
 minMcpVersion: "1.0.0"
 docUrl: "https://github.com/NosytLabs/presearch-search-api-mcp#readme"
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
 startCommand:
   type: "http"
-  command: "node"
-  args:
-    - "src/index.js"
   configSchema:
     type: "object"
     additionalProperties: false
