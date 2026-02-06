@@ -209,7 +209,7 @@ export class ResultDeduplicator {
   /**
    * Calculate cosine similarity between two strings - Optimized version
    */
-  calculateCosineSimilarity(str1, str2) {
+  calculateCosineSimilarity(str1, str2, vec1 = null, vec2 = null) {
     const cacheKey = `cosine:${str1}|${str2}`;
     if (this.similarityCache.has(cacheKey)) {
       return this.similarityCache.get(cacheKey);
@@ -221,12 +221,12 @@ export class ResultDeduplicator {
     }
 
     // Use sparse vector representation for better performance
-    const vec1 = this.getSparseVector(str1);
-    const vec2 = this.getSparseVector(str2);
+    const v1 = vec1 || this.getSparseVector(str1);
+    const v2 = vec2 || this.getSparseVector(str2);
 
-    const dotProduct = this.calculateSparseDotProduct(vec1, vec2);
-    const magnitude1 = this.calculateSparseMagnitude(vec1);
-    const magnitude2 = this.calculateSparseMagnitude(vec2);
+    const dotProduct = this.calculateSparseDotProduct(v1, v2);
+    const magnitude1 = this.calculateSparseMagnitude(v1);
+    const magnitude2 = this.calculateSparseMagnitude(v2);
 
     const similarity =
       magnitude1 === 0 || magnitude2 === 0
@@ -295,19 +295,35 @@ export class ResultDeduplicator {
   /**
    * Calculate similarity between two results - Optimized version
    */
-  calculateSimilarity(result1, result2) {
+  calculateSimilarity(result1, result2, vectors = null) {
     // Quick URL comparison first
     if (result1.url && result2.url && result1.url === result2.url) {
       return 1.0;
     }
 
+    let tVec1, tVec2, dVec1, dVec2;
+    if (vectors) {
+      const v1 = vectors.get(result1);
+      const v2 = vectors.get(result2);
+      if (v1 && v2) {
+        tVec1 = v1.title;
+        tVec2 = v2.title;
+        dVec1 = v1.description;
+        dVec2 = v2.description;
+      }
+    }
+
     const titleSimilarity = this.calculateCosineSimilarity(
       result1.title || "",
       result2.title || "",
+      tVec1,
+      tVec2
     );
     const descriptionSimilarity = this.calculateCosineSimilarity(
       result1.description || "",
       result2.description || "",
+      dVec1,
+      dVec2
     );
     const urlSimilarity = result1.url === result2.url ? 1 : 0;
 
@@ -344,6 +360,15 @@ export class ResultDeduplicator {
     // Early return for empty results
     if (!results || results.length === 0) {
       return { unique: [], duplicates: [] };
+    }
+
+    // Precompute vectors for performance (O(n))
+    const vectors = new Map();
+    for (const result of results) {
+      vectors.set(result, {
+        title: this.getSparseVector(result.title || ""),
+        description: this.getSparseVector(result.description || "")
+      });
     }
 
     // Stage 1: Quick URL-based deduplication (O(n))
@@ -396,6 +421,7 @@ export class ResultDeduplicator {
             const similarity = this.calculateSimilarity(
               result,
               uniqueResults[j],
+              vectors
             );
 
             if (similarity >= this.threshold) {
