@@ -25,10 +25,10 @@ async function main() {
       // HTTP/SSE Mode
       const app = express();
       const transport = new SSEServerTransport("/messages");
+      await server.connect(transport);
       
       app.get("/sse", async (req, res) => {
         logger.info("New SSE connection established");
-        await server.connect(transport);
         await transport.handlePostMessage(req, res);
       });
       
