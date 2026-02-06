@@ -1,5 +1,6 @@
 import puppeteer from "puppeteer";
 import logger from "../core/logger.js";
+import { config } from "../core/config.js";
 import { validateUrl } from "../core/security.js";
 
 export class ContentFetcher {
@@ -11,20 +12,19 @@ export class ContentFetcher {
     if (!this.browser) {
       this.browser = await puppeteer.launch({
         headless: "new",
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        args: config.puppeteerArgs,
       });
     }
   }
 
   async fetchContent(url) {
-    // Validate URL first
     try {
       await validateUrl(url);
     } catch (error) {
       logger.error(`Security validation failed for ${url}: ${error.message}`);
       return {
         url,
-        error: error.message,
+        error: `Security Error: ${error.message}`,
         content: null,
       };
     }
@@ -39,13 +39,25 @@ export class ContentFetcher {
 
       // Block resources to speed up loading
       await page.setRequestInterception(true);
-      page.on("request", (req) => {
+      page.on("request", async (req) => {
         if (
           ["image", "stylesheet", "font", "media"].includes(req.resourceType())
         ) {
-          req.abort();
+          await req.abort();
+          return;
+        }
+
+        // Validate navigation requests to prevent redirects to internal/private IPs
+        if (req.isNavigationRequest()) {
+          try {
+            await validateUrl(req.url());
+            await req.continue();
+          } catch (error) {
+            logger.warn(`Blocked navigation to ${req.url()}: ${error.message}`);
+            await req.abort("accessdenied");
+          }
         } else {
-          req.continue();
+          await req.continue();
         }
       });
 
