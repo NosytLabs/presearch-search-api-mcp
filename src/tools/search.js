@@ -27,10 +27,7 @@ const SearchInputSchema = z.object({
     .enum(["off", "moderate", "strict"])
     .default("moderate")
     .describe("Safe search filtering level"),
-  language: z
-    .string()
-    .default("en-US")
-    .describe("Language for search results"),
+  language: z.string().default("en-US").describe("Language for search results"),
   time_range: z
     .enum(["any", "day", "week", "month", "year"])
     .optional()
@@ -73,7 +70,8 @@ export const searchTool = {
       const searchParams = {
         q: query,
         max_results: limit,
-        safe_search: safe_search || config.search?.defaultSafeSearch || "moderate",
+        safe_search:
+          safe_search || config.search?.defaultSafeSearch || "moderate",
         language: language || config.search?.defaultLanguage || "en-US",
         ...(time_range && { time_range }),
         ...(region && { region }),
@@ -83,10 +81,10 @@ export const searchTool = {
         // Use presearchService directly instead of config.presearchClient
         // The search method signature is search(query, options)
         const searchResults = await presearchService.search(query, {
-           limit: limit,
-           safesearch: searchParams.safe_search,
-           lang: searchParams.language,
-           country: region // map region to country if applicable
+          limit: limit,
+          safesearch: searchParams.safe_search,
+          lang: searchParams.language,
+          country: region, // map region to country if applicable
         });
 
         // Add AI analysis if requested
@@ -100,7 +98,8 @@ export const searchTool = {
 
         const response = {
           query,
-          total_results: searchResults.total_results || searchResults.results?.length || 0,
+          total_results:
+            searchResults.total_results || searchResults.results?.length || 0,
           results: searchResults.results || [],
           search_metadata: {
             engine: "presearch",

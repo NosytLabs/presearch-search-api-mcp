@@ -14,25 +14,58 @@ const ConfigSchema = z.object({
   retries: z.coerce.number().default(3),
   port: z.coerce.number().default(3002),
   logLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
-  cache: z.object({
-    enabled: z.boolean().default(true),
-    ttl: z.number().default(300000), // 5 minutes
-    maxSize: z.number().default(1000),
-  }).default({}),
-  rateLimit: z.object({
-    maxRequests: z.number().default(60),
-    windowMs: z.number().default(60000), // 1 minute
-  }).default({}),
-  search: z.object({
-    defaultSafeSearch: z.enum(["strict", "moderate", "off"]).default("moderate"),
-    defaultLanguage: z.string().default("en-US"),
-    supportedLanguages: z.array(z.string()).default([
-      "en-US", "en-GB", "es-ES", "fr-FR", "de-DE", "it-IT", "pt-BR", "ja-JP", "zh-CN", "ru-RU"
-    ]),
-    supportedCountries: z.array(z.string()).default([
-      "US", "GB", "CA", "AU", "DE", "FR", "IT", "ES", "BR", "JP", "CN", "IN", "RU"
-    ]),
-  }).default({}),
+  cache: z
+    .object({
+      enabled: z.boolean().default(true),
+      ttl: z.number().default(300000), // 5 minutes
+      maxSize: z.number().default(1000),
+    })
+    .default({}),
+  rateLimit: z
+    .object({
+      maxRequests: z.number().default(60),
+      windowMs: z.number().default(60000), // 1 minute
+    })
+    .default({}),
+  search: z
+    .object({
+      defaultSafeSearch: z
+        .enum(["strict", "moderate", "off"])
+        .default("moderate"),
+      defaultLanguage: z.string().default("en-US"),
+      supportedLanguages: z
+        .array(z.string())
+        .default([
+          "en-US",
+          "en-GB",
+          "es-ES",
+          "fr-FR",
+          "de-DE",
+          "it-IT",
+          "pt-BR",
+          "ja-JP",
+          "zh-CN",
+          "ru-RU",
+        ]),
+      supportedCountries: z
+        .array(z.string())
+        .default([
+          "US",
+          "GB",
+          "CA",
+          "AU",
+          "DE",
+          "FR",
+          "IT",
+          "ES",
+          "BR",
+          "JP",
+          "CN",
+          "IN",
+          "RU",
+        ]),
+    })
+    .default({}),
 });
 
 /**

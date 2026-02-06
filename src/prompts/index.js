@@ -6,8 +6,8 @@ export const prompts = [
       {
         name: "topic",
         description: "The topic to research",
-        required: true
-      }
+        required: true,
+      },
     ],
     handler: (args) => ({
       messages: [
@@ -19,7 +19,7 @@ export const prompts = [
           },
         },
       ],
-    })
+    }),
   },
   {
     name: "presearch-news",
@@ -28,8 +28,8 @@ export const prompts = [
       {
         name: "topic",
         description: "The topic to search for news",
-        required: true
-      }
+        required: true,
+      },
     ],
     handler: (args) => ({
       messages: [
@@ -41,6 +41,6 @@ export const prompts = [
           },
         },
       ],
-    })
-  }
+    }),
+  },
 ];

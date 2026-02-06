@@ -14,26 +14,35 @@ export const formatToolList = (tools) => {
       try {
         // Force JSON Schema Draft 7 which is widely supported
         jsonSchema = zodToJsonSchema(t.inputSchema, { target: "jsonSchema7" });
-        
+
         // Ensure $schema is removed as it's not valid in the nested inputSchema
-        if (jsonSchema && typeof jsonSchema === 'object') {
-            delete jsonSchema.$schema;
-            
-            // Ensure additionalProperties is explicitly set if not present
-            // This helps some strict parsers
-            if (jsonSchema.type === "object" && jsonSchema.additionalProperties === undefined) {
-                jsonSchema.additionalProperties = false;
-            }
+        if (jsonSchema && typeof jsonSchema === "object") {
+          delete jsonSchema.$schema;
+
+          // Ensure additionalProperties is explicitly set if not present
+          // This helps some strict parsers
+          if (
+            jsonSchema.type === "object" &&
+            jsonSchema.additionalProperties === undefined
+          ) {
+            jsonSchema.additionalProperties = false;
+          }
         }
       } catch (e) {
-        logger.error(`Failed to convert schema for ${t.name}`, { error: e.message });
+        logger.error(`Failed to convert schema for ${t.name}`, {
+          error: e.message,
+        });
         // Fallback to basic object schema if conversion fails
-        jsonSchema = { type: "object", properties: {}, additionalProperties: true };
+        jsonSchema = {
+          type: "object",
+          properties: {},
+          additionalProperties: true,
+        };
       }
     } else if (t.inputSchema) {
-        jsonSchema = t.inputSchema;
+      jsonSchema = t.inputSchema;
     }
-    
+
     // Smithery compatibility: ensure 'title' is present at top level if available in annotations
     const title = (t.annotations && t.annotations.title) || t.name;
 
@@ -59,7 +68,7 @@ export const formatPromptList = (prompts) => {
   return prompts.map((p) => {
     // Smithery compatibility: ensure 'title' is present at top level
     const title = p.title || (p.annotations && p.annotations.title) || p.name;
-    
+
     return {
       name: p.name,
       title: title, // Explicitly set title

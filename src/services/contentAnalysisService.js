@@ -53,19 +53,19 @@ export class ContentAnalysisService {
       summary: "Analysis of top results",
       topKeywords: {},
       averageSentiment: { score: 0, label: "neutral" },
-      resultsAnalysis: []
+      resultsAnalysis: [],
     };
 
     let totalSentiment = 0;
     const allKeywords = {};
 
-    results.forEach(result => {
+    results.forEach((result) => {
       const text = (result.title + " " + (result.snippet || "")).trim();
       const resultAnalysis = this.analyze(text, query);
-      
+
       analysis.resultsAnalysis.push({
         url: result.url,
-        ...resultAnalysis
+        ...resultAnalysis,
       });
 
       // Aggregate sentiment
@@ -73,7 +73,7 @@ export class ContentAnalysisService {
       if (resultAnalysis.sentiment === "negative") totalSentiment--;
 
       // Aggregate keywords
-      resultAnalysis.keywords.forEach(kw => {
+      resultAnalysis.keywords.forEach((kw) => {
         allKeywords[kw] = (allKeywords[kw] || 0) + 1;
       });
     });

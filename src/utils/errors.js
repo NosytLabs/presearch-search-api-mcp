@@ -43,17 +43,22 @@ export class ExternalServiceError extends AppError {
  * @param {Function} fn - The async function to wrap
  * @returns {Function} Wrapped function with error handling
  */
-export const withErrorHandling = (fn) => async (...args) => {
-  try {
-    return await fn(...args);
-  } catch (error) {
-    logger.error("Error executing tool", { error: error.message, stack: error.stack });
-    
-    if (error instanceof AppError) {
-      throw error; // Re-throw known app errors
+export const withErrorHandling =
+  (fn) =>
+  async (...args) => {
+    try {
+      return await fn(...args);
+    } catch (error) {
+      logger.error("Error executing tool", {
+        error: error.message,
+        stack: error.stack,
+      });
+
+      if (error instanceof AppError) {
+        throw error; // Re-throw known app errors
+      }
+
+      // Convert unknown errors to AppError
+      throw new AppError(`Internal error: ${error.message}`, "INTERNAL_ERROR");
     }
-    
-    // Convert unknown errors to AppError
-    throw new AppError(`Internal error: ${error.message}`, "INTERNAL_ERROR");
-  }
-};
+  };
