@@ -52,8 +52,6 @@ export class ResultDeduplicator {
     this.threshold = threshold;
     this.similarityCache = new Map();
     this.maxCacheSize = 10000; // Prevent memory leaks
-    this.urlIndex = new Map(); // Quick URL-based deduplication
-    this.titleIndex = new Map(); // Quick title-based grouping
   }
 
   /**
@@ -252,9 +250,8 @@ export class ResultDeduplicator {
     const uniqueResults = [];
     const duplicates = [];
 
-    // Clear indexes for this batch
-    this.urlIndex.clear();
-    this.titleIndex.clear();
+    // Local indexes for this batch (thread-safe)
+    const urlIndex = new Map();
 
     // Early return for empty results
     if (!results || results.length === 0) {
@@ -267,15 +264,15 @@ export class ResultDeduplicator {
     
     for (const result of results) {
       const urlKey = result.url || result.link || "";
-      if (urlKey && this.urlIndex.has(urlKey)) {
+      if (urlKey && urlIndex.has(urlKey)) {
         duplicates.push({
-          original: this.urlIndex.get(urlKey),
+          original: urlIndex.get(urlKey),
           duplicate: result,
           similarity: 1.0,
           reason: "identical_url",
         });
       } else {
-        if (urlKey) this.urlIndex.set(urlKey, result);
+        if (urlKey) urlIndex.set(urlKey, result);
         urlDeduplicated.push(result);
       }
     }

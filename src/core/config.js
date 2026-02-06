@@ -9,11 +9,13 @@ dotenv.config();
  */
 const ConfigSchema = z.object({
   apiKey: z.string().optional(),
+  mcpApiKey: z.string().optional(),
   baseUrl: z.string().default("https://na-us-1.presearch.com"),
   timeout: z.coerce.number().default(10000),
   retries: z.coerce.number().default(3),
   port: z.coerce.number().default(3002),
   logLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  puppeteerArgs: z.array(z.string()).default([]),
   cache: z.object({
     enabled: z.boolean().default(true),
     ttl: z.number().default(300000), // 5 minutes
@@ -41,11 +43,14 @@ const ConfigSchema = z.object({
 export function loadConfig() {
   const rawConfig = {
     apiKey: process.env.PRESEARCH_API_KEY,
+    mcpApiKey: process.env.MCP_API_KEY,
     baseUrl: process.env.PRESEARCH_BASE_URL,
     timeout: process.env.PRESEARCH_TIMEOUT,
     logLevel: process.env.LOG_LEVEL,
     port: process.env.PORT,
-    // Nested configs could be loaded from JSON if needed, but defaults work for now
+    puppeteerArgs: process.env.PUPPETEER_ARGS
+      ? process.env.PUPPETEER_ARGS.split(",").map((s) => s.trim()).filter(Boolean)
+      : undefined,
   };
 
   try {
