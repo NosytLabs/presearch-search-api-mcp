@@ -55,8 +55,9 @@ export const searchTool = {
       language,
       time_range,
       region,
-    }) => {
+    }, context) => {
       const config = getConfig();
+      const apiKey = context?.apiKey || config.apiKey;
       const startTime = Date.now();
 
       logToolUsage("presearch_ai_search", {
@@ -86,7 +87,8 @@ export const searchTool = {
            limit: limit,
            safesearch: searchParams.safe_search,
            lang: searchParams.language,
-           country: region // map region to country if applicable
+           country: region, // map region to country if applicable
+           apiKey
         });
 
         // Add AI analysis if requested
@@ -112,7 +114,14 @@ export const searchTool = {
           ...(analysis && { analysis }),
         };
 
-        return response;
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response, null, 2),
+            },
+          ],
+        };
       } catch (error) {
         throw new Error(`Search failed: ${error.message}`);
       }

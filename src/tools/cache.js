@@ -32,7 +32,7 @@ export const cacheClearTool = {
     properties: {},
   },
   execute: async () => {
-    resultProcessor.cache.clear();
+    cache.clear();
     return {
       content: [
         {

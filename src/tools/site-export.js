@@ -17,10 +17,11 @@ export const siteExportTool = {
     },
     required: ["query"],
   },
-  execute: async (args) => {
+  execute: async (args, context) => {
     // 1. Search
     const searchResults = await presearchService.search(args.query, {
       limit: 5,
+      apiKey: context?.apiKey,
     });
 
     // 2. Scrape
