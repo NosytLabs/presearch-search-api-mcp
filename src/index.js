@@ -6,6 +6,7 @@ import { loadConfig } from "./core/config.js";
 import { registerResources } from "./resources/index.js";
 import { apiClient } from "./core/apiClient.js";
 import logger from "./core/logger.js";
+import { validateApiKey } from "./utils/auth.js";
 
 // Export for library usage
 export { registerResources, apiClient, logger };
@@ -25,6 +26,9 @@ async function main() {
       // HTTP/SSE Mode
       const app = express();
       const transport = new SSEServerTransport("/messages");
+
+      // Add authentication middleware
+      app.use(validateApiKey);
       
       app.get("/sse", async (req, res) => {
         logger.info("New SSE connection established");

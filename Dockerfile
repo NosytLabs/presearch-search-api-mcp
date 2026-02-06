@@ -24,10 +24,7 @@ COPY package*.json ./
 
 RUN npm ci --only=production
 
-COPY . .
-
-# Change ownership of the application directory to the 'node' user
-RUN chown -R node:node /app
+COPY --chown=node:node . .
 
 # Switch to non-root user
 USER node
