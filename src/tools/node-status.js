@@ -11,8 +11,8 @@ export const nodeStatusTool = {
     },
     required: ["node_key"],
   },
-  execute: async (args) => {
-    const status = await presearchService.getNodeStatus(args.node_key);
+  execute: async (args, context) => {
+    const status = await presearchService.getNodeStatus(args.node_key, { apiKey: context?.apiKey });
     return {
       content: [
         {

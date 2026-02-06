@@ -18,10 +18,11 @@ export const searchAndScrapeTool = {
     },
     required: ["query"],
   },
-  execute: async (args) => {
+  execute: async (args, context) => {
     // 1. Search
     const searchResults = await presearchService.search(args.query, {
       limit: Math.min(args.limit || 3, 5),
+      apiKey: context?.apiKey,
     });
 
     // 2. Scrape top N results in parallel

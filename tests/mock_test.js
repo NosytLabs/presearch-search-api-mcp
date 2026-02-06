@@ -65,8 +65,13 @@ async function runMockTests() {
       query: "mock query", 
       limit: 2 
     });
-    if (!result.results || result.results.length === 0) throw new Error("No results returned");
-    if (result.results[0].title !== "Mock Result 1") throw new Error("Unexpected result data");
+
+    // Parse the content
+    if (!result.content || result.content.length === 0) throw new Error("No content returned");
+    const searchData = JSON.parse(result.content[0].text);
+
+    if (!searchData.results || searchData.results.length === 0) throw new Error("No results returned");
+    if (searchData.results[0].title !== "Mock Result 1") throw new Error("Unexpected result data");
   });
 
   // 2. Test Export (No API dependency)

@@ -23,10 +23,11 @@ export const deepResearchTool = {
   name: "presearch_deep_research",
   description: "Perform a multi-step deep research task on a topic. Generates a comprehensive report by exploring multiple sub-topics.",
   inputSchema: DeepResearchInputSchema,
-  execute: async (args) => {
+  execute: async (args, context) => {
     // 1. Initial broad search
     const initialResults = await presearchService.search(args.query, {
       limit: args.breadth || 3,
+      apiKey: context?.apiKey,
     });
 
     const report = {

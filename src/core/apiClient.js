@@ -28,7 +28,8 @@ class ApiClient {
       (config) => {
         // Dynamic config loading to pick up runtime changes
         const currentConfig = loadConfig();
-        if (currentConfig.apiKey) {
+        // Only set if not already set (allows overrides)
+        if (currentConfig.apiKey && !config.headers["Authorization"]) {
           config.headers["Authorization"] = `Bearer ${currentConfig.apiKey}`;
         }
 

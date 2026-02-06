@@ -32,7 +32,14 @@ export class PresearchService {
          params.ip = "1.1.1.1"; // Default to generic IP
       }
 
-      const response = await apiClient.get("/v1/search", { params });
+      const requestConfig = { params };
+      if (options.apiKey) {
+        requestConfig.headers = {
+          "Authorization": `Bearer ${options.apiKey}`
+        };
+      }
+
+      const response = await apiClient.get("/v1/search", requestConfig);
       
       // Process results using the result processor (deduplication, scoring, etc.)
       const processed = await resultProcessor.processResults(
@@ -55,7 +62,7 @@ export class PresearchService {
   /**
    * Get node status (if endpoint available or mocked)
    */
-  async getNodeStatus(nodeKey) {
+  async getNodeStatus(nodeKey, options = {}) {
     // Note: The public search API doesn't always expose node stats.
     // This is a placeholder or requires a specific endpoint.
     // For now, we'll return a structure that assumes a hypothetical endpoint
