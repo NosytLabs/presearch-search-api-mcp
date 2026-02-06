@@ -94,6 +94,11 @@ export const MEDIUM_AUTHORITY_DOMAINS = [
   "sas.com",
 ];
 
+// Deduplication optimization constants
+export const DEDUPLICATION_CANDIDATE_LIMIT = 200;
+export const DEDUPLICATION_STOPWORD_THRESHOLD_RATIO = 0.2;
+export const DEDUPLICATION_STOPWORD_MIN_COUNT = 50;
+
 export const ErrorCategories = {
   API_ERROR: "API_ERROR",
   NETWORK_ERROR: "NETWORK_ERROR",
@@ -139,6 +144,7 @@ export class ResultDeduplicator {
     this.maxCacheSize = 10000; // Prevent memory leaks
     this.urlIndex = new Map(); // Quick URL-based deduplication
     this.titleIndex = new Map(); // Quick title-based grouping
+    this.wordIndex = new Map(); // Inverted index for fast candidate lookup
   }
 
   /**
@@ -331,6 +337,63 @@ export class ResultDeduplicator {
   }
 
   /**
+   * Add result to inverted index
+   */
+  addToIndex(result, index) {
+    const titleWords = this.getWordFrequency(result.title || "");
+    const descWords = this.getWordFrequency(result.description || "");
+    const allWords = new Set([...titleWords.keys(), ...descWords.keys()]);
+
+    this.totalIndexed++;
+
+    for (const word of allWords) {
+      if (!this.wordIndex.has(word)) {
+        this.wordIndex.set(word, []);
+      }
+      this.wordIndex.get(word).push(index);
+    }
+  }
+
+  /**
+   * Get candidates for deduplication from inverted index
+   */
+  getCandidates(result) {
+    const titleWords = this.getWordFrequency(result.title || "");
+    const descWords = this.getWordFrequency(result.description || "");
+    const allWords = new Set([...titleWords.keys(), ...descWords.keys()]);
+
+    const candidateCounts = new Map();
+    // Dynamic threshold: ignore words appearing in > 20% of processed results (min 50)
+    // This filters out "stop words" within the current result set
+    const threshold = Math.max(
+      DEDUPLICATION_STOPWORD_MIN_COUNT,
+      this.totalIndexed * DEDUPLICATION_STOPWORD_THRESHOLD_RATIO,
+    );
+
+    for (const word of allWords) {
+      if (this.wordIndex.has(word)) {
+        const indices = this.wordIndex.get(word);
+
+        // Skip common words to improve performance
+        if (indices.length > threshold) continue;
+
+        for (const index of indices) {
+          candidateCounts.set(index, (candidateCounts.get(index) || 0) + 1);
+        }
+      }
+    }
+
+    // Sort by number of shared words (descending) and take top 200
+    // This ensures we compare against most similar results first
+    return new Set(
+      [...candidateCounts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, DEDUPLICATION_CANDIDATE_LIMIT)
+        .map(([index]) => index),
+    );
+  }
+
+  /**
    * Remove duplicate results - Highly optimized multi-stage approach
    */
   deduplicate(results) {
@@ -340,6 +403,8 @@ export class ResultDeduplicator {
     // Clear indexes for this batch
     this.urlIndex.clear();
     this.titleIndex.clear();
+    this.wordIndex.clear();
+    this.totalIndexed = 0;
 
     // Early return for empty results
     if (!results || results.length === 0) {
@@ -386,32 +451,38 @@ export class ResultDeduplicator {
     for (const [, group] of titleGroups) {
       if (group.length === 1) {
         uniqueResults.push(group[0]);
+        this.addToIndex(group[0], uniqueResults.length - 1);
       } else {
         // Compare within the group (much smaller than full dataset)
         for (let i = 0; i < group.length; i++) {
           const result = group[i];
           let isDuplicate = false;
 
-          for (let j = 0; j < uniqueResults.length; j++) {
-            const similarity = this.calculateSimilarity(
-              result,
-              uniqueResults[j],
-            );
+          const candidates = this.getCandidates(result);
 
-            if (similarity >= this.threshold) {
-              isDuplicate = true;
-              duplicates.push({
-                original: uniqueResults[j],
-                duplicate: result,
-                similarity,
-                reason: "content_similarity",
-              });
-              break;
+          if (candidates.size > 0) {
+            for (const j of candidates) {
+              const similarity = this.calculateSimilarity(
+                result,
+                uniqueResults[j],
+              );
+
+              if (similarity >= this.threshold) {
+                isDuplicate = true;
+                duplicates.push({
+                  original: uniqueResults[j],
+                  duplicate: result,
+                  similarity,
+                  reason: "content_similarity",
+                });
+                break;
+              }
             }
           }
 
           if (!isDuplicate) {
             uniqueResults.push(result);
+            this.addToIndex(result, uniqueResults.length - 1);
           }
         }
       }
