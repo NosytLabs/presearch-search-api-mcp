@@ -1,100 +1,124 @@
-import dns from 'dns';
-import ipaddr from 'ipaddr.js';
 import { URL } from 'url';
+import dns from 'dns/promises';
+import ipaddr from 'ipaddr.js';
+
+export class SecurityError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'SecurityError';
+  }
+}
 
 /**
- * Validates a URL for security compliance (SSRF protection).
- * checks protocol and ensures the resolved IP is not in a restricted range.
+ * Validates a URL to prevent SSRF attacks.
+ * Checks protocol, resolves hostname, and validates IP against private ranges.
  *
- * @param {string} urlString - The URL to validate.
- * @returns {Promise<boolean>} - Resolves to true if valid, throws error otherwise.
+ * @param {string} urlString - The URL to validate
+ * @returns {Promise<string>} - The validated URL
+ * @throws {SecurityError} - If the URL is invalid or points to a forbidden IP
  */
 export async function validateUrl(urlString) {
   let url;
   try {
     url = new URL(urlString);
   } catch {
-    throw new Error('Invalid URL format');
+    throw new SecurityError('Invalid URL format');
   }
 
+  // 1. Protocol Check
   if (!['http:', 'https:'].includes(url.protocol)) {
-    throw new Error('Invalid protocol: only http and https are allowed');
+    throw new SecurityError('Invalid protocol. Only http and https are allowed.');
   }
 
+  // 2. DNS Resolution
   const hostname = url.hostname;
 
-  // Basic hostname check to fail fast on localhost (though DNS would catch it too usually)
-  // This helps catch explicit "localhost" which might resolve differently depending on /etc/hosts
-  if (hostname === 'localhost') {
-       throw new Error('Access to localhost is blocked');
+  // If hostname is already an IP, we can skip lookup or validate directly.
+  // ipaddr.isValid can check if it is a valid IP string.
+  if (ipaddr.isValid(hostname)) {
+    if (isIpBlocked(hostname)) {
+      throw new SecurityError(`Access denied to restricted IP: ${hostname}`);
+    }
+    return urlString;
   }
 
-  // Resolve hostname with timeout
-  let lookupResult;
-  let timer;
+  let addresses;
   try {
-    const lookupPromise = dns.promises.lookup(hostname);
-    const timeoutPromise = new Promise((_, reject) => {
-      timer = setTimeout(() => reject(new Error('DNS lookup timeout')), 5000);
-    });
-    lookupResult = await Promise.race([lookupPromise, timeoutPromise]);
-  } catch (err) {
-    throw new Error(`DNS lookup failed for ${hostname}: ${err.message}`);
-  } finally {
-    if (timer) clearTimeout(timer);
+    // Resolve all IPv4 and IPv6 addresses
+    // Add 5s timeout to prevent hanging
+    addresses = await Promise.race([
+      dns.lookup(hostname, { all: true }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('DNS lookup timeout')), 5000))
+    ]);
+  } catch {
+    // If DNS resolution fails, we can't visit it anyway, but it might be safe to let Puppeteer try and fail.
+    // However, blocking here is safer if the error is due to some local resolution issue.
+    // But legitimate sites might fail lookup if network is flaky.
+    // For SSRF protection, we assume if we can't resolve it, we shouldn't allow it,
+    // OR we rely on the fact that if we can't resolve it, we don't know the IP so we can't block it.
+    // BUT, if we can't resolve it, Puppeteer might fetch it if it resolves differently?
+    // Safer to throw.
+    throw new SecurityError(`DNS resolution failed for ${hostname}`);
   }
 
-  const ip = lookupResult.address;
-
-  if (!ip) {
-      throw new Error('Could not resolve IP address');
+  if (!addresses || addresses.length === 0) {
+    throw new SecurityError(`No IP addresses found for ${hostname}`);
   }
 
+  // 3. IP Validation
+  for (const addr of addresses) {
+    const ip = addr.address;
+    if (isIpBlocked(ip)) {
+      throw new SecurityError(`Access denied to restricted IP: ${ip}`);
+    }
+  }
+
+  return urlString;
+}
+
+/**
+ * Checks if an IP address is blocked (private, reserved, etc.)
+ * @param {string} ip - The IP address to check
+ * @returns {boolean} - True if blocked, false otherwise
+ */
+function isIpBlocked(ip) {
   try {
-      if (ipaddr.IPv4.isValid(ip)) {
-          const addr = ipaddr.IPv4.parse(ip);
-          const range = addr.range();
+    const parsedIp = ipaddr.parse(ip);
 
-          // Block private, loopback, linkLocal, etc.
-          // 'private' covers 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-          // 'loopback' covers 127.0.0.0/8
-          // 'linkLocal' covers 169.254.0.0/16
-          // 'carrierGradeNat' covers 100.64.0.0/10
-          if (['private', 'loopback', 'linkLocal', 'carrierGradeNat', 'broadcast', 'reserved'].includes(range)) {
-               throw new Error(`Access to ${range} IP address ${ip} is blocked`);
-          }
+    // Check if it's a private IP (IPv4 or IPv6)
+    const range = parsedIp.range();
 
-           // Explicitly check for 0.0.0.0/8 as 'unspecified' or similar might not cover it fully in all contexts
-           // 0.0.0.0/8 is "Current network", creating valid sockets on Linux
-           if (addr.match(ipaddr.IPv4.parseCIDR("0.0.0.0/8"))) {
-              throw new Error(`Access to 0.0.0.0/8 IP address ${ip} is blocked`);
-          }
+    if (range === 'private' ||
+        range === 'loopback' ||
+        range === 'uniqueLocal' ||
+        range === 'linkLocal' ||
+        range === 'reserved' ||
+        range === 'broadcast' ||
+        range === 'carrierGradeNat' ||
+        range === 'unspecified' ||
+        range === 'multicast') {
+      return true;
+    }
 
-      } else if (ipaddr.IPv6.isValid(ip)) {
-          const addr = ipaddr.IPv6.parse(ip);
-          const range = addr.range();
-           // 'uniqueLocal' is fc00::/7 (private IPv6)
-           // 'loopback' is ::1
-           // 'linkLocal' is fe80::/10
-           // 'unspecified' is ::
-           if (['uniqueLocal', 'loopback', 'linkLocal', 'reserved', 'unspecified'].includes(range)) {
-               throw new Error(`Access to ${range} IPv6 address ${ip} is blocked`);
-          }
-
-          // Block IPv4 mapped IPv6 addresses if they map to private IPv4
-          if (addr.isIPv4MappedAddress()) {
-              const ipv4 = addr.toIPv4Address();
-               const rangev4 = ipv4.range();
-                if (['private', 'loopback', 'linkLocal', 'carrierGradeNat', 'broadcast', 'reserved'].includes(rangev4)) {
-                   throw new Error(`Access to mapped ${rangev4} IP address ${ip} is blocked`);
-              }
-          }
-      } else {
-          throw new Error('Invalid IP address format returned from DNS lookup');
+    // Special checks for IPv4 mapped IPv6 addresses
+    if (parsedIp.kind() === 'ipv6' && parsedIp.isIPv4MappedAddress()) {
+      const ipv4 = parsedIp.toIPv4Address();
+      const ipv4Range = ipv4.range();
+      if (ipv4Range === 'private' ||
+          ipv4Range === 'loopback' ||
+          ipv4Range === 'linkLocal' ||
+          ipv4Range === 'reserved' ||
+          ipv4Range === 'broadcast' ||
+          ipv4Range === 'carrierGradeNat' ||
+          ipv4Range === 'unspecified' ||
+          ipv4Range === 'multicast') {
+        return true;
       }
-  } catch (parseError) {
-      throw new Error(`IP validation failed: ${parseError.message}`);
-  }
+    }
 
-  return true;
+    return false;
+  } catch {
+    // If IP cannot be parsed, block it for safety
+    return true;
+  }
 }

@@ -45,10 +45,9 @@ async function runLiveTests() {
       query: "latest artificial intelligence news", 
       limit: 3 
     });
-    const parsed = JSON.parse(result.content[0].text);
-    if (!parsed.results || parsed.results.length === 0) throw new Error("No results returned");
-    console.log(`   Found ${parsed.results.length} results.`);
-    return parsed;
+    if (!result.results || result.results.length === 0) throw new Error("No results returned");
+    console.log(`   Found ${result.results.length} results.`);
+    return result;
   });
 
   // 2. Test Search & Scrape
@@ -57,10 +56,9 @@ async function runLiveTests() {
       query: "python programming tutorial", 
       limit: 1 
     });
-    const parsed = JSON.parse(result.content[0].text);
-    if (!parsed.scraped_data || parsed.scraped_data.length === 0) throw new Error("No scraped content returned");
-    console.log(`   Scraped ${parsed.scraped_data.length} pages.`);
-    return parsed;
+    if (!result.scraped || result.scraped.length === 0) throw new Error("No scraped content returned");
+    console.log(`   Scraped ${result.scraped.length} pages.`);
+    return result;
   });
 
   // 3. Test Scrape URL (Direct)
@@ -107,10 +105,9 @@ async function runLiveTests() {
             breadth: 3, // Minimal breadth for speed
             research_focus: "general" 
         });
-        const parsed = JSON.parse(result.content[0].text);
-        if (!parsed.sources) throw new Error("Deep research failed to return sources");
-        console.log("   Research summary:", parsed.summary);
-        return parsed;
+        if (!result.success) throw new Error(result.message || "Deep research failed");
+        console.log("   Research summary:", result.research_summary);
+        return result;
     });
   } else {
     console.log('\n⚠️  Skipping Deep Research (Requires API Key)');
