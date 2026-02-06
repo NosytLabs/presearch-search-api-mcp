@@ -2,6 +2,34 @@ import axios from "axios";
 import { loadConfig } from "./config.js";
 import logger from "./logger.js";
 
+const SENSITIVE_PATTERNS = [
+  /api[-_]?key/i,
+  /token/i,
+  /secret/i,
+  /password/i,
+  /auth/i,
+  /credit/i,
+  /card/i,
+];
+
+function redactSensitiveData(data) {
+  if (!data || typeof data !== 'object') return data;
+
+  if (Array.isArray(data)) {
+    return data.map(redactSensitiveData);
+  }
+
+  const redacted = { ...data };
+  for (const key of Object.keys(redacted)) {
+    if (SENSITIVE_PATTERNS.some(pattern => pattern.test(key))) {
+      redacted[key] = '***REDACTED***';
+    } else if (typeof redacted[key] === 'object') {
+      redacted[key] = redactSensitiveData(redacted[key]);
+    }
+  }
+  return redacted;
+}
+
 /**
  * Enhanced API Client with monitoring, retries, and circuit breaking
  */
@@ -33,7 +61,7 @@ class ApiClient {
         }
 
         logger.debug(`API Request: ${config.method?.toUpperCase()} ${config.url}`, {
-          params: config.params,
+          params: redactSensitiveData(config.params),
         });
 
         return config;
@@ -61,7 +89,7 @@ class ApiClient {
           logger.error(
             `API Error: ${error.response.status} ${error.response.statusText}`,
             {
-              data: error.response.data,
+              data: redactSensitiveData(error.response.data),
               url: error.config?.url,
             },
           );
