@@ -1,5 +1,6 @@
 import puppeteer from "puppeteer";
 import logger from "../core/logger.js";
+import { validateUrl } from "../core/security.js";
 
 export class ContentFetcher {
   constructor() {
@@ -16,6 +17,18 @@ export class ContentFetcher {
   }
 
   async fetchContent(url) {
+    // Security check: validate URL before proceeding
+    try {
+      await validateUrl(url);
+    } catch (validationError) {
+      logger.error(`Security validation failed for ${url}: ${validationError.message}`);
+      return {
+        url,
+        error: `Security violation: ${validationError.message}`,
+        content: null,
+      };
+    }
+
     await this.initBrowser();
     const page = await this.browser.newPage();
     try {
@@ -26,7 +39,17 @@ export class ContentFetcher {
 
       // Block resources to speed up loading
       await page.setRequestInterception(true);
-      page.on("request", (req) => {
+      page.on("request", async (req) => {
+        // Validate navigation requests (including redirects)
+        if (req.isNavigationRequest()) {
+          try {
+            await validateUrl(req.url());
+          } catch (error) {
+            logger.warn(`Blocked navigation to ${req.url()}: ${error.message}`);
+            return req.abort("accessdenied");
+          }
+        }
+
         if (
           ["image", "stylesheet", "font", "media"].includes(req.resourceType())
         ) {
