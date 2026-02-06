@@ -1,5 +1,6 @@
 import puppeteer from "puppeteer";
 import logger from "../core/logger.js";
+import { config } from "../core/config.js";
 
 export class ContentFetcher {
   constructor() {
@@ -10,7 +11,7 @@ export class ContentFetcher {
     if (!this.browser) {
       this.browser = await puppeteer.launch({
         headless: "new",
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        args: config.puppeteerArgs || [],
       });
     }
   }
