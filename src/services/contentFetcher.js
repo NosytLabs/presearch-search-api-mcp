@@ -1,5 +1,6 @@
 import puppeteer from "puppeteer";
 import logger from "../core/logger.js";
+import { validateUrl } from "../core/security.js";
 
 export class ContentFetcher {
   constructor() {
@@ -16,6 +17,18 @@ export class ContentFetcher {
   }
 
   async fetchContent(url) {
+    // Validate initial URL
+    try {
+      await validateUrl(url);
+    } catch (error) {
+      logger.error(`Security validation failed for ${url}: ${error.message}`);
+      return {
+        url,
+        error: `Security violation: ${error.message}`,
+        content: null,
+      };
+    }
+
     await this.initBrowser();
     const page = await this.browser.newPage();
     try {
@@ -26,13 +39,27 @@ export class ContentFetcher {
 
       // Block resources to speed up loading
       await page.setRequestInterception(true);
-      page.on("request", (req) => {
-        if (
-          ["image", "stylesheet", "font", "media"].includes(req.resourceType())
-        ) {
-          req.abort();
-        } else {
+      page.on("request", async (req) => {
+        try {
+          if (
+            ["image", "stylesheet", "font", "media"].includes(req.resourceType())
+          ) {
+            req.abort();
+            return;
+          }
+
+          const reqUrl = req.url();
+          if (reqUrl.startsWith("data:")) {
+            req.continue();
+            return;
+          }
+
+          // Validate all requests to prevent SSRF via redirects or subresources
+          await validateUrl(reqUrl);
           req.continue();
+        } catch (error) {
+          logger.warn(`Blocked request to ${req.url()}: ${error.message}`);
+          req.abort();
         }
       });
 
