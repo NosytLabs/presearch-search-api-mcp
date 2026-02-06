@@ -9,6 +9,7 @@ dotenv.config();
  */
 const ConfigSchema = z.object({
   apiKey: z.string().optional(),
+  mcpApiKey: z.string().optional(),
   baseUrl: z.string().default("https://na-us-1.presearch.com"),
   timeout: z.coerce.number().default(10000),
   retries: z.coerce.number().default(3),
@@ -41,6 +42,7 @@ const ConfigSchema = z.object({
 export function loadConfig() {
   const rawConfig = {
     apiKey: process.env.PRESEARCH_API_KEY,
+    mcpApiKey: process.env.MCP_API_KEY,
     baseUrl: process.env.PRESEARCH_BASE_URL,
     timeout: process.env.PRESEARCH_TIMEOUT,
     logLevel: process.env.LOG_LEVEL,
