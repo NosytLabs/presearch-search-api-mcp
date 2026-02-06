@@ -9,6 +9,91 @@ import logger from "../core/logger.js";
 /**
  * Error categories for detailed error tracking
  */
+/**
+ * Quality scoring constants
+ */
+// Bonus for descriptive titles (0-10 points)
+export const DESCRIPTIVE_WORDS = [
+  "guide",
+  "tutorial",
+  "overview",
+  "introduction",
+  "complete",
+  "ultimate",
+  "best",
+  "review",
+  "comparison",
+  "analysis",
+];
+
+// Penalty for generic titles (0-5 points)
+export const GENERIC_TITLES = [
+  "home",
+  "index",
+  "untitled",
+  "page",
+  "document",
+  "article",
+];
+
+// Bonus for specific content indicators
+export const QUALITY_INDICATORS = [
+  "learn",
+  "understand",
+  "discover",
+  "find out",
+  "explore",
+  "step-by-step",
+  "comprehensive",
+];
+
+// High-authority domains (trusted sources)
+export const HIGH_AUTHORITY_DOMAINS = [
+  "wikipedia.org",
+  "github.com",
+  "stackoverflow.com",
+  "mozilla.org",
+  "w3.org",
+  "ietf.org",
+  "apache.org",
+  "gnu.org",
+  "mit.edu",
+  "stanford.edu",
+  "harvard.edu",
+  "cambridge.org",
+  "ox.ac.uk",
+  "nasa.gov",
+  "nist.gov",
+  "ibm.com",
+  "google.com",
+  "microsoft.com",
+  "amazon.com",
+  "apple.com",
+  "cloud.google.com",
+  "aws.amazon.com",
+  "azure.microsoft.com",
+];
+
+// Medium-authority domains (reputable sources)
+export const MEDIUM_AUTHORITY_DOMAINS = [
+  "medium.com",
+  "reddit.com",
+  "quora.com",
+  "linkedin.com",
+  "forbes.com",
+  "techcrunch.com",
+  "wired.com",
+  "arstechnica.com",
+  "nationalgeographic.com",
+  "scientificamerican.com",
+  "nature.com",
+  "britannica.com",
+  "investopedia.com",
+  "coursera.org",
+  "sciencedirect.com",
+  "sas.com",
+];
+
 export const ErrorCategories = {
   API_ERROR: "API_ERROR",
   NETWORK_ERROR: "NETWORK_ERROR",
@@ -838,35 +923,15 @@ export class ResultProcessor {
       }
 
       // Bonus for descriptive titles (0-10 points)
-      const descriptiveWords = [
-        "guide",
-        "tutorial",
-        "overview",
-        "introduction",
-        "complete",
-        "ultimate",
-        "best",
-        "review",
-        "comparison",
-        "analysis",
-      ];
       const titleLower = result.title.toLowerCase();
-      const hasDescriptiveWords = descriptiveWords.some((word) =>
+      const hasDescriptiveWords = DESCRIPTIVE_WORDS.some((word) =>
         titleLower.includes(word),
       );
       if (hasDescriptiveWords) score += 10;
 
       // Penalty for generic titles (0-5 points)
-      const genericTitles = [
-        "home",
-        "index",
-        "untitled",
-        "page",
-        "document",
-        "article",
-      ];
       if (
-        genericTitles.some(
+        GENERIC_TITLES.some(
           (generic) => titleLower === generic || titleLower.includes(generic),
         )
       ) {
@@ -900,17 +965,8 @@ export class ResultProcessor {
       if (result.description.includes("...") || descLength < 50) score -= 5;
 
       // Bonus for specific content indicators
-      const qualityIndicators = [
-        "learn",
-        "understand",
-        "discover",
-        "find out",
-        "explore",
-        "step-by-step",
-        "comprehensive",
-      ];
       if (
-        qualityIndicators.some((indicator) =>
+        QUALITY_INDICATORS.some((indicator) =>
           result.description.toLowerCase().includes(indicator),
         )
       ) {
@@ -925,58 +981,15 @@ export class ResultProcessor {
         const domain = new URL(url).hostname;
 
         // High-authority domains (trusted sources)
-        const highAuthorityDomains = [
-          "wikipedia.org",
-          "github.com",
-          "stackoverflow.com",
-          "mozilla.org",
-          "w3.org",
-          "ietf.org",
-          "apache.org",
-          "gnu.org",
-          "mit.edu",
-          "stanford.edu",
-          "harvard.edu",
-          "cambridge.org",
-          "ox.ac.uk",
-          "nasa.gov",
-          "nist.gov",
-          "ibm.com",
-          "google.com",
-          "microsoft.com",
-          "amazon.com",
-          "apple.com",
-          "cloud.google.com",
-          "aws.amazon.com",
-          "azure.microsoft.com",
-        ];
 
         // Medium-authority domains (reputable sources)
-        const mediumAuthorityDomains = [
-          "medium.com",
-          "reddit.com",
-          "quora.com",
-          "linkedin.com",
-          "forbes.com",
-          "techcrunch.com",
-          "wired.com",
-          "arstechnica.com",
-          "nationalgeographic.com",
-          "scientificamerican.com",
-          "nature.com",
-          "britannica.com",
-          "investopedia.com",
-          "coursera.org",
-          "sciencedirect.com",
-          "sas.com",
-        ];
 
         if (
-          highAuthorityDomains.some((authDomain) => domain.includes(authDomain))
+          HIGH_AUTHORITY_DOMAINS.some((authDomain) => domain.includes(authDomain))
         ) {
           score += 25;
         } else if (
-          mediumAuthorityDomains.some((authDomain) =>
+          MEDIUM_AUTHORITY_DOMAINS.some((authDomain) =>
             domain.includes(authDomain),
           )
         ) {
