@@ -33,6 +33,10 @@ const ConfigSchema = z.object({
       "US", "GB", "CA", "AU", "DE", "FR", "IT", "ES", "BR", "JP", "CN", "IN", "RU"
     ]),
   }).default({}),
+  puppeteer: z.object({
+    args: z.array(z.string()).default([]),
+    headless: z.union([z.boolean(), z.enum(["new", "true", "false"])]).default("new"),
+  }).default({}),
 });
 
 /**
@@ -45,6 +49,11 @@ export function loadConfig() {
     timeout: process.env.PRESEARCH_TIMEOUT,
     logLevel: process.env.LOG_LEVEL,
     port: process.env.PORT,
+    puppeteer: {
+      args: process.env.PUPPETEER_ARGS
+        ? process.env.PUPPETEER_ARGS.split(",").map(arg => arg.trim()).filter(arg => arg.length > 0)
+        : [],
+    },
     // Nested configs could be loaded from JSON if needed, but defaults work for now
   };
 

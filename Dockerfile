@@ -17,12 +17,19 @@ RUN apt-get update && apt-get install -y \
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV PUPPETEER_ARGS="--no-sandbox,--disable-setuid-sandbox"
 
 COPY package*.json ./
 
 RUN npm ci --only=production
 
 COPY . .
+
+# Set ownership to non-root user
+RUN chown -R node:node /app
+
+# Switch to non-root user
+USER node
 
 # Expose port for HTTP transport if needed
 EXPOSE 3000

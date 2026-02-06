@@ -1,5 +1,6 @@
 import puppeteer from "puppeteer";
 import logger from "../core/logger.js";
+import { config } from "../core/config.js";
 
 export class ContentFetcher {
   constructor() {
@@ -8,9 +9,17 @@ export class ContentFetcher {
 
   async initBrowser() {
     if (!this.browser) {
+      const { args, headless } = config.puppeteer;
+
+      if (args.includes("--no-sandbox")) {
+        logger.warn(
+          "Security Warning: Launching Puppeteer with --no-sandbox flag. This disables the sandbox security feature.",
+        );
+      }
+
       this.browser = await puppeteer.launch({
-        headless: "new",
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        headless,
+        args,
       });
     }
   }
