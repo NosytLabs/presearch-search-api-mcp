@@ -7,10 +7,17 @@ export const healthTool = {
     type: "object",
     properties: {},
   },
-  execute: async () => {
+  execute: async (args, context) => {
     try {
+      const requestConfig = { params: { q: "test", limit: 1 } };
+      if (context?.apiKey) {
+        requestConfig.headers = {
+          "Authorization": `Bearer ${context.apiKey}`
+        };
+      }
+
       // Simple ping by doing a minimal search
-      await apiClient.get("/v1/search", { params: { q: "test", limit: 1 } });
+      await apiClient.get("/v1/search", requestConfig);
       return {
         content: [
           {

@@ -5,6 +5,8 @@ import { deepResearchTool } from '../src/tools/deep-research.js';
 import { scrapeTool } from '../src/tools/scrape.js';
 import { siteExportTool } from '../src/tools/site-export.js';
 import { exportResultsTool } from '../src/tools/export.js';
+import { healthTool } from '../src/tools/health.js';
+import { cacheStatsTool, cacheClearTool } from '../src/tools/cache.js';
 import { apiClient } from '../src/core/apiClient.js';
 
 // Mock the API Client
@@ -94,6 +96,23 @@ async function runMockTests() {
     });
     // The deep research tool should return content
     if (!result.content) throw new Error("No content returned");
+  });
+
+  // 4. Test Health Check (Mocked)
+  await runStep('presearch_health_check', async () => {
+    const result = await healthTool.execute({}, { apiKey: "mock-key" });
+    const parsed = JSON.parse(result.content[0].text);
+    if (parsed.status !== "healthy") throw new Error("Health check failed");
+  });
+
+  // 5. Test Cache Tools
+  await runStep('cache_tools', async () => {
+    // Clear
+    await cacheClearTool.execute();
+    // Stats
+    const result = await cacheStatsTool.execute();
+    const stats = JSON.parse(result.content[0].text);
+    if (typeof stats.size !== 'number') throw new Error("Invalid cache stats");
   });
 
   console.log('\n📊 Mock Test Summary');
