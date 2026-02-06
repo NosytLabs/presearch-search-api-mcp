@@ -14,6 +14,7 @@ const ConfigSchema = z.object({
   retries: z.coerce.number().default(3),
   port: z.coerce.number().default(3002),
   logLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  puppeteerArgs: z.array(z.string()).default([]),
   cache: z.object({
     enabled: z.boolean().default(true),
     ttl: z.number().default(300000), // 5 minutes
@@ -45,6 +46,11 @@ export function loadConfig() {
     timeout: process.env.PRESEARCH_TIMEOUT,
     logLevel: process.env.LOG_LEVEL,
     port: process.env.PORT,
+    puppeteerArgs: process.env.PUPPETEER_ARGS
+      ? process.env.PUPPETEER_ARGS.split(",")
+          .map((arg) => arg.trim())
+          .filter(Boolean)
+      : undefined,
     // Nested configs could be loaded from JSON if needed, but defaults work for now
   };
 
