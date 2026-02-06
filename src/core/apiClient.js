@@ -32,9 +32,12 @@ class ApiClient {
           config.headers["Authorization"] = `Bearer ${currentConfig.apiKey}`;
         }
 
-        logger.debug(`API Request: ${config.method?.toUpperCase()} ${config.url}`, {
-          params: config.params,
-        });
+        logger.debug(
+          `API Request: ${config.method?.toUpperCase()} ${config.url}`,
+          {
+            params: config.params,
+          },
+        );
 
         return config;
       },
@@ -68,13 +71,13 @@ class ApiClient {
 
           // Enhanced handling for 402 Payment Required
           if (error.response.status === 402) {
-             const paymentError = new Error(
-               "PRESEARCH API PAYMENT REQUIRED: Your account has insufficient credits. " +
-               "Please visit https://presearch.com/account/tokens to top up your account or check your plan."
-             );
-             paymentError.name = "PaymentRequiredError";
-             paymentError.status = 402;
-             return Promise.reject(paymentError);
+            const paymentError = new Error(
+              "PRESEARCH API PAYMENT REQUIRED: Your account has insufficient credits. " +
+                "Please visit https://presearch.com/account/tokens to top up your account or check your plan.",
+            );
+            paymentError.name = "PaymentRequiredError";
+            paymentError.status = 402;
+            return Promise.reject(paymentError);
           }
         } else {
           logger.error("Network Error", { error: error.message });

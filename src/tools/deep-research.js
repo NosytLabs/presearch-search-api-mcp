@@ -21,7 +21,8 @@ const DeepResearchInputSchema = {
 
 export const deepResearchTool = {
   name: "presearch_deep_research",
-  description: "Perform a multi-step deep research task on a topic. Generates a comprehensive report by exploring multiple sub-topics.",
+  description:
+    "Perform a multi-step deep research task on a topic. Generates a comprehensive report by exploring multiple sub-topics.",
   inputSchema: DeepResearchInputSchema,
   execute: async (args) => {
     // 1. Initial broad search

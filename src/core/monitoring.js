@@ -68,7 +68,7 @@ class MonitoringService {
     const uptime = Date.now() - this.startTime;
     const avgLatency =
       this.metrics.requests.latency.reduce((a, b) => a + b, 0) /
-        (this.metrics.requests.latency.length || 1);
+      (this.metrics.requests.latency.length || 1);
 
     return {
       uptimeSeconds: uptime / 1000,

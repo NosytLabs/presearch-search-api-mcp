@@ -19,32 +19,32 @@ export class PresearchService {
       // Add optional parameters if provided
       if (options.safesearch) params.safe = options.safesearch;
       if (options.lang) params.lang = options.lang;
-      
+
       // Handle location/IP requirements
       // API requires either 'ip' or 'location' (coordinates)
       if (options.country) {
-         // If country provided, we can't easily map to coordinates without a lookup.
-         // For now, we fall back to a generic IP which will geo-locate to *some* location.
-         // Ideally, client should provide specific coordinates if location precision is needed.
-         // We use 1.1.1.1 as a generic valid IP.
-         params.ip = "1.1.1.1"; 
+        // If country provided, we can't easily map to coordinates without a lookup.
+        // For now, we fall back to a generic IP which will geo-locate to *some* location.
+        // Ideally, client should provide specific coordinates if location precision is needed.
+        // We use 1.1.1.1 as a generic valid IP.
+        params.ip = "1.1.1.1";
       } else {
-         params.ip = "1.1.1.1"; // Default to generic IP
+        params.ip = "1.1.1.1"; // Default to generic IP
       }
 
       const response = await apiClient.get("/v1/search", { params });
-      
+
       // Process results using the result processor (deduplication, scoring, etc.)
       const processed = await resultProcessor.processResults(
         response.data, // Pass entire data object so processor can find 'standardResults'
-        query, 
-        options
+        query,
+        options,
       );
 
       return {
         results: processed.results,
         metadata: processed.metadata,
-        originalMeta: response.data.metadata || {} // Keep original metadata if needed
+        originalMeta: response.data.metadata || {}, // Keep original metadata if needed
       };
     } catch (error) {
       logger.error("Presearch Service Error", { error: error.message, query });
@@ -60,14 +60,14 @@ export class PresearchService {
     // This is a placeholder or requires a specific endpoint.
     // For now, we'll return a structure that assumes a hypothetical endpoint
     // or return a "Not Implemented" if strictly using the search API.
-    
+
     // If you have a node status endpoint:
     // return apiClient.get(`/nodes/${nodeKey}/status`);
-    
+
     return {
       status: "online", // Mock for now or implement real call
       node_key: nodeKey ? `${nodeKey.substring(0, 4)}...` : "unknown",
-      message: "Node status monitoring requires specific API access."
+      message: "Node status monitoring requires specific API access.",
     };
   }
 }

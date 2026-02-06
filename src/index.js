@@ -17,28 +17,32 @@ async function main() {
   try {
     const config = loadConfig();
     const server = await createMcpServer(config);
-    
+
     // Check for PORT environment variable or argument
-    const port = process.env.PORT || process.argv.find(arg => arg.startsWith('--port='))?.split('=')[1];
-    
+    const port =
+      process.env.PORT ||
+      process.argv.find((arg) => arg.startsWith("--port="))?.split("=")[1];
+
     if (port) {
       // HTTP/SSE Mode
       const app = express();
       const transport = new SSEServerTransport("/messages");
-      
+
       app.get("/sse", async (req, res) => {
         logger.info("New SSE connection established");
         await server.connect(transport);
         await transport.handlePostMessage(req, res);
       });
-      
+
       app.post("/messages", async (req, res) => {
         logger.debug("Received message via HTTP POST");
         await transport.handlePostMessage(req, res);
       });
-      
+
       app.listen(port, () => {
-        logger.info(`Starting Presearch MCP Server via HTTP on port ${port}...`);
+        logger.info(
+          `Starting Presearch MCP Server via HTTP on port ${port}...`,
+        );
         logger.info(`SSE Endpoint: http://localhost:${port}/sse`);
         logger.info(`Messages Endpoint: http://localhost:${port}/messages`);
       });

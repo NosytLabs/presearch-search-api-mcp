@@ -264,7 +264,7 @@ export class ResultDeduplicator {
     // Stage 1: Quick URL-based deduplication (O(n))
     const urlDeduplicated = [];
     const startTime = Date.now();
-    
+
     for (const result of results) {
       const urlKey = result.url || result.link || "";
       if (urlKey && this.urlIndex.has(urlKey)) {
@@ -279,12 +279,12 @@ export class ResultDeduplicator {
         urlDeduplicated.push(result);
       }
     }
-    
+
     logger.debug("URL deduplication completed", {
       originalCount: results.length,
       afterUrlDedup: urlDeduplicated.length,
       duplicatesFound: duplicates.length,
-      duration: Date.now() - startTime
+      duration: Date.now() - startTime,
     });
 
     // Stage 2: Title-based grouping (reduces comparisons)
@@ -718,14 +718,14 @@ export class ResultProcessor {
       let rawResults = [];
       if (Array.isArray(results)) {
         rawResults = results;
-      } else if (results && typeof results === 'object') {
+      } else if (results && typeof results === "object") {
         if (Array.isArray(results.standardResults)) {
           rawResults = results.standardResults;
         } else if (Array.isArray(results.results)) {
           rawResults = results.results;
         }
       }
-      
+
       let processedResults = rawResults.map((result, index) =>
         this.normalizeResult(result, index),
       );
