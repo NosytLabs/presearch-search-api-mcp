@@ -1,5 +1,6 @@
 import puppeteer from "puppeteer";
 import logger from "../core/logger.js";
+import { validateUrl } from "../core/security.js";
 
 export class ContentFetcher {
   constructor() {
@@ -24,15 +25,26 @@ export class ContentFetcher {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       );
 
+      // Validate initial URL
+      await validateUrl(url);
+
       // Block resources to speed up loading
       await page.setRequestInterception(true);
-      page.on("request", (req) => {
-        if (
-          ["image", "stylesheet", "font", "media"].includes(req.resourceType())
-        ) {
-          req.abort();
-        } else {
-          req.continue();
+      page.on("request", async (req) => {
+        try {
+          if (
+            ["image", "stylesheet", "font", "media"].includes(req.resourceType())
+          ) {
+            await req.abort();
+            return;
+          }
+
+          // Validate request URL to prevent redirects to internal/private IPs
+          await validateUrl(req.url());
+          await req.continue();
+        } catch (error) {
+          logger.warn(`Blocked potentially unsafe request to ${req.url()}: ${error.message}`);
+          await req.abort();
         }
       });
 
