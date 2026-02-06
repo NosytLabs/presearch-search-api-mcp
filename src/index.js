@@ -6,6 +6,7 @@ import { loadConfig } from "./core/config.js";
 import { registerResources } from "./resources/index.js";
 import { apiClient } from "./core/apiClient.js";
 import logger from "./core/logger.js";
+import { validateApiKey } from "./utils/auth.js";
 
 // Export for library usage
 export { registerResources, apiClient, logger };
@@ -26,19 +27,24 @@ async function main() {
       const app = express();
       const transport = new SSEServerTransport("/messages");
       
-      app.get("/sse", async (req, res) => {
+      app.get("/sse", validateApiKey, async (req, res) => {
         logger.info("New SSE connection established");
         await server.connect(transport);
         await transport.handlePostMessage(req, res);
       });
       
-      app.post("/messages", async (req, res) => {
+      app.post("/messages", validateApiKey, async (req, res) => {
         logger.debug("Received message via HTTP POST");
         await transport.handlePostMessage(req, res);
       });
       
       app.listen(port, () => {
         logger.info(`Starting Presearch MCP Server via HTTP on port ${port}...`);
+        if (config.mcpApiKey) {
+          logger.info("🔒 Authentication enabled");
+        } else {
+          logger.warn("⚠️ Authentication disabled: Server is open to the public");
+        }
         logger.info(`SSE Endpoint: http://localhost:${port}/sse`);
         logger.info(`Messages Endpoint: http://localhost:${port}/messages`);
       });

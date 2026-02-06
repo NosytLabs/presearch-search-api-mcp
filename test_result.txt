@@ -1,0 +1,2 @@
+FAILED: 500
+SSE connection not established

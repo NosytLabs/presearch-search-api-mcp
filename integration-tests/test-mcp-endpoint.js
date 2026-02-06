@@ -29,7 +29,7 @@ setTimeout(() => {
   const options = {
     hostname: 'localhost',
     port: 3007,
-    path: '/mcp',
+    path: '/messages',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
