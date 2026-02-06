@@ -1,5 +1,6 @@
 import puppeteer from "puppeteer";
 import logger from "../core/logger.js";
+import { validateUrl } from "../core/security.js";
 
 export class ContentFetcher {
   constructor() {
@@ -16,6 +17,18 @@ export class ContentFetcher {
   }
 
   async fetchContent(url) {
+    // Validate URL first
+    try {
+      await validateUrl(url);
+    } catch (error) {
+      logger.error(`Security validation failed for ${url}: ${error.message}`);
+      return {
+        url,
+        error: error.message,
+        content: null,
+      };
+    }
+
     await this.initBrowser();
     const page = await this.browser.newPage();
     try {
