@@ -60,6 +60,7 @@
     "dotenv": "^16.6.1",
     "exponential-backoff": "^3.1.1",
     "express": "^5.2.1",
+    "ipaddr.js": "^2.3.0",
     "node-cache": "^5.1.2",
     "pino": "^10.1.0",
     "pino-pretty": "^10.2.3",
@@ -69,8 +70,10 @@
   },
   "devDependencies": {
     "@smithery/cli": "^1.4.6",
+    "chai": "^6.2.2",
     "eslint": "^9.39.2",
     "globals": "^16.5.0",
+    "mocha": "^11.7.5",
     "prettier": "^3.7.4"
   },
   "peerDependencies": {
