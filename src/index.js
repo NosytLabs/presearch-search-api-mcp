@@ -24,17 +24,52 @@ async function main() {
     if (port) {
       // HTTP/SSE Mode
       const app = express();
-      const transport = new SSEServerTransport("/messages");
+
+      // Store active sessions: sessionId -> { server, transport }
+      const sessions = new Map();
       
       app.get("/sse", async (req, res) => {
         logger.info("New SSE connection established");
-        await server.connect(transport);
-        await transport.handlePostMessage(req, res);
+
+        try {
+          // Create new server and transport for this connection
+          const connectionServer = await createMcpServer(config);
+          const transport = new SSEServerTransport("/messages", res);
+
+          logger.debug(`Created session ${transport.sessionId}`);
+          sessions.set(transport.sessionId, { server: connectionServer, transport });
+
+          // Clean up on close
+          req.on("close", () => {
+            logger.info(`SSE connection closed for session ${transport.sessionId}`);
+            sessions.delete(transport.sessionId);
+            connectionServer.close().catch(err => logger.error("Error closing server:", err));
+          });
+
+          await connectionServer.connect(transport);
+        } catch (error) {
+          logger.error("Error establishing SSE connection:", error);
+          if (!res.headersSent) {
+             res.status(500).send("Internal Server Error");
+          }
+        }
       });
       
       app.post("/messages", async (req, res) => {
-        logger.debug("Received message via HTTP POST");
-        await transport.handlePostMessage(req, res);
+        const sessionId = req.query.sessionId;
+        if (!sessionId) {
+          res.status(400).send("Missing sessionId parameter");
+          return;
+        }
+
+        const session = sessions.get(sessionId);
+        if (!session) {
+          res.status(404).send("Session not found");
+          return;
+        }
+
+        logger.debug(`Received message for session ${sessionId}`);
+        await session.transport.handlePostMessage(req, res);
       });
       
       app.listen(port, () => {
