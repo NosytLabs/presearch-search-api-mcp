@@ -8,11 +8,21 @@ export class ContentFetcher {
   }
 
   async initBrowser() {
-    if (!this.browser) {
-      this.browser = await puppeteer.launch({
-        headless: "new",
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      });
+    if (this.browser) return;
+
+    if (!this.initPromise) {
+      this.initPromise = (async () => {
+        this.browser = await puppeteer.launch({
+          headless: "new",
+          args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        });
+      })();
+    }
+
+    try {
+      await this.initPromise;
+    } finally {
+      this.initPromise = null;
     }
   }
 
@@ -97,6 +107,7 @@ export class ContentFetcher {
       await this.browser.close();
       this.browser = null;
     }
+    this.initPromise = null;
   }
 }
 
