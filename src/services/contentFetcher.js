@@ -1,5 +1,6 @@
 import puppeteer from "puppeteer";
 import logger from "../core/logger.js";
+import { validateUrl } from "../core/security.js";
 
 export class ContentFetcher {
   constructor() {
@@ -16,6 +17,18 @@ export class ContentFetcher {
   }
 
   async fetchContent(url) {
+    // Validate initial URL
+    try {
+      await validateUrl(url);
+    } catch (error) {
+      logger.error(`Security validation failed for ${url}: ${error.message}`);
+      return {
+        url,
+        error: error.message,
+        content: null,
+      };
+    }
+
     await this.initBrowser();
     const page = await this.browser.newPage();
     try {
@@ -26,14 +39,27 @@ export class ContentFetcher {
 
       // Block resources to speed up loading
       await page.setRequestInterception(true);
-      page.on("request", (req) => {
+      page.on("request", async (req) => {
         if (
           ["image", "stylesheet", "font", "media"].includes(req.resourceType())
         ) {
-          req.abort();
-        } else {
-          req.continue();
+          await req.abort();
+          return;
         }
+
+        // Validate navigation requests to prevent SSRF via redirects
+        if (req.isNavigationRequest()) {
+          try {
+            await validateUrl(req.url());
+            await req.continue();
+          } catch (error) {
+            logger.warn(`Blocked navigation to ${req.url()}: ${error.message}`);
+            await req.abort();
+          }
+          return;
+        }
+
+        await req.continue();
       });
 
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
