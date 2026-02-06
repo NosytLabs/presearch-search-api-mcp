@@ -1,5 +1,6 @@
 import puppeteer from "puppeteer";
 import logger from "../core/logger.js";
+import { validateUrl } from "../core/security.js";
 
 export class ContentFetcher {
   constructor() {
@@ -24,17 +25,27 @@ export class ContentFetcher {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       );
 
-      // Block resources to speed up loading
+      // Block resources to speed up loading and prevent SSRF via redirects
       await page.setRequestInterception(true);
-      page.on("request", (req) => {
+      page.on("request", async (req) => {
         if (
           ["image", "stylesheet", "font", "media"].includes(req.resourceType())
         ) {
           req.abort();
-        } else {
+          return;
+        }
+
+        try {
+          await validateUrl(req.url());
           req.continue();
+        } catch (error) {
+          logger.warn(`Blocked request to ${req.url()}: ${error.message}`);
+          req.abort();
         }
       });
+
+      // Validate URL before navigating
+      await validateUrl(url);
 
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
 
