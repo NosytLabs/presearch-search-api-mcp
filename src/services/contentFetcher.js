@@ -1,5 +1,6 @@
 import puppeteer from "puppeteer";
 import logger from "../core/logger.js";
+import { config } from "../core/config.js";
 
 export class ContentFetcher {
   constructor() {
@@ -8,9 +9,21 @@ export class ContentFetcher {
 
   async initBrowser() {
     if (!this.browser) {
+      const args = config.puppeteer.args;
+      const insecureFlags = ["--no-sandbox", "--disable-setuid-sandbox"];
+      const usedInsecureFlags = args.filter((arg) =>
+        insecureFlags.includes(arg),
+      );
+
+      if (usedInsecureFlags.length > 0) {
+        logger.warn(
+          `Security Warning: Launching Puppeteer with insecure flags: ${usedInsecureFlags.join(", ")}`,
+        );
+      }
+
       this.browser = await puppeteer.launch({
         headless: "new",
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        args: args,
       });
     }
   }
