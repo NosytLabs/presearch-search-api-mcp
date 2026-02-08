@@ -5,15 +5,27 @@ import { validateUrl } from "../core/security.js";
 export class ContentFetcher {
   constructor() {
     this.browser = null;
+    this.initPromise = null;
   }
 
   async initBrowser() {
-    if (!this.browser) {
-      this.browser = await puppeteer.launch({
+    if (this.browser) return;
+
+    if (!this.initPromise) {
+      this.initPromise = puppeteer.launch({
         headless: "new",
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
       });
     }
+
+    try {
+      this.browser = await this.initPromise;
+    } catch (error) {
+      this.initPromise = null;
+      throw error;
+    }
+
+    this.initPromise = null;
   }
 
   async fetchContent(url) {
@@ -97,6 +109,7 @@ export class ContentFetcher {
       await this.browser.close();
       this.browser = null;
     }
+    this.initPromise = null;
   }
 }
 
