@@ -5,15 +5,30 @@ import { validateUrl } from "../core/security.js";
 export class ContentFetcher {
   constructor() {
     this.browser = null;
+    this.initPromise = null;
   }
 
   async initBrowser() {
-    if (!this.browser) {
-      this.browser = await puppeteer.launch({
-        headless: "new",
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      });
+    if (this.browser) return;
+
+    if (!this.initPromise) {
+      this.initPromise = puppeteer
+        .launch({
+          headless: "new",
+          args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        })
+        .then((browser) => {
+          this.browser = browser;
+          this.initPromise = null;
+          return browser;
+        })
+        .catch((error) => {
+          this.initPromise = null;
+          throw error;
+        });
     }
+
+    await this.initPromise;
   }
 
   async fetchContent(url) {
